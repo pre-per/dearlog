@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "66007203323",
+    "project_id": "dearlog-fdca5",
+    "storage_bucket": "dearlog-fdca5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:66007203323:android:03e2a908944cdbfa97df5e",
+        "android_client_info": {
+          "package_name": "com.example.dearlog"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCU7Xz95N4uz8v91dcW6anhcsWmgEhTF2I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
