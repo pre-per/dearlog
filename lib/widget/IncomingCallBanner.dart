@@ -91,7 +91,7 @@ class _IncomingCallBannerState extends State<IncomingCallBanner>
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 19,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w700,
                           decoration: TextDecoration.none,
                         ),
                       ),

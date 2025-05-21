@@ -72,7 +72,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   },
                 ),
                 const SizedBox(height: 15),
-
+                const SizedBox(height: 20),
+                Text('부가 기능', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),),
+                const SizedBox(height: 15),
                 PromoTile(
                   iconEmoji: '🌟',
                   title: '디어로그 프로모션 가입하기',

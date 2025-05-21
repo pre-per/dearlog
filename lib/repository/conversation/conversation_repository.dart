@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/conversation.dart';
+import '../../models/conversation.dart';
 
 class ConversationRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

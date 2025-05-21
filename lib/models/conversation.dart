@@ -20,6 +20,9 @@ class Message {
       'content': content,
     };
   }
+
+  bool get isUser => role == 'user';
+  bool get isAssistant => role == 'assistant';
 }
 
 class Conversation {

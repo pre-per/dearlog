@@ -38,6 +38,7 @@ dependencies:
   firebase_core: ^3.13.0
   cloud_firestore: ^5.6.7
   iconsax_plus: ^1.0.0
+  speech_to_text: ^7.0.0
 
 dev_dependencies:
   flutter_test:

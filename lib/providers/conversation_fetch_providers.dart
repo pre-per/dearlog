@@ -1,7 +1,7 @@
 import 'package:dearlog/providers/user_fetch_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/conversation.dart';
-import '../repository/conversation_repository.dart';
+import '../repository/conversation/conversation_repository.dart';
 
 final conversationRepositoryProvider = Provider<ConversationRepository>((ref) {
   return ConversationRepository();
