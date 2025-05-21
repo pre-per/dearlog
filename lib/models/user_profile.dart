@@ -1,3 +1,5 @@
+import 'package:dearlog/models/callday.dart';
+
 class UserProfile {
   final String nickname;
   final int age;
@@ -6,6 +8,7 @@ class UserProfile {
   final List<String> interests;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final List<CallDay> callDays;
 
   UserProfile({
     required this.nickname,
@@ -15,6 +18,7 @@ class UserProfile {
     required this.interests,
     required this.createdAt,
     required this.updatedAt,
+    required this.callDays,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -26,6 +30,9 @@ class UserProfile {
       interests: List<String>.from(json['interests']),
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
+      callDays: (json['callDays'] as List<dynamic>)
+          .map((e) => CallDay.fromJson(e))
+          .toList(),
     );
   }
 
@@ -38,6 +45,7 @@ class UserProfile {
       'interests': interests,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'callDays': callDays.map((e) => e.toJson()).toList(),
     };
   }
 }

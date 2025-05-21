@@ -1,12 +1,13 @@
 import 'package:dearlog/firebase_options.dart';
+import 'package:dearlog/screens/home/homescreen.dart';
+import 'package:dearlog/screens/profile/profile_screen.dart';
 import 'package:dearlog/screens/splash_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'screens/chat/ai_chat_screen.dart';
 import 'screens/match/match_list_screen.dart';
-import 'screens/profile/my_profile_screen.dart';
 import 'screens/settings/settings_screen.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +39,7 @@ class MyApp extends StatelessWidget {
         bottomAppBarTheme: BottomAppBarTheme(
           color: Colors.white,
         ),
+        fontFamily: 'Pretendard',
       ),
       home: SplashScreen(),
     );
@@ -55,10 +57,10 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
-    AiChatScreen(),
+    HomeScreen(),
     MatchListScreen(),
-    MyProfileScreen(),
     SettingsScreen(),
+    ProfileScreen()
   ];
 
   @override
@@ -72,10 +74,10 @@ class _MainScreenState extends State<MainScreen> {
         type: BottomNavigationBarType.fixed,
         onTap: (index) => setState(() => _currentIndex = index),
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.smart_toy_outlined), label: '대화'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: '추천'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: '내 정보'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: '설정'),
+          BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.home_1), label: '홈'),
+          BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.heart), label: '추천'),
+          BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.setting_2), label: '설정'),
+          BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.user), label: '내 정보'),
         ],
       ),
     );

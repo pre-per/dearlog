@@ -1,7 +1,7 @@
 import 'package:dearlog/providers/user_fetch_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/match.dart';
-import '../repository//match_repository.dart';
+import '../repository/match_repository.dart';
 
 final matchRepositoryProvider = Provider<MatchRepository>((ref) {
   return MatchRepository();
