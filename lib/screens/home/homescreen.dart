@@ -1,11 +1,11 @@
 import 'package:dearlog/providers/user_fetch_providers.dart';
+import 'package:dearlog/screens/chat/chat_home_screen.dart';
 import 'package:dearlog/screens/home/notification_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import '../../widget/IncomingCallBanner.dart';
-import '../../widget/call_status_bar.dart';
+import '../../widget/promotile.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -15,28 +15,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  OverlayEntry? _overlayEntry;
-
-  void _showIncomingCall(BuildContext context) {
-    _overlayEntry = OverlayEntry(
-      builder:
-          (_) => IncomingCallBanner(
-            callerName: "디어로그",
-            callerSubtitle: "휴대전화",
-            onAccept: () {
-              _overlayEntry?.remove();
-              print("통화 수락");
-            },
-            onDecline: () {
-              _overlayEntry?.remove();
-              print("통화 거절");
-            },
-          ),
-    );
-
-    Overlay.of(context).insert(_overlayEntry!);
-  }
-
   @override
   Widget build(BuildContext context) {
     final userProfileAsync = ref.watch(userProfileProvider);
@@ -63,19 +41,62 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: userProfileAsync.when(
         data: (userProfile) {
           if (userProfile == null) {
-            return const Scaffold(
-              body: Center(child: Text("사용자 정보를 불러올 수 없습니다.")),
+            return GestureDetector(
+              onTap: () {},
+              child: Center(
+                child: Text(
+                  '로그인 해주세요',
+                  style: TextStyle(
+                    fontSize: 25,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ),
             );
           }
-          return ListView(
-            children: [
-              CallStatusBar(callDays: userProfile.callDays),
-              const SizedBox(height: 20),
-              IconButton(
-                onPressed: () => _showIncomingCall(context),
-                icon: const Icon(IconsaxPlusBold.call_calling),
-              ),
-            ],
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: ListView(
+              children: [
+                const SizedBox(height: 20),
+                PromoTile(
+                  iconEmoji: '📣',
+                  title: '디어로그와 통화하고 분석받기',
+                  subtitle: ' 오늘의 미션',
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => ChatHomeScreen(),
+                    ));
+                  },
+                ),
+                const SizedBox(height: 15),
+
+                PromoTile(
+                  iconEmoji: '🌟',
+                  title: '디어로그 프로모션 가입하기',
+                  subtitle: ' 통화할 때마다 뜨는 광고가 싫다면',
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => ChatHomeScreen(),
+                    ));
+                  },
+                ),
+                const SizedBox(height: 15),
+                PromoTile(
+                  iconEmoji: '🥰',
+                  title: '내 취향에 맞추어 소개팅하기',
+                  subtitle: ' 이건 어때요?',
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => ChatHomeScreen(),
+                    ));
+                  },
+                ),
+                const SizedBox(height: 15),
+              ],
+            ),
           );
         },
         error: (err, _) => Center(child: Text('유저 데이터를 불러오지 못했습니다.\n오류:$err')),

@@ -17,7 +17,7 @@ final userProfileProvider = FutureProvider<UserProfile?>((ref) async {
   if (useDummyData) {
     final now = DateTime.now();
     return UserProfile(
-      nickname: '깨꾹이',
+      nickname: '김철수',
       age: 25,
       gender: '남성',
       location: '서울',

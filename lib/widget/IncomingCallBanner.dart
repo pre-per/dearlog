@@ -33,11 +33,20 @@ class _IncomingCallBannerState extends State<IncomingCallBanner>
     );
 
     _offsetAnimation = Tween<Offset>(
-      begin: const Offset(0, -1), // 위에서 시작
+      begin: const Offset(0, -1),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _controller.forward();
+
+    // ✅ 10초 후 자동 종료
+    Future.delayed(const Duration(seconds: 10), () async {
+      if (!mounted) return;
+      await _controller.reverse();
+      if (mounted) {
+        widget.onDecline?.call();
+      }
+    });
   }
 
   @override
@@ -71,7 +80,7 @@ class _IncomingCallBannerState extends State<IncomingCallBanner>
                   backgroundImage: AssetImage('asset/image/kitty.png'),
                   backgroundColor: Colors.white,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -81,7 +90,7 @@ class _IncomingCallBannerState extends State<IncomingCallBanner>
                         widget.callerName,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 19,
                           fontWeight: FontWeight.w900,
                           decoration: TextDecoration.none,
                         ),

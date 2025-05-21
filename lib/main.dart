@@ -1,4 +1,6 @@
 import 'package:dearlog/firebase_options.dart';
+import 'package:dearlog/screens/chat/ai_chat_screen.dart';
+import 'package:dearlog/screens/chat/chat_home_screen.dart';
 import 'package:dearlog/screens/home/homescreen.dart';
 import 'package:dearlog/screens/profile/profile_screen.dart';
 import 'package:dearlog/screens/splash_screen.dart';
@@ -58,8 +60,8 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = [
     HomeScreen(),
+    ChatHomeScreen(),
     MatchListScreen(),
-    SettingsScreen(),
     ProfileScreen()
   ];
 
@@ -75,8 +77,8 @@ class _MainScreenState extends State<MainScreen> {
         onTap: (index) => setState(() => _currentIndex = index),
         items: const [
           BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.home_1), label: '홈'),
-          BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.heart), label: '추천'),
-          BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.setting_2), label: '설정'),
+          BottomNavigationBarItem(icon: Icon(Icons.call), label: '통화'),
+          BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.heart), label: '매칭'),
           BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.user), label: '내 정보'),
         ],
       ),

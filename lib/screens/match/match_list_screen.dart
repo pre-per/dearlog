@@ -5,6 +5,10 @@ class MatchListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Placeholder();
+    return Scaffold(
+      body: Center(
+        child: Text('매칭을 위해 더 많은 데이터가 필요합니다'),
+      ),
+    );
   }
 }
