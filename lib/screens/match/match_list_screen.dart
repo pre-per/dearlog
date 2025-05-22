@@ -44,7 +44,7 @@ class MatchListScreen extends ConsumerWidget {
                 const SizedBox(height: 15),
 
                 MatchProfileCard(
-                  myName: '깨꾹이',
+                  myName: userProfile.nickname,
                   myImage: 'asset/image/kitty.png',
                   partnerName: '솜이',
                   partnerImage: 'asset/image/kitty.png',

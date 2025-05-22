@@ -1,5 +1,8 @@
 import 'package:dearlog/providers/user_fetch_providers.dart';
+import 'package:dearlog/screens/profile/app_version_screen.dart';
 import 'package:dearlog/screens/profile/faq_screen.dart';
+import 'package:dearlog/screens/profile/notice_screen.dart';
+import 'package:dearlog/screens/profile/notification_setting_screen.dart';
 import 'package:dearlog/widget/feedback_bottomsheet.dart';
 import 'package:dearlog/widget/tile/setting_menu_tile.dart';
 import 'package:flutter/material.dart';
@@ -40,7 +43,11 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 40),
                 SettingMenuTile(title: '내 정보'),
                 Divider(color: Colors.grey[300], indent: 15, endIndent: 15),
-                SettingMenuTile(title: '알림 설정'),
+                SettingMenuTile(title: '알림 설정', onTap: () {
+                  Navigator.of(
+                    context,
+                  ).push(MaterialPageRoute(builder: (_) => NotificationSettingScreen()));
+                },),
                 SettingMenuTile(
                   title: '공지사항',
                   trailing: Text(
@@ -51,8 +58,17 @@ class ProfileScreen extends ConsumerWidget {
                       color: Colors.greenAccent[700],
                     ),
                   ),
+                  onTap: () {
+                    Navigator.of(
+                      context,
+                    ).push(MaterialPageRoute(builder: (_) => NoticeScreen()));
+                  },
                 ),
-                SettingMenuTile(title: '앱 정보'),
+                SettingMenuTile(title: '앱 정보', onTap: () {
+                  Navigator.of(
+                    context,
+                  ).push(MaterialPageRoute(builder: (_) => AppVersionScreen()));
+                },),
                 const SizedBox(height: 30),
                 _OpinionGiveMe(
                   onTap: () {

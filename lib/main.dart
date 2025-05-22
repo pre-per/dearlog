@@ -1,6 +1,7 @@
 import 'package:dearlog/firebase_options.dart';
 import 'package:dearlog/providers/mainscreen_index_provider.dart';
 import 'package:dearlog/screens/chat/chat_home_screen.dart';
+import 'package:dearlog/screens/diary/diary_screen.dart';
 import 'package:dearlog/screens/home/homescreen.dart';
 import 'package:dearlog/screens/profile/profile_screen.dart';
 import 'package:dearlog/screens/splash_screen.dart';
@@ -59,7 +60,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     HomeScreen(),
     ChatHomeScreen(),
     MatchListScreen(),
-    ProfileScreen()
+    DiaryScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -77,6 +79,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.home_1), label: '홈'),
           BottomNavigationBarItem(icon: Icon(Icons.call), label: '통화'),
           BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.heart), label: '매칭'),
+          BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.note_text), label: '일기'),
           BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.user), label: '내 정보'),
         ],
       ),

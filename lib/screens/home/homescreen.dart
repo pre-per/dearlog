@@ -1,6 +1,6 @@
 import 'package:dearlog/providers/user_fetch_providers.dart';
 import 'package:dearlog/screens/chat/chat_home_screen.dart';
-import 'package:dearlog/screens/home/notification_screen.dart';
+import 'package:dearlog/screens/profile/notice_screen.dart';
 import 'package:dearlog/widget/divider_widget.dart';
 import 'package:dearlog/widget/emotion_chart_widget.dart';
 import 'package:dearlog/widget/recent_conversation_widget.dart';
@@ -45,7 +45,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             onPressed: () {
               Navigator.of(
                 context,
-              ).push(MaterialPageRoute(builder: (_) => NotificationScreen()));
+              ).push(MaterialPageRoute(builder: (_) => NoticeScreen()));
             },
             icon: Icon(
               IconsaxPlusBold.notification,
@@ -125,10 +125,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   title: '내 취향에 맞추어 소개팅하기',
                   subtitle: ' 이건 어때요?',
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => ChatHomeScreen()),
-                    );
+                    ref.read(MainIndexProvider.notifier).state = 2;
                   },
                 ),
                 const SizedBox(height: 15),
