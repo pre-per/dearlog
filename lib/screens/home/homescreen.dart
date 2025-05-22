@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
+import '../../main.dart';
+import '../../providers/mainscreen_index_provider.dart';
 import '../../widget/promotile.dart';
+import '../../widget/subscription_dialog.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -21,7 +24,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Dearlog.', style: TextStyle(fontSize: 25)),
+        title: GestureDetector(
+          onTap: () {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => MainScreen()),
+                  (Route<dynamic> route) => false,
+            );
+          },
+          child: Image.asset('asset/image/logo.png', width: 120, height: 120),
+        ),
         actions: [
           IconButton(
             onPressed: () {
@@ -66,23 +78,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   title: '디어로그와 통화하고 분석받기',
                   subtitle: ' 오늘의 미션',
                   onTap: () {
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => ChatHomeScreen(),
-                    ));
+                    ref.read(MainIndexProvider.notifier).state = 1;
                   },
                 ),
                 const SizedBox(height: 15),
                 const SizedBox(height: 20),
-                Text('부가 기능', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),),
+                Text(
+                  '부가 기능',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 15),
                 PromoTile(
                   iconEmoji: '🌟',
                   title: '디어로그 프로모션 가입하기',
                   subtitle: ' 통화할 때마다 뜨는 광고가 싫다면',
                   onTap: () {
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => ChatHomeScreen(),
-                    ));
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => SubscriptionDialog(
+                        onConfirm: (selectedPlan) {
+                          print('선택한 플랜: $selectedPlan');
+                          // 결제 로직 호출 등
+                        },
+                      ),
+                    );
                   },
                 ),
                 const SizedBox(height: 15),
@@ -91,9 +111,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   title: '내 취향에 맞추어 소개팅하기',
                   subtitle: ' 이건 어때요?',
                   onTap: () {
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => ChatHomeScreen(),
-                    ));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => ChatHomeScreen()),
+                    );
                   },
                 ),
                 const SizedBox(height: 15),

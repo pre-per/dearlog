@@ -26,7 +26,7 @@ class SettingMenuTile extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
               ),
             ),
             if (trailing != null) trailing!,

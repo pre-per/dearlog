@@ -1,3 +1,4 @@
+import 'package:dearlog/widget/popup_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/conversation.dart';
@@ -94,11 +95,13 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
         elevation: 1,
         titleSpacing: 0,
         title: Row(
           children: const [
+            SizedBox(width: 15),
             CircleAvatar(
               radius: 20,
               backgroundImage: AssetImage("asset/image/kitty.png"),
@@ -118,7 +121,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: ElevatedButton.icon(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                _showPopupDialog(context);
+              },
               icon: const Icon(Icons.call_end, color: Colors.white),
               label: const Text(
                 "통화 종료",
@@ -248,4 +253,19 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
       ),
     );
   }
+}
+
+void _showPopupDialog(BuildContext context) async {
+  return showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => PopupDialog(
+      lottieAsset: 'asset/lottie/check.json',
+      messageText: '디어로그와 통화에 성공했어요🥳',
+      confirmButtonText: '확인',
+      secondaryButtonText: '더 통화하러 가기',
+      onConfirm: () {Navigator.of(context).popUntil((route) => route.isFirst);},
+      onSecondary: () {Navigator.of(context).popUntil((route) => route.isFirst);},
+    ),
+  );
 }

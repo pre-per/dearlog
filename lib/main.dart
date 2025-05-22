@@ -1,5 +1,5 @@
 import 'package:dearlog/firebase_options.dart';
-import 'package:dearlog/screens/chat/ai_chat_screen.dart';
+import 'package:dearlog/providers/mainscreen_index_provider.dart';
 import 'package:dearlog/screens/chat/chat_home_screen.dart';
 import 'package:dearlog/screens/home/homescreen.dart';
 import 'package:dearlog/screens/profile/profile_screen.dart';
@@ -8,7 +8,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/match/match_list_screen.dart';
-import 'screens/settings/settings_screen.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 void main() async {
@@ -48,16 +47,14 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MainScreen extends StatefulWidget {
+class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  ConsumerState<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0;
-
+class _MainScreenState extends ConsumerState<MainScreen> {
   final List<Widget> _screens = [
     HomeScreen(),
     ChatHomeScreen(),
@@ -67,14 +64,15 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    int currentIndex = ref.watch(MainIndexProvider);
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: _screens[currentIndex],
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
+        currentIndex: currentIndex,
         selectedItemColor: Colors.deepPurple,
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: (index) => setState(() => ref.read(MainIndexProvider.notifier).state = index),
         items: const [
           BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.home_1), label: '홈'),
           BottomNavigationBarItem(icon: Icon(Icons.call), label: '통화'),

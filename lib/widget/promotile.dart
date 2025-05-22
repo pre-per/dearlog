@@ -39,7 +39,7 @@ class PromoTile extends StatelessWidget {
                   Text(
                     subtitle,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       color: Colors.blue,
                       fontWeight: FontWeight.w600,
                     ),
@@ -48,7 +48,7 @@ class PromoTile extends StatelessWidget {
                   Text(
                     title,
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 17,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

@@ -24,7 +24,7 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 40),
                 const Text(
                   '마이페이지',
-                  style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 40),
                 _ProfileDoubleButtonRow(
@@ -46,7 +46,7 @@ class ProfileScreen extends ConsumerWidget {
                   trailing: Text(
                     '1개',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 17,
                       fontWeight: FontWeight.w600,
                       color: Colors.greenAccent[700],
                     ),
@@ -122,7 +122,7 @@ class _ProfileDoubleButtonRow extends StatelessWidget {
                 child: Text(
                   buttonName1,
                   style: const TextStyle(
-                    fontSize: 18,
+                    fontSize: 17,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -146,7 +146,7 @@ class _ProfileDoubleButtonRow extends StatelessWidget {
                 child: Text(
                   buttonName2,
                   style: const TextStyle(
-                    fontSize: 18,
+                    fontSize: 17,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -186,14 +186,14 @@ class _OpinionGiveMe extends StatelessWidget {
                 children: [
                   Text(
                     '디어로그에서의 경험은 어떠셨나요?',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 17),
                   ),
                   const SizedBox(height: 5),
                   Text(
                     '솔직한 의견을 들려주세요',
                     style: TextStyle(
                       fontWeight: FontWeight.w500,
-                      fontSize: 16,
+                      fontSize: 15,
                       color: Colors.grey[600],
                     ),
                   ),

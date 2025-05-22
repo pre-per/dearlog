@@ -36,7 +36,7 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
                   content: const Text(
                     '시간 날 때 다시 걸어주세요! :)',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: Colors.white),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.white),
                   ),
                   behavior: SnackBarBehavior.floating,
                   margin: const EdgeInsets.all(16),
