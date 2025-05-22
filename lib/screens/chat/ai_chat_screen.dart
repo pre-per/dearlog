@@ -1,4 +1,4 @@
-import 'package:dearlog/widget/popup_dialog.dart';
+import 'package:dearlog/widget/dialog/popup_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/conversation.dart';

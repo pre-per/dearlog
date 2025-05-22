@@ -1,4 +1,6 @@
 import 'package:dearlog/screens/chat/ai_chat_screen.dart';
+import 'package:dearlog/widget/divider_widget.dart';
+import 'package:dearlog/widget/recent_conversation_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
@@ -82,6 +84,9 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
                   onPressed: () => _showIncomingCall(context),
                   icon: const Icon(IconsaxPlusBold.call_calling, size: 100),
                 ),
+                const SizedBox(height: 200),
+                DividerWidget(),
+                RecentConversationWidget(),
               ],
             ),
           );

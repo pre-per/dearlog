@@ -1,5 +1,5 @@
 import 'package:dearlog/providers/faq_provider.dart';
-import 'package:dearlog/widget/faq_tile.dart';
+import 'package:dearlog/widget/tile/faq_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

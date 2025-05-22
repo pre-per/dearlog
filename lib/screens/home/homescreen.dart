@@ -1,14 +1,20 @@
 import 'package:dearlog/providers/user_fetch_providers.dart';
 import 'package:dearlog/screens/chat/chat_home_screen.dart';
 import 'package:dearlog/screens/home/notification_screen.dart';
+import 'package:dearlog/widget/divider_widget.dart';
+import 'package:dearlog/widget/emotion_chart_widget.dart';
+import 'package:dearlog/widget/recent_conversation_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import '../../main.dart';
+import '../../models/emotiondata.dart';
 import '../../providers/mainscreen_index_provider.dart';
-import '../../widget/promotile.dart';
-import '../../widget/subscription_dialog.dart';
+import '../../widget/emotion_chart.dart';
+import '../../widget/tile/conversation_summary_tile.dart';
+import '../../widget/tile/promotile.dart';
+import '../../widget/dialog/subscription_dialog.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -29,7 +35,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(builder: (context) => MainScreen()),
-                  (Route<dynamic> route) => false,
+              (Route<dynamic> route) => false,
             );
           },
           child: Image.asset('asset/image/logo.png', width: 120, height: 120),
@@ -50,6 +56,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           const SizedBox(width: 15),
         ],
       ),
+
       body: userProfileAsync.when(
         data: (userProfile) {
           if (userProfile == null) {
@@ -81,10 +88,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ref.read(MainIndexProvider.notifier).state = 1;
                   },
                 ),
-                const SizedBox(height: 15),
-                const SizedBox(height: 20),
+                const SizedBox(height: 25),
+
+                EmotionChartWidget(),
+                DividerWidget(),
+
+                RecentConversationWidget(),
+                DividerWidget(),
+
                 Text(
-                  '부가 기능',
+                  '  부가 기능',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 15),
@@ -96,12 +109,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     showDialog(
                       context: context,
                       barrierDismissible: false,
-                      builder: (_) => SubscriptionDialog(
-                        onConfirm: (selectedPlan) {
-                          print('선택한 플랜: $selectedPlan');
-                          // 결제 로직 호출 등
-                        },
-                      ),
+                      builder:
+                          (_) => SubscriptionDialog(
+                            onConfirm: (selectedPlan) {
+                              print('선택한 플랜: $selectedPlan');
+                              // 결제 로직 호출 등
+                            },
+                          ),
                     );
                   },
                 ),

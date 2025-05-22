@@ -1,7 +1,7 @@
 import 'package:dearlog/providers/user_fetch_providers.dart';
 import 'package:dearlog/screens/profile/faq_screen.dart';
 import 'package:dearlog/widget/feedback_bottomsheet.dart';
-import 'package:dearlog/widget/setting_menu_tile.dart';
+import 'package:dearlog/widget/tile/setting_menu_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';

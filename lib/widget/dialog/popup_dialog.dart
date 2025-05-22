@@ -67,7 +67,7 @@ class PopupDialog extends StatelessWidget {
                         child: ElevatedButton(
                           onPressed: onConfirm,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
+                            backgroundColor: Colors.blueAccent,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
