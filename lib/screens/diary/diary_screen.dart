@@ -1,7 +1,9 @@
+import 'package:dearlog/widget/divider_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/user_fetch_providers.dart';
+import '../../widget/emotion_chart_widget.dart';
 
 class DiaryScreen extends ConsumerWidget {
   const DiaryScreen({super.key});
@@ -35,10 +37,13 @@ class DiaryScreen extends ConsumerWidget {
               children: [
                 const SizedBox(height: 40),
                 Text(
-                  '${userProfile.nickname}님의 일기',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  '일기장',
+                  style: TextStyle(fontSize: 27, fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 15),
+                const SizedBox(height: 20),
+                DividerWidget(),
+                EmotionChartWidget(),
+                DividerWidget(),
               ],
             ),
           );

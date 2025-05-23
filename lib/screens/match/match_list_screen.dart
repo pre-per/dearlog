@@ -38,6 +38,11 @@ class MatchListScreen extends ConsumerWidget {
               children: [
                 const SizedBox(height: 40),
                 Text(
+                  'AI 매칭',
+                  style: TextStyle(fontSize: 27, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 15),
+                Text(
                   '${userProfile.nickname}님과 어울리는 상대를 찾았어요!',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                 ),
