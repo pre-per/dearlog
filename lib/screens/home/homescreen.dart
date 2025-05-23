@@ -9,9 +9,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import '../../main.dart';
-import '../../models/chart/emotion_data.dart';
+import '../../models/chart/chart_data.dart';
 import '../../providers/mainscreen_index_provider.dart';
-import '../../widget/chart/emotion_chart.dart';
+import '../../widget/chart/my_bar_chart.dart';
 import '../../widget/tile/conversation_summary_tile.dart';
 import '../../widget/tile/promotile.dart';
 import '../../widget/dialog/subscription_dialog.dart';

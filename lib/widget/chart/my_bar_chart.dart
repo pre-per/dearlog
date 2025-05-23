@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../models/chart/emotion_data.dart';
+import '../../models/chart/chart_data.dart';
 
-class EmotionFrequencyBarChart extends StatelessWidget {
-  final List<EmotionData> data; // 최대 4개까지 받도록 권장
+class MyBarChart extends StatelessWidget {
+  final List<ChartData> data; // 최대 4개까지 받도록 권장
 
-  const EmotionFrequencyBarChart({super.key, required this.data});
+  const MyBarChart({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +37,7 @@ class EmotionFrequencyBarChart extends StatelessWidget {
               ),
               const SizedBox(height: 8),
 
-              // 🏷️ 감정 라벨
+              // 🏷️ 라벨
               Text(
                 emotion.label,
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),

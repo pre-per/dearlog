@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../models/chart/chart_data.dart';
 import 'my_bar_chart.dart';
 
-class EmotionChartWidget extends StatelessWidget {
-  const EmotionChartWidget({super.key});
+class InterestChartWidget extends StatelessWidget {
+  const InterestChartWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -12,7 +12,7 @@ class EmotionChartWidget extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '  내 감정 그래프',
+          '  나의 흥미',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
         MyBarChart(

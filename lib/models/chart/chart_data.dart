@@ -1,11 +1,11 @@
 import 'dart:ui';
 
-class EmotionData {
+class ChartData {
   final String label;
   final int count;
   final Color color;
 
-  EmotionData({
+  ChartData({
     required this.label,
     required this.count,
     required this.color,
