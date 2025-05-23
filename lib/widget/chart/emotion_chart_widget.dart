@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../models/emotiondata.dart';
+import '../../models/chart/emotion_data.dart';
 import 'emotion_chart.dart';
 
 class EmotionChartWidget extends StatelessWidget {

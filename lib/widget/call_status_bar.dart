@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../models/callday.dart';
+import '../models/conversation/call_day.dart';
 
 class CallStatusBar extends StatefulWidget {
   final List<CallDay> callDays;

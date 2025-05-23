@@ -1,9 +1,9 @@
 import 'package:dearlog/widget/divider_widget.dart';
-import 'package:dearlog/widget/emotion_chart_widget.dart';
+import 'package:dearlog/widget/chart/emotion_chart_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../providers/user_fetch_providers.dart';
+import '../../providers/user/user_fetch_providers.dart';
 import '../../widget/match_profile_card.dart';
 
 class MatchListScreen extends ConsumerWidget {
@@ -11,12 +11,12 @@ class MatchListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userProfileAsync = ref.watch(userProfileProvider);
+    final userAsync = ref.watch(userProvider);
 
     return Scaffold(
-      body: userProfileAsync.when(
-        data: (userProfile) {
-          if (userProfile == null) {
+      body: userAsync.when(
+        data: (user) {
+          if (user == null) {
             return GestureDetector(
               onTap: () {},
               child: Center(
@@ -43,13 +43,13 @@ class MatchListScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 15),
                 Text(
-                  '${userProfile.nickname}님과 어울리는 상대를 찾았어요!',
+                  '${user.profile.nickname}님과 어울리는 상대를 찾았어요!',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 15),
 
                 MatchProfileCard(
-                  myName: userProfile.nickname,
+                  myName: user.profile.nickname,
                   myImage: 'asset/image/kitty.png',
                   partnerName: '솜이',
                   partnerImage: 'asset/image/kitty.png',

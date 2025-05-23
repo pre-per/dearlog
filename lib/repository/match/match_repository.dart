@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/match.dart';
+import '../../models/match/match.dart';
 
 class MatchRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

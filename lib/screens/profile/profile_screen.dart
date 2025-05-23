@@ -1,9 +1,9 @@
-import 'package:dearlog/providers/user_fetch_providers.dart';
+import 'package:dearlog/providers/user/user_fetch_providers.dart';
 import 'package:dearlog/screens/profile/app_version_screen.dart';
 import 'package:dearlog/screens/profile/faq_screen.dart';
 import 'package:dearlog/screens/profile/notice_screen.dart';
 import 'package:dearlog/screens/profile/notification_setting_screen.dart';
-import 'package:dearlog/widget/feedback_bottomsheet.dart';
+import 'package:dearlog/widget/bottom_sheet/feedback_bottomsheet.dart';
 import 'package:dearlog/widget/tile/setting_menu_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,11 +14,11 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userProfileAsync = ref.watch(userProfileProvider);
+    final userAsync = ref.watch(userProvider);
     final _feedbackController = TextEditingController();
 
     return Scaffold(
-      body: userProfileAsync.when(
+      body: userAsync.when(
         data: (user) {
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),

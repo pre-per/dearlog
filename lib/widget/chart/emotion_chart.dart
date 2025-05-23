@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/emotiondata.dart';
+import '../../models/chart/emotion_data.dart';
 
 class EmotionFrequencyBarChart extends StatelessWidget {
   final List<EmotionData> data; // 최대 4개까지 받도록 권장

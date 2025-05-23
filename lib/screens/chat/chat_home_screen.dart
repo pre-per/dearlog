@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import '../../providers/user_fetch_providers.dart';
+import '../../providers/user/user_fetch_providers.dart';
 import '../../widget/IncomingCallBanner.dart';
 import '../../widget/call_status_bar.dart';
 
@@ -58,12 +58,12 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userProfileAsync = ref.watch(userProfileProvider);
+    final userAsync = ref.watch(userProvider);
 
     return Scaffold(
-      body: userProfileAsync.when(
-        data: (userProfile) {
-          if (userProfile == null) {
+      body: userAsync.when(
+        data: (user) {
+          if (user == null) {
             return const Scaffold(
               body: Center(child: Text("사용자 정보를 불러올 수 없습니다.")),
             );
@@ -78,7 +78,7 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 25),
                 ),
                 const SizedBox(height: 30),
-                CallStatusBar(callDays: userProfile.callDays),
+                CallStatusBar(callDays: user.callHistory),
                 const SizedBox(height: 200),
                 IconButton(
                   onPressed: () => _showIncomingCall(context),

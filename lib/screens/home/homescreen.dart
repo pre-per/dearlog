@@ -1,17 +1,17 @@
-import 'package:dearlog/providers/user_fetch_providers.dart';
+import 'package:dearlog/providers/user/user_fetch_providers.dart';
 import 'package:dearlog/screens/chat/chat_home_screen.dart';
 import 'package:dearlog/screens/profile/notice_screen.dart';
 import 'package:dearlog/widget/divider_widget.dart';
-import 'package:dearlog/widget/emotion_chart_widget.dart';
+import 'package:dearlog/widget/chart/emotion_chart_widget.dart';
 import 'package:dearlog/widget/recent_conversation_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import '../../main.dart';
-import '../../models/emotiondata.dart';
+import '../../models/chart/emotion_data.dart';
 import '../../providers/mainscreen_index_provider.dart';
-import '../../widget/emotion_chart.dart';
+import '../../widget/chart/emotion_chart.dart';
 import '../../widget/tile/conversation_summary_tile.dart';
 import '../../widget/tile/promotile.dart';
 import '../../widget/dialog/subscription_dialog.dart';
@@ -26,7 +26,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
-    final userProfileAsync = ref.watch(userProfileProvider);
+    final userAsync = ref.watch(userProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -57,9 +57,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
 
-      body: userProfileAsync.when(
-        data: (userProfile) {
-          if (userProfile == null) {
+      body: userAsync.when(
+        data: (user) {
+          if (user == null) {
             return GestureDetector(
               onTap: () {},
               child: Center(

@@ -1,8 +1,8 @@
 import 'package:dearlog/widget/dialog/popup_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../models/conversation.dart';
-import '../../providers/live_conversation_provider.dart';
+import '../../models/conversation/message.dart';
+import '../../providers/conversation/live_conversation_provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class AiChatScreen extends ConsumerStatefulWidget {

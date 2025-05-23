@@ -1,4 +1,5 @@
-import '../../models/conversation.dart';
+import '../../models/conversation/conversation.dart';
+import '../../models/conversation/message.dart';
 
 class LiveConversationRepository {
   /// 실제 통신 대신 더미 데이터 스트림 반환

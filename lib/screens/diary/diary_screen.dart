@@ -2,20 +2,20 @@ import 'package:dearlog/widget/divider_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../providers/user_fetch_providers.dart';
-import '../../widget/emotion_chart_widget.dart';
+import '../../providers/user/user_fetch_providers.dart';
+import '../../widget/chart/emotion_chart_widget.dart';
 
 class DiaryScreen extends ConsumerWidget {
   const DiaryScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userProfileAsync = ref.watch(userProfileProvider);
+    final userAsync = ref.watch(userProvider);
 
     return Scaffold(
-      body: userProfileAsync.when(
-        data: (userProfile) {
-          if (userProfile == null) {
+      body: userAsync.when(
+        data: (user) {
+          if (user == null) {
             return GestureDetector(
               onTap: () {},
               child: Center(
