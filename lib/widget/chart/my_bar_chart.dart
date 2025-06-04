@@ -40,7 +40,7 @@ class MyBarChart extends StatelessWidget {
               // 🏷️ 라벨
               Text(
                 emotion.label,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
               ),
             ],
           );

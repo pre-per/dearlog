@@ -14,6 +14,12 @@ class MatchListScreen extends ConsumerWidget {
     final userAsync = ref.watch(userProvider);
 
     return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'AI 매칭',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        ),
+      ),
       body: userAsync.when(
         data: (user) {
           if (user == null) {
@@ -36,11 +42,6 @@ class MatchListScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: ListView(
               children: [
-                const SizedBox(height: 40),
-                Text(
-                  'AI 매칭',
-                  style: TextStyle(fontSize: 27, fontWeight: FontWeight.w700),
-                ),
                 const SizedBox(height: 15),
                 Text(
                   '${user.profile.nickname}님과 어울리는 상대를 찾았어요!',

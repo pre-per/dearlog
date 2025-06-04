@@ -28,7 +28,7 @@ class ConversationSummaryTile extends StatelessWidget {
       ),
       title: Text(
         summary,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),

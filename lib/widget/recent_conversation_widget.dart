@@ -11,7 +11,7 @@ class RecentConversationWidget extends StatelessWidget {
       children: [
         Text(
           '  최근 대화 기록',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 5),
         ConversationSummaryTile(

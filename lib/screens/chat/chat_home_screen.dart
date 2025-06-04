@@ -61,6 +61,10 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
     final userAsync = ref.watch(userProvider);
 
     return Scaffold(
+      appBar: AppBar(title: Text(
+        '디어로그와 통화하기',
+        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
+      ),),
       body: userAsync.when(
         data: (user) {
           if (user == null) {
@@ -72,11 +76,6 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: ListView(
               children: [
-                const SizedBox(height: 40),
-                Text(
-                  '디어로그와 통화하기',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 25),
-                ),
                 const SizedBox(height: 30),
                 CallStatusBar(callDays: user.callHistory),
                 const SizedBox(height: 200),

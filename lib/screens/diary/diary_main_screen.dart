@@ -5,14 +5,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/user/user_fetch_providers.dart';
 import '../../widget/chart/emotion_chart_widget.dart';
 
-class DiaryScreen extends ConsumerWidget {
-  const DiaryScreen({super.key});
+class DiaryMainScreen extends ConsumerWidget {
+  const DiaryMainScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userAsync = ref.watch(userProvider);
 
     return Scaffold(
+      appBar: AppBar(title: Text(
+        '일기장',
+        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+      ),),
       body: userAsync.when(
         data: (user) {
           if (user == null) {
@@ -35,11 +39,6 @@ class DiaryScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: ListView(
               children: [
-                const SizedBox(height: 40),
-                Text(
-                  '일기장',
-                  style: TextStyle(fontSize: 27, fontWeight: FontWeight.w700),
-                ),
                 const SizedBox(height: 20),
                 DividerWidget(),
                 EmotionChartWidget(),

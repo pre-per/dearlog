@@ -22,7 +22,7 @@ class PromoTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         decoration: BoxDecoration(
-          color: Colors.grey[50],
+          color: Colors.grey[100]!.withOpacity(0.6),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
@@ -48,7 +48,7 @@ class PromoTile extends StatelessWidget {
                   Text(
                     title,
                     style: const TextStyle(
-                      fontSize: 17,
+                      fontSize: 15,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

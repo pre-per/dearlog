@@ -18,18 +18,17 @@ class ProfileScreen extends ConsumerWidget {
     final _feedbackController = TextEditingController();
 
     return Scaffold(
+      appBar: AppBar(title: const Text(
+        '마이페이지',
+        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+      ),),
       body: userAsync.when(
         data: (user) {
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: ListView(
               children: [
-                const SizedBox(height: 40),
-                const Text(
-                  '마이페이지',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
                 _ProfileDoubleButtonRow(
                   buttonName1: '채팅 문의',
                   buttonName2: '자주 묻는 질문',

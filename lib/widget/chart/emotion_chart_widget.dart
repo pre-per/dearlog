@@ -13,7 +13,7 @@ class EmotionChartWidget extends StatelessWidget {
       children: [
         Text(
           '  내 감정 그래프',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
         ),
         MyBarChart(
           data: [
