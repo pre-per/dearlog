@@ -17,7 +17,7 @@ class SettingMenuTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        padding: const EdgeInsets.only(top: 15, bottom: 15),
         decoration: const BoxDecoration(
           color: Colors.white, // 배경색 필요시 변경
         ),

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
 import '../../models/conversation/message.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import '../../providers/diary/diary_providers.dart';
 import '../../services/openai_service.dart';
 
 class AiChatScreen extends ConsumerStatefulWidget {
@@ -124,23 +125,17 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
     }
   }
 
-  Future<void> _handleDiaryCreation(BuildContext context) async {
+  Future<void> _handleDiaryCreationToProvider() async {
     final openaiService = OpenAIService();
 
     try {
       final diary = await openaiService.generateDiaryFromMessages(messages);
-      if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => DiaryDetailScreen(diary: diary)),
-      );
+      ref.read(generatedDiaryProvider.notifier).state = diary;
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('일기 생성 중 오류가 발생했어요. 에러: $e')));
+      debugPrint('일기 생성 실패: $e');
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -339,12 +334,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
           lottieAsset: 'asset/lottie/check.json',
           messageText: '디어로그와 통화에 성공했어요🥳',
           confirmButtonText: '확인',
-          secondaryButtonText: '일기 확인하기',
-          onConfirm:
-              () => Navigator.of(context).popUntil((route) => route.isFirst),
-          onSecondary: () {
-            Navigator.of(context).pop(); // 다이얼로그 닫기
-            _handleDiaryCreation(context); // 일기 생성 및 이동
+          onConfirm: () async {
+            await _handleDiaryCreationToProvider(); // 먼저 일기 생성
+
+            if (!mounted) return;
+            Navigator.of(context).popUntil((route) => route.isFirst); // 그 후 pop
           },
         ),
   );

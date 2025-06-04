@@ -29,19 +29,19 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         appBarTheme: AppBarTheme(
           scrolledUnderElevation: 0,
-          backgroundColor: Colors.white,
+          backgroundColor: Colors.transparent,
           titleTextStyle: TextStyle(
             fontSize: 20.0,
             fontWeight: FontWeight.w600,
             color: Colors.black,
           ),
         ),
-        scaffoldBackgroundColor: Colors.white,
+        scaffoldBackgroundColor: Colors.grey.shade50,
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
           backgroundColor: Colors.white,
         ),
         bottomAppBarTheme: BottomAppBarTheme(
-          color: Colors.white,
+          color: Colors.grey[50],
         ),
         fontFamily: 'Pretendard',
       ),

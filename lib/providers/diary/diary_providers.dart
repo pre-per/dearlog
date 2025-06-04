@@ -4,6 +4,8 @@ import '../../models/diary/diary_entry.dart';
 import '../../repository/diary/diary_repository.dart';
 import '../user/user_fetch_providers.dart';
 
+final generatedDiaryProvider = StateProvider<String?>((ref) => null);
+
 final diaryRepositoryProvider = Provider<DiaryRepository>((ref) {
   return DiaryRepository();
 });

@@ -1,3 +1,5 @@
+import 'package:dearlog/providers/diary/diary_providers.dart';
+import 'package:dearlog/screens/diary/diary_detail_screen.dart';
 import 'package:dearlog/widget/divider_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,10 +15,6 @@ class DiaryMainScreen extends ConsumerWidget {
     final userAsync = ref.watch(userProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(
-        '일기장',
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-      ),),
       body: userAsync.when(
         data: (user) {
           if (user == null) {
@@ -39,18 +37,61 @@ class DiaryMainScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: ListView(
               children: [
-                const SizedBox(height: 20),
-                DividerWidget(),
+                Padding(
+                  padding: const EdgeInsets.only(top: 20, bottom: 10),
+                  child: Text(
+                    '내 감정 그래프',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  ),
+                ),
                 EmotionChartWidget(),
-                DividerWidget(),
+                const SizedBox(height: 20),
+                InkWell(
+                  onTap: () {
+                    final diary = ref.read(generatedDiaryProvider);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder:
+                            (_) =>
+                                DiaryDetailScreen(diary: diary ?? '일기가 비어있습니다'),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.blueAccent,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.05),
+                          // 그림자 색상 (파스텔톤 그레이 느낌)
+                          blurRadius: 10,
+                          offset: const Offset(0, 0),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        '내 일기 확인하기',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           );
         },
         error:
             (err, _) => Center(
-          child: Text('사용자 정보를 불러올 수 없습니다\n오류:$err', softWrap: true),
-        ),
+              child: Text('사용자 정보를 불러올 수 없습니다\n오류:$err', softWrap: true),
+            ),
         loading: () => const Center(child: CircularProgressIndicator()),
       ),
     );

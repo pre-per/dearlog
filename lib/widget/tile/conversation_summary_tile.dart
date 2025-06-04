@@ -21,7 +21,7 @@ class ConversationSummaryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
       leading: CircleAvatar(
         backgroundColor: Colors.grey.shade100,
         child: Text(emoji, style: const TextStyle(fontSize: 20)),

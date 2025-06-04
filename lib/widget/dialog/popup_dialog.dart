@@ -6,19 +6,14 @@ class PopupDialog extends StatelessWidget {
   final String lottieAsset;           // 🎉 상단 애니메이션 (Lottie)
   final String messageText;          // 메시지 ("1포인트 받기 완료!")
   final String confirmButtonText;    // 첫 번째 버튼 텍스트
-  final String secondaryButtonText;  // 두 번째 버튼 텍스트
-
   final VoidCallback onConfirm;
-  final VoidCallback onSecondary;
 
   const PopupDialog({
     super.key,
     required this.lottieAsset,
     required this.messageText,
     this.confirmButtonText = '확인',
-    this.secondaryButtonText = '더 알아보기',
     required this.onConfirm,
-    required this.onSecondary,
   });
 
   @override
@@ -76,25 +71,6 @@ class PopupDialog extends StatelessWidget {
                           child: Text(
                             confirmButtonText,
                             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 15),
-                      SizedBox(
-                        width: double.infinity,
-                        child: GestureDetector(
-                          onTap: onSecondary,
-                          child: Container(
-                            height: 30,
-                            decoration: BoxDecoration(
-                              color: Colors.transparent
-                            ),
-                            child: Center(
-                              child: Text(
-                                secondaryButtonText,
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[800]),
-                              ),
-                            ),
                           ),
                         ),
                       ),

@@ -5,6 +5,7 @@ import 'package:dearlog/screens/profile/notice_screen.dart';
 import 'package:dearlog/screens/profile/notification_setting_screen.dart';
 import 'package:dearlog/widget/bottom_sheet/feedback_bottomsheet.dart';
 import 'package:dearlog/widget/tile/setting_menu_tile.dart';
+import 'package:dearlog/widget/white_card_container.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
@@ -18,57 +19,107 @@ class ProfileScreen extends ConsumerWidget {
     final _feedbackController = TextEditingController();
 
     return Scaffold(
-      appBar: AppBar(title: const Text(
-        '마이페이지',
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-      ),),
       body: userAsync.when(
         data: (user) {
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 25),
             child: ListView(
               children: [
+                _titleSettingRow(),
                 const SizedBox(height: 20),
-                _ProfileDoubleButtonRow(
-                  buttonName1: '채팅 문의',
-                  buttonName2: '자주 묻는 질문',
-                  onTap1: () {},
-                  onTap2: () {
-                    Navigator.of(
-                      context,
-                    ).push(MaterialPageRoute(builder: (_) => FAQScreen()));
-                  },
-                ),
-                const SizedBox(height: 40),
-                SettingMenuTile(title: '내 정보'),
-                Divider(color: Colors.grey[300], indent: 15, endIndent: 15),
-                SettingMenuTile(title: '알림 설정', onTap: () {
-                  Navigator.of(
-                    context,
-                  ).push(MaterialPageRoute(builder: (_) => NotificationSettingScreen()));
-                },),
-                SettingMenuTile(
-                  title: '공지사항',
-                  trailing: Text(
-                    '1개',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.greenAccent[700],
+                WhiteCardContainer(
+                  children: [
+                    SettingMenuTile(
+                      title: '내 포인트',
+                      trailing: Text(
+                        '98점',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blueAccent[700],
+                        ),
+                      ),
                     ),
-                  ),
-                  onTap: () {
-                    Navigator.of(
-                      context,
-                    ).push(MaterialPageRoute(builder: (_) => NoticeScreen()));
-                  },
+                    Divider(color: Colors.grey[200]),
+                    SettingMenuTile(
+                      title: '자주 묻는 질문',
+                      onTap: () {
+                        Navigator.of(
+                          context,
+                        ).push(MaterialPageRoute(builder: (_) => FAQScreen()));
+                      },
+                    ),
+                    SettingMenuTile(title: '고객센터'),
+                  ],
                 ),
-                SettingMenuTile(title: '앱 정보', onTap: () {
-                  Navigator.of(
-                    context,
-                  ).push(MaterialPageRoute(builder: (_) => AppVersionScreen()));
-                },),
-                const SizedBox(height: 30),
+                const SizedBox(height: 20),
+                WhiteCardContainer(
+                  children: [
+                    const SizedBox(height: 10),
+                    Text(
+                      '내 정보',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SettingMenuTile(title: '내 프로필'),
+                    SettingMenuTile(title: '내 일기장'),
+                    SettingMenuTile(title: '내 매칭 상대'),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                WhiteCardContainer(
+                  children: [
+                    const SizedBox(height: 10),
+                    Text(
+                      '기타 서비스',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SettingMenuTile(
+                      title: '알림 설정',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => NotificationSettingScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    SettingMenuTile(
+                      title: '공지사항',
+                      trailing: Text(
+                        '1개',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.greenAccent[700],
+                        ),
+                      ),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => NoticeScreen()),
+                        );
+                      },
+                    ),
+                    SettingMenuTile(
+                      title: '앱 정보',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => AppVersionScreen()),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
                 _OpinionGiveMe(
                   onTap: () {
                     showModalBottomSheet(
@@ -91,6 +142,7 @@ class ProfileScreen extends ConsumerWidget {
                     );
                   },
                 ),
+                const SizedBox(height: 20),
               ],
             ),
           );
@@ -101,6 +153,27 @@ class ProfileScreen extends ConsumerWidget {
             ),
         loading: () => const Center(child: CircularProgressIndicator()),
       ),
+    );
+  }
+}
+
+class _titleSettingRow extends StatelessWidget {
+  const _titleSettingRow({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          '전체',
+          style: TextStyle(fontSize: 25, fontWeight: FontWeight.w700),
+        ),
+        IconButton(
+          onPressed: () {},
+          icon: Icon(IconsaxPlusBold.setting_2, color: Colors.grey[400]),
+        ),
+      ],
     );
   }
 }
@@ -188,8 +261,7 @@ class _OpinionGiveMe extends StatelessWidget {
         width: MediaQuery.of(context).size.width,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(5),
-          border: Border.all(color: Colors.grey, width: 1),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),

@@ -4,6 +4,7 @@ class PromoTile extends StatelessWidget {
   final String iconEmoji;
   final String title;
   final String subtitle;
+  final Color backgroundColor;
   final VoidCallback onTap;
 
   const PromoTile({
@@ -12,6 +13,7 @@ class PromoTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.backgroundColor = Colors.white,
   });
 
   @override
@@ -22,7 +24,7 @@ class PromoTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         decoration: BoxDecoration(
-          color: Colors.grey[100]!.withOpacity(0.6),
+          color: backgroundColor,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(

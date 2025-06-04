@@ -1,5 +1,6 @@
 import 'package:dearlog/widget/divider_widget.dart';
 import 'package:dearlog/widget/chart/emotion_chart_widget.dart';
+import 'package:dearlog/widget/white_card_container.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,12 +15,6 @@ class MatchListScreen extends ConsumerWidget {
     final userAsync = ref.watch(userProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'AI 매칭',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-        ),
-      ),
       body: userAsync.when(
         data: (user) {
           if (user == null) {
@@ -45,22 +40,25 @@ class MatchListScreen extends ConsumerWidget {
                 const SizedBox(height: 15),
                 Text(
                   '${user.profile.nickname}님과 어울리는 상대를 찾았어요!',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                const SizedBox(height: 15),
-
-                MatchProfileCard(
-                  myName: user.profile.nickname,
-                  myImage: 'asset/image/kitty.png',
-                  partnerName: '솜이',
-                  partnerImage: 'asset/image/kitty.png',
-                  message: '당신과 솜이는 성향이 잘 맞는 편이에요! 💫',
+                const SizedBox(height: 10),
+                WhiteCardContainer(
+                  children: [
+                    const SizedBox(height: 10),
+                    MatchProfileCard(
+                      myName: user.profile.nickname,
+                      myImage: 'asset/image/kitty.png',
+                      partnerName: '솜이',
+                      partnerImage: 'asset/image/kitty.png',
+                      message: '당신과 솜이는 성향이 잘 맞는 편이에요! 💫',
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                 ),
-                DividerWidget(),
-
-                EmotionChartWidget(),
-                const SizedBox(height: 20),
-                Divider(color: Colors.grey[300], indent: 15, endIndent: 15),
                 const SizedBox(height: 20),
               ],
             ),

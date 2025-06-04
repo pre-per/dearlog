@@ -1,3 +1,4 @@
+import 'package:dearlog/widget/white_card_container.dart';
 import 'package:flutter/material.dart';
 import 'tile/conversation_summary_tile.dart';
 
@@ -6,14 +7,8 @@ class RecentConversationWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return WhiteCardContainer(
       children: [
-        Text(
-          '  최근 대화 기록',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 5),
         ConversationSummaryTile(
           date: DateTime(2025, 5, 22),
           emoji: '😊',

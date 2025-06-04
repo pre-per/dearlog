@@ -4,6 +4,7 @@ import 'package:dearlog/screens/profile/notice_screen.dart';
 import 'package:dearlog/widget/divider_widget.dart';
 import 'package:dearlog/widget/chart/emotion_chart_widget.dart';
 import 'package:dearlog/widget/recent_conversation_widget.dart';
+import 'package:dearlog/widget/white_card_container.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
@@ -79,7 +80,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: ListView(
               children: [
-                const SizedBox(height: 20),
+                const SizedBox(height: 10),
                 PromoTile(
                   iconEmoji: '📣',
                   title: '디어로그와 통화하고 분석받기',
@@ -88,19 +89,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ref.read(MainIndexProvider.notifier).state = 1;
                   },
                 ),
-                const SizedBox(height: 25),
+                const SizedBox(height: 20),
 
-                EmotionChartWidget(),
-                DividerWidget(),
-
-                RecentConversationWidget(),
-                DividerWidget(),
-
-                Text(
-                  '  부가 기능',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                Padding(
+                  padding: const EdgeInsets.only(top: 10, bottom: 10),
+                  child: Text(
+                    '디어로그와 통화하기',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  ),
                 ),
-                const SizedBox(height: 15),
+                _callWithDearlogWidget(),
+
+                Padding(
+                  padding: const EdgeInsets.only(top: 20, bottom: 10),
+                  child: WhiteCardContainer(children: [
+                    const SizedBox(height: 10),
+                    Text('나와 알맞는 상대는?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),),
+                    Text('궁금하면 클릭해보세요', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[600]),),
+                    const SizedBox(height: 10),
+                  ])
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.only(top: 20, bottom: 10),
+                  child: Text(
+                    '내 감정 그래프',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                EmotionChartWidget(),
+
+                Padding(
+                  padding: const EdgeInsets.only(top: 20, bottom: 10),
+                  child: Text(
+                    '최근 대화 기록',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                RecentConversationWidget(),
+
+                Padding(
+                  padding: const EdgeInsets.only(top: 20, bottom: 10),
+                  child: Text(
+                    '부가 기능',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  ),
+                ),
                 PromoTile(
                   iconEmoji: '🌟',
                   title: '디어로그 프로모션 가입하기',
@@ -119,7 +153,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     );
                   },
                 ),
-                const SizedBox(height: 15),
+                const SizedBox(height: 10),
                 PromoTile(
                   iconEmoji: '🥰',
                   title: '내 취향에 맞추어 소개팅하기',
@@ -136,6 +170,71 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         error: (err, _) => Center(child: Text('유저 데이터를 불러오지 못했습니다.\n오류:$err')),
         loading: () => const Center(child: CircularProgressIndicator()),
       ),
+    );
+  }
+}
+
+class _callWithDearlogWidget extends ConsumerWidget {
+  const _callWithDearlogWidget();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return WhiteCardContainer(
+      children: [
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Container(
+              height: 60,
+              width: 60,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Center(
+                child: Icon(Icons.call, color: Colors.green[400], size: 40),
+              ),
+            ),
+            const SizedBox(width: 20),
+            Text(
+              '디어로그님!\n오늘도 통화해볼까요?',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        const SizedBox(height: 30),
+        InkWell(
+          onTap: () {
+            ref.read(MainIndexProvider.notifier).state = 1;
+          },
+          child: Container(
+            width: double.infinity,
+            height: 45,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.blueAccent,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1), // 그림자 색상 (파스텔톤 그레이 느낌)
+                  blurRadius: 10,
+                  offset: const Offset(0, 0),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                '통화하기',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+      ],
     );
   }
 }

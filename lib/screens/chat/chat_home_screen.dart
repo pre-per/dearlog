@@ -1,6 +1,7 @@
 import 'package:dearlog/screens/chat/ai_chat_screen.dart';
 import 'package:dearlog/widget/divider_widget.dart';
 import 'package:dearlog/widget/recent_conversation_widget.dart';
+import 'package:dearlog/widget/white_card_container.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
@@ -38,7 +39,11 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
                   content: const Text(
                     '시간 날 때 다시 걸어주세요! :)',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.white),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
                   ),
                   behavior: SnackBarBehavior.floating,
                   margin: const EdgeInsets.all(16),
@@ -61,10 +66,6 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
     final userAsync = ref.watch(userProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(
-        '디어로그와 통화하기',
-        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
-      ),),
       body: userAsync.when(
         data: (user) {
           if (user == null) {
@@ -76,15 +77,40 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: ListView(
               children: [
-                const SizedBox(height: 30),
-                CallStatusBar(callDays: user.callHistory),
-                const SizedBox(height: 200),
-                IconButton(
-                  onPressed: () => _showIncomingCall(context),
-                  icon: const Icon(IconsaxPlusBold.call_calling, size: 100),
+                Padding(
+                  padding: const EdgeInsets.only(top: 30, bottom: 10),
+                  child: Text(
+                    '통화 기록',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+                  ),
                 ),
-                const SizedBox(height: 200),
-                DividerWidget(),
+                CallStatusBar(callDays: user.callHistory),
+                Padding(
+                  padding: const EdgeInsets.only(top: 30, bottom: 10),
+                  child: Text(
+                    '디어로그와 통화하기',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+                  ),
+                ),
+                WhiteCardContainer(
+                  children: [
+                    const SizedBox(height: 30),
+                    Center(
+                      child: IconButton(
+                        onPressed: () => _showIncomingCall(context),
+                        icon: const Icon(IconsaxPlusBold.call_calling, size: 100),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 30, bottom: 10),
+                  child: Text(
+                    '최근 대화 기록',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+                  ),
+                ),
                 RecentConversationWidget(),
               ],
             ),
