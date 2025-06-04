@@ -1,9 +1,12 @@
 import 'package:dearlog/widget/dialog/popup_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lottie/lottie.dart';
 import '../../models/conversation/message.dart';
 import '../../providers/conversation/live_conversation_provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+
+import '../../services/openai_service.dart';
 
 class AiChatScreen extends ConsumerStatefulWidget {
   const AiChatScreen({super.key});
@@ -20,6 +23,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
   late stt.SpeechToText _speech;
   bool _isSpeechAvailable = false;
   String _currentText = '';
+
+  final ScrollController _scrollController = ScrollController();
+  bool isGptLoading = false;
 
   Future<void> _toggleRecording() async {
     if (!_isSpeechAvailable) return;
@@ -47,25 +53,60 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
         },
 
         listenFor: const Duration(seconds: 20), // 최대 20초 녹음
-        pauseFor: const Duration(seconds: 3),
+        pauseFor: const Duration(seconds: 2),
         localeId: 'ko_KR', // 한국어
       );
     }
   }
 
   void _handleFinalSpeech() async {
-    if (_currentText.trim().isNotEmpty) {
+    if (_currentText.trim().isEmpty) {
       setState(() {
-        messages.add(Message(role: 'user', content: _currentText.trim()));
-        _currentText = '';
         isRecording = false;
       });
-    } else {
+      return;
+    }
+
+    // 사용자 메시지 추가
+    final userMessage = Message(role: 'user', content: _currentText.trim());
+    setState(() {
+      messages.add(userMessage);
+      isRecording = false;
+      _currentText = '';
+
+      messages.add(Message(role: 'assistant', content: '__loading__'));
+    });
+
+    try {
+      final openaiService = OpenAIService();
+      final chatResponse = await openaiService.getChatResponse(userMessage.content);
+
       setState(() {
-        isRecording = false;
+        messages.removeWhere((msg) => msg.role == 'assistant' && msg.content == '__loading__');
+        messages.add(chatResponse.message);
+        messages.add(Message(
+          role: 'system',
+          content: '[이번 응답 토큰 사용량: ${chatResponse.totalTokens} tokens]',
+        ));
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      });
+    } catch (e) {
+      setState(() {
+        messages.removeWhere((msg) => msg.role == 'assistant' && msg.content == '__loading__');
+        messages.add(Message(role: 'assistant', content: '죄송해요. 지금은 응답할 수 없어요. 에러: $e'));
       });
     }
+
   }
+
 
   @override
   void initState() {
@@ -73,6 +114,26 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
     _speech = stt.SpeechToText();
     _initializeSpeech();
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    ref.listenManual<AsyncValue<Message>>(
+      liveConversationStreamProvider,
+          (previous, next) {
+        next.whenData((newMessage) {
+          if (!messages.contains(newMessage)) {
+            setState(() {
+              messages.add(newMessage);
+            });
+          }
+        });
+      },
+    );
+  }
+
+
 
   Future<void> _initializeSpeech() async {
     _isSpeechAvailable = await _speech.initialize(
@@ -83,16 +144,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
 
   @override
   Widget build(BuildContext context) {
-    final asyncMessage = ref.watch(liveConversationStreamProvider);
-
-    asyncMessage.whenData((newMessage) {
-      if (!messages.contains(newMessage)) {
-        setState(() {
-          messages.add(newMessage);
-        });
-      }
-    });
-
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -178,7 +229,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                   ),
                 ),
 
-              // 🫧 메시지 리스트
+              // 메시지 리스트
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -186,6 +237,24 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                   itemBuilder: (context, index) {
                     final msg = messages[index];
                     final isUser = msg.role == 'user';
+
+                    if (msg.role == 'assistant' && msg.content == '__loading__') {
+                      return Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: SizedBox(
+                            width: 80,
+                            height: 60,
+                            child: Lottie.asset('asset/lottie/loading.json', height: 70, width: 55),
+                          ),
+                        ),
+                      );
+                    }
 
                     return AnimatedOpacity(
                       opacity: 1,
@@ -196,7 +265,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
                           margin: const EdgeInsets.symmetric(vertical: 6),
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: isUser ? Colors.blueAccent : Colors.grey[300],
+                            color: isUser ? Colors.blueAccent : Colors.grey[200],
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(

@@ -5,6 +5,7 @@ import 'package:dearlog/screens/diary/diary_screen.dart';
 import 'package:dearlog/screens/home/homescreen.dart';
 import 'package:dearlog/screens/profile/profile_screen.dart';
 import 'package:dearlog/screens/splash_screen.dart';
+import 'package:dearlog/services/remote_config_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +15,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await RemoteConfigService().initialize();
   runApp(ProviderScope(child: MyApp()));
 }
 
