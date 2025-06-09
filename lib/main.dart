@@ -1,16 +1,16 @@
 import 'package:dearlog/firebase_options.dart';
-import 'package:dearlog/providers/mainscreen_index_provider.dart';
-import 'package:dearlog/screens/chat/chat_home_screen.dart';
-import 'package:dearlog/screens/diary/diary_main_screen.dart';
-import 'package:dearlog/screens/home/homescreen.dart';
-import 'package:dearlog/screens/profile/profile_screen.dart';
-import 'package:dearlog/screens/splash_screen.dart';
-import 'package:dearlog/services/remote_config_service.dart';
+import 'package:dearlog/core/providers/mainscreen_index_provider.dart';
+import 'package:dearlog/analytics/screens/analytics_main_screen.dart';
+import 'package:dearlog/diary/screens/diary_main_screen.dart';
+import 'package:dearlog/home/screens/homescreen.dart';
+import 'package:dearlog/profile/screens/profile_screen.dart';
+import 'package:dearlog/core/screens/splash_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'screens/match/match_list_screen.dart';
+import 'core/services/remote_config_service.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
+import 'package:unicons/unicons.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,9 +60,8 @@ class MainScreen extends ConsumerStatefulWidget {
 class _MainScreenState extends ConsumerState<MainScreen> {
   final List<Widget> _screens = [
     HomeScreen(),
-    ChatHomeScreen(),
-    MatchListScreen(),
     DiaryMainScreen(),
+    AnalyticsMainScreen(),
     ProfileScreen(),
   ];
 
@@ -78,10 +77,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         type: BottomNavigationBarType.fixed,
         onTap: (index) => setState(() => ref.read(MainIndexProvider.notifier).state = index),
         items: const [
-          BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.home_1), label: '홈'),
-          BottomNavigationBarItem(icon: Icon(Icons.call), label: '통화'),
-          BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.heart), label: '매칭'),
+          BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.home_2), label: '홈'),
           BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.note_text), label: '일기장'),
+          BottomNavigationBarItem(icon: Icon(UniconsSolid.chart), label: '분석'),
           BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.user), label: '내 정보'),
         ],
       ),
