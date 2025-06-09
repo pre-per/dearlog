@@ -1,5 +1,6 @@
 import 'package:dearlog/diary/models/diary_entry.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class DiaryDetailScreen extends StatelessWidget {
   final DiaryEntry diary;
@@ -14,14 +15,15 @@ class DiaryDetailScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: ListView(
           children: [
-            const SizedBox(height: 20),
             Text(
-              diary.date.toString(),
+              '생성 일시: ${DateFormat('yyyy-MM-dd HH:mm:ss').format(diary.date)}',
               style: TextStyle(
                 fontSize: 16,
+                fontWeight: FontWeight.w500,
                 height: 1.6,
-                color: Colors.grey[600],
+                color: Colors.grey[500],
               ),
+              textAlign: TextAlign.end,
             ),
             SizedBox(
               height: 250,
