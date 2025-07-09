@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:dearlog/core/screens/login_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:dearlog/main.dart';
 
@@ -16,10 +18,21 @@ class _SplashScreenState extends State<SplashScreen> {
 
     // 2초 후에 HomeScreen으로 이동
     Timer(const Duration(seconds: 2), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MainScreen()),
-      );
+      final currentUser = FirebaseAuth.instance.currentUser;
+
+      if (currentUser != null) {
+        // 로그인된 상태이면 바로 MainScreen으로
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+        );
+      } else {
+        // 로그인 안 되어 있으면 LoginScreen으로
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      }
     });
   }
 

@@ -51,6 +51,23 @@
     <string>앱에서 음성 인식을 위해 마이크를 사용합니다.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>앱에서 음성 인식을 사용합니다.</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+      <dict>
+        <key>CFBundleTypeRole</key>
+        <string>Editor</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>com.googleusercontent.apps.66007203323-tpeercicm3rreance409or1sq95aqktr</string>
+        </array>
+      </dict>
+    </array>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+      <string>google</string>
+      <string>com.googleusercontent.apps.66007203323-tpeercicm3rreance409or1sq95aqktr</string>
+    </array>
+
 
 </dict>
 </plist>
