@@ -11,70 +11,31 @@ import '../models/user_traits.dart';
 class UserRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<User?> fetchUser(String userId) async {
+  Future<UserModel?> fetchUser(String userId) async {
     try {
-      // 문서 단건 fetch (DocumentSnapshot)
-      final profileDoc = _firestore.doc('users/$userId/profile').get();
-      final preferencesDoc = _firestore.doc('users/$userId/preferences').get();
-      final traitsDoc = _firestore.doc('users/$userId/traits').get();
-      final callHistoryDoc = _firestore.doc('users/$userId/callHistory').get();
+      final docSnap = await _firestore.doc('users/$userId').get();
+      if (!docSnap.exists) return null;
 
-      // 서브컬렉션 fetch (QuerySnapshot)
-      final conversationsQuery = _firestore.collection('users/$userId/conversations').get();
-      final matchesQuery = _firestore.collection('users/$userId/matches').get();
-      final diariesQuery = _firestore.collection('users/$userId/diaries').get();
-
-      // 병렬 실행
-      final results = await Future.wait([
-        profileDoc,
-        preferencesDoc,
-        traitsDoc,
-        callHistoryDoc,
-        conversationsQuery,
-        matchesQuery,
-        diariesQuery,
-      ]);
-
-      // 명확한 타입 캐스팅
-      final profileSnap = results[0] as DocumentSnapshot<Map<String, dynamic>>;
-      final preferencesSnap = results[1] as DocumentSnapshot<Map<String, dynamic>>;
-      final traitsSnap = results[2] as DocumentSnapshot<Map<String, dynamic>>;
-      final callHistorySnap = results[3] as DocumentSnapshot<Map<String, dynamic>>;
-
-      final conversationsSnap = results[4] as QuerySnapshot<Map<String, dynamic>>;
-      final matchesSnap = results[5] as QuerySnapshot<Map<String, dynamic>>;
-      final diariesSnap = results[6] as QuerySnapshot<Map<String, dynamic>>;
-
-      // 모델 변환
-      final profile = UserProfile.fromJson(profileSnap.data()!);
-      final preferences = UserPreferences.fromJson(preferencesSnap.data()!);
-      final traits = UserTraits.fromJson(traitsSnap.data()!);
-
-      final callDays = (callHistorySnap.data()?['callDays'] as List<dynamic>? ?? [])
-          .map((e) => CallDay.fromJson(e))
-          .toList();
-
-      final conversations = conversationsSnap.docs
-          .map((doc) => Conversation.fromJson(doc.data()))
-          .toList();
-
-      final matches = matchesSnap.docs
-          .map((doc) => Match.fromJson(doc.data()))
-          .toList();
-
-      final diaries = diariesSnap.docs
-          .map((doc) => DiaryEntry.fromJson(doc.data()))
-          .toList();
-
-      return User(
+      final data = docSnap.data()!;
+      return UserModel(
         id: userId,
-        profile: profile,
-        preferences: preferences,
-        traits: traits,
-        callHistory: callDays,
-        conversations: conversations,
-        matches: matches,
-        diaries: diaries,
+        email: data['email'] ?? '',
+        isCompleted: data['isCompleted'] ?? false,
+        profile: UserProfile.fromJson(data['profile']),
+        preferences: UserPreferences.fromJson(data['preferences']),
+        traits: UserTraits.fromJson(data['traits']),
+        callHistory: (data['callHistory'] as List<dynamic>? ?? [])
+            .map((e) => CallDay.fromJson(e))
+            .toList(),
+        conversations: (data['conversations'] as List<dynamic>? ?? [])
+            .map((e) => Conversation.fromJson(e))
+            .toList(),
+        matches: (data['matches'] as List<dynamic>? ?? [])
+            .map((e) => Match.fromJson(e))
+            .toList(),
+        diaries: (data['diaries'] as List<dynamic>? ?? [])
+            .map((e) => DiaryEntry.fromJson(e))
+            .toList(),
       );
     } catch (e, st) {
       print('🔥 fetchUser error: $e');
@@ -83,60 +44,88 @@ class UserRepository {
     }
   }
 
-  Future<UserProfile?> fetchProfile(String userId) async {
-    final doc = await _firestore.doc('users/$userId/profile').get();
-    if (doc.exists) {
-      return UserProfile.fromJson(doc.data()!);
+  Future<void> initializeNewUser({
+    required String userId,
+    required String email,
+  }) async {
+    try {
+      await _firestore.doc('users/$userId').set({
+        'email': email,
+        'isCompleted': false,
+        'profile': UserProfile(
+          nickname: '',
+          age: 0,
+          gender: '',
+          location: '',
+        ).toJson(),
+        'preferences': UserPreferences(
+          preferredGender: '',
+          ageRange: [0, 0],
+          relationshipType: '',
+        ).toJson(),
+        'traits': UserTraits(
+          emotions: [],
+          personality: '',
+          interestsScore: {},
+          lastAnalyzedAt: DateTime.now(),
+        ).toJson(),
+        'callHistory': [],
+        'conversations': [],
+        'matches': [],
+        'diaries': [],
+      });
+      print('✅ 신규 유저 초기화 완료: $userId');
+    } catch (e, st) {
+      print('🔥 initializeNewUser 실패: $e');
+      print(st);
     }
-    return null;
   }
 
-  Future<void> saveProfile(String userId, UserProfile profile) async {
-    await _firestore.doc('users/$userId/profile').set(profile.toJson());
-  }
-
-  Future<UserPreferences?> fetchPreferences(String userId) async {
-    final doc = await _firestore.doc('users/$userId/preferences').get();
-    if (doc.exists) {
-      return UserPreferences.fromJson(doc.data()!);
-    }
-    return null;
-  }
-
-  Future<void> savePreferences(String userId, UserPreferences preferences) async {
-    await _firestore.doc('users/$userId/preferences').set(preferences.toJson());
-  }
-
-  Future<UserTraits?> fetchTraits(String userId) async {
-    final doc = await _firestore.doc('users/$userId/traits').get();
-    if (doc.exists) {
-      return UserTraits.fromJson(doc.data()!);
-    }
-    return null;
-  }
-
-  Future<void> saveTraits(String userId, UserTraits traits) async {
-    await _firestore.doc('users/$userId/traits').set(traits.toJson());
-  }
-
-  Future<List<CallDay>> fetchCallHistory(String userId) async {
-    final doc = await _firestore.doc('users/$userId/callHistory').get();
-    if (!doc.exists) return [];
-
-    final data = doc.data();
-    final rawList = data?['callDays'] as List<dynamic>?;
-
-    if (rawList == null) return [];
-
-    return rawList.map((e) => CallDay.fromJson(e)).toList();
-  }
-
-  Future<void> saveCallHistory(String userId, List<CallDay> callDays) async {
-    final callDayList = callDays.map((e) => e.toJson()).toList();
-
-    await _firestore.doc('users/$userId/callHistory').set({
-      'callDays': callDayList,
+  Future<void> updateIsCompleted(String userId, bool completed) async {
+    await _firestore.doc('users/$userId').update({
+      'isCompleted': completed,
     });
   }
 
+  Future<void> saveProfile(String userId, UserProfile profile) async {
+    await _firestore.doc('users/$userId').set({
+      'profile': profile.toJson(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> savePreferences(String userId, UserPreferences preferences) async {
+    await _firestore.doc('users/$userId').set({
+      'preferences': preferences.toJson(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> saveTraits(String userId, UserTraits traits) async {
+    await _firestore.doc('users/$userId').set({
+      'traits': traits.toJson(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> saveCallHistory(String userId, List<CallDay> callDays) async {
+    await _firestore.doc('users/$userId').set({
+      'callHistory': callDays.map((e) => e.toJson()).toList(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> saveConversations(String userId, List<Conversation> conversations) async {
+    await _firestore.doc('users/$userId').set({
+      'conversations': conversations.map((e) => e.toJson()).toList(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> saveMatches(String userId, List<Match> matches) async {
+    await _firestore.doc('users/$userId').set({
+      'matches': matches.map((e) => e.toJson()).toList(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> saveDiaries(String userId, List<DiaryEntry> diaries) async {
+    await _firestore.doc('users/$userId').set({
+      'diaries': diaries.map((e) => e.toJson()).toList(),
+    }, SetOptions(merge: true));
+  }
 }

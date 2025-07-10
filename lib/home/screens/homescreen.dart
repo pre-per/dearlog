@@ -1,3 +1,4 @@
+import 'package:dearlog/core/screens/login_screen.dart';
 import 'package:dearlog/home/widgets/call_starter_card.dart';
 import 'package:dearlog/home/widgets/diary_preview_scroller.dart';
 import 'package:dearlog/user/providers/user_fetch_providers.dart';
@@ -56,7 +57,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         data: (user) {
           if (user == null) {
             return GestureDetector(
-              onTap: () {},
+              onTap: () {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => LoginScreen()),
+                  (route) => false,
+                );
+              },
               child: Center(
                 child: Text(
                   '로그인 해주세요',
@@ -155,4 +161,3 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 }
-

@@ -1,30 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dearlog/main.dart';
-import '../providers/google_auth_provider.dart'; // 리버팟 provider 위치에 맞게 수정하세요
+import '../../user/providers/user_fetch_providers.dart';
+import '../providers/google_auth_provider.dart';
 
 class LoginScreen extends ConsumerWidget {
   const LoginScreen({super.key});
 
-  void _handleGoogleSignIn(BuildContext context, WidgetRef ref) async {
+  Future<void> _handleGoogleSignIn(BuildContext context, WidgetRef ref) async {
     try {
+      // 로그인 시도
       await ref.read(googleAuthProvider.notifier).login();
+      final firebaseUser = ref.read(googleAuthProvider);
 
-      final user = ref.read(googleAuthProvider);
-      if (user != null) {
-        // 로그인 성공 → 메인 화면 이동
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
-        );
-      } else {
-        // 로그인 실패 처리
+      if (firebaseUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("로그인에 실패했습니다.")),
         );
+        return;
       }
+
+      final userRepo = ref.read(userRepositoryProvider);
+      final userId = firebaseUser.uid;
+      final email = firebaseUser.email ?? '';
+
+      ref.read(userIdProvider.notifier).state = userId;
+
+      // 유저 데이터 존재 여부 확인
+      final existingUser = await userRepo.fetchUser(userId);
+
+      if (existingUser == null) {
+        // 신규 유저 → Firestore에 초기 데이터 생성
+        await userRepo.initializeNewUser(
+          userId: userId,
+          email: email,
+        );
+      }
+
+      // 메인화면 이동
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+            (route) => false,
+      );
     } catch (e) {
-      // 예외 처리
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("로그인 중 오류 발생: $e")),
       );
