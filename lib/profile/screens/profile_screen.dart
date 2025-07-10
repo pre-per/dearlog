@@ -5,14 +5,35 @@ import 'package:dearlog/settings/screens/faq_screen.dart';
 import 'package:dearlog/settings/screens/notice_screen.dart';
 import 'package:dearlog/settings/screens/notification_setting_screen.dart';
 import 'package:dearlog/core/shared_widgets/elevated_card_container.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
+import '../../core/screens/login_screen.dart';
 import '../../settings/widgets/bottom_modal_sheet/feedback_modal_sheet.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
+
+  void handleLogout(BuildContext context, WidgetRef ref) async {
+    try {
+      await FirebaseAuth.instance.signOut(); // Firebase 로그아웃
+      ref.read(userIdProvider.notifier).state = null; // 상태 초기화
+      ref.invalidate(userProvider); // 사용자 정보 캐시 제거
+
+      // 로그인 화면으로 이동
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("로그아웃 실패: $e")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -117,6 +138,10 @@ class ProfileScreen extends ConsumerWidget {
                           MaterialPageRoute(builder: (_) => AppVersionScreen()),
                         );
                       },
+                    ),
+                    SimpleTitleTile(
+                      title: '로그아웃',
+                      onTap: () => handleLogout(context, ref),
                     ),
                   ],
                 ),

@@ -1,9 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- 인터넷 권한 -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:label="dearlog"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- Google Sign-In 관련 -->
+        <meta-data
+            android:name="com.google.android.gms.auth.api.phone.SMS_CODE_AUTOFILL"
+            android:value="true" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
