@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
+import '../../core/screens/auth_error_screen.dart';
 import '../../core/shared_widgets/chart/emotion_chart_widget.dart';
 import '../../core/shared_widgets/elevated_card_container.dart';
 import '../../user/providers/user_fetch_providers.dart';
@@ -16,21 +17,7 @@ class AnalyticsMainScreen extends ConsumerWidget {
     return Scaffold(
       body: userAsync.when(
         data: (user) {
-          if (user == null) {
-            return GestureDetector(
-              onTap: () {},
-              child: Center(
-                child: Text(
-                  '로그인 해주세요',
-                  style: TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.grey[700],
-                  ),
-                ),
-              ),
-            );
-          }
+          if (user == null) return AuthErrorScreen();
 
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -43,7 +30,7 @@ class AnalyticsMainScreen extends ConsumerWidget {
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                   ),
                 ),
-                EmotionChartWidget(),
+                EmotionChartWidget(callDays: user.callHistory,),
 
                 Padding(
                   padding: const EdgeInsets.only(top: 20, bottom: 10),

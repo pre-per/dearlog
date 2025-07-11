@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dearlog/core/screens/auth_error_screen.dart';
 import 'package:dearlog/core/screens/login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -36,7 +37,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       if (user != null) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
+          MaterialPageRoute(builder: (_) => MainScreen()),
         );
       } else {
         Navigator.pushReplacement(

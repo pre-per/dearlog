@@ -74,6 +74,7 @@ flutter:
     - asset/image/kitty.png
     - asset/image/logo.png
     - asset/image/google_icon.png
+    - asset/image/warning.png
     - asset/lottie/check.json
     - asset/lottie/gift.json
     - asset/lottie/loading.json

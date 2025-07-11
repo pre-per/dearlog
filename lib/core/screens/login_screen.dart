@@ -1,3 +1,4 @@
+import 'package:dearlog/core/screens/onboarding_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dearlog/main.dart';
@@ -35,14 +36,20 @@ class LoginScreen extends ConsumerWidget {
           userId: userId,
           email: email,
         );
-      }
 
-      // 메인화면 이동
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const MainScreen()),
-            (route) => false,
-      );
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+              (route) => false,
+        );
+      } else {
+        // 메인화면 이동
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+              (route) => false,
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("로그인 중 오류 발생: $e")),

@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
+import '../../core/screens/auth_error_screen.dart';
 import '../../core/screens/login_screen.dart';
 import '../../settings/widgets/bottom_modal_sheet/feedback_modal_sheet.dart';
 
@@ -43,6 +44,8 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       body: userAsync.when(
         data: (user) {
+          if (user == null) return AuthErrorScreen();
+
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 25),
             child: ListView(

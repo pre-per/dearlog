@@ -7,29 +7,48 @@ class DiaryRepository {
   DiaryRepository({FirebaseFirestore? firestore})
       : firestore = firestore ?? FirebaseFirestore.instance;
 
-  CollectionReference<Map<String, dynamic>> _diariesRef(String userId) {
-    return firestore.collection('users').doc(userId).collection('diaries');
+  DocumentReference<Map<String, dynamic>> _userDoc(String userId) {
+    return firestore.collection('users').doc(userId);
   }
 
+  /// 전체 일기 불러오기
   Future<List<DiaryEntry>> fetchDiaries(String userId) async {
-    final snapshot = await _diariesRef(userId)
-        .orderBy('date', descending: true)
-        .get();
+    final doc = await _userDoc(userId).get();
+    final data = doc.data();
+    if (data == null || data['diaries'] == null) return [];
 
-    return snapshot.docs
-        .map((doc) => DiaryEntry.fromJson(doc.data()))
-        .toList();
+    final rawList = data['diaries'] as List<dynamic>;
+    return rawList.map((e) => DiaryEntry.fromJson(e)).toList();
   }
 
-  Future<void> addDiary(String userId, DiaryEntry entry) async {
-    await _diariesRef(userId).doc(entry.id).set(entry.toJson());
+  /// 일기 추가 (덮어쓰기)
+  Future<void> saveDiaries(String userId, List<DiaryEntry> diaries) async {
+    await _userDoc(userId).set({
+      'diaries': diaries.map((e) => e.toJson()).toList(),
+    }, SetOptions(merge: true));
   }
 
+  /// 일기 추가 (기존에 append)
+  Future<void> addDiary(String userId, DiaryEntry newEntry) async {
+    final current = await fetchDiaries(userId);
+    current.insert(0, newEntry); // 최신순 정렬 시 앞에 삽입
+    await saveDiaries(userId, current);
+  }
+
+  /// 일기 수정
+  Future<void> updateDiary(String userId, DiaryEntry updatedEntry) async {
+    final current = await fetchDiaries(userId);
+    final index = current.indexWhere((e) => e.id == updatedEntry.id);
+    if (index == -1) return;
+
+    current[index] = updatedEntry;
+    await saveDiaries(userId, current);
+  }
+
+  /// 일기 삭제
   Future<void> deleteDiary(String userId, String diaryId) async {
-    await _diariesRef(userId).doc(diaryId).delete();
-  }
-
-  Future<void> updateDiary(String userId, DiaryEntry entry) async {
-    await _diariesRef(userId).doc(entry.id).update(entry.toJson());
+    final current = await fetchDiaries(userId);
+    current.removeWhere((e) => e.id == diaryId);
+    await saveDiaries(userId, current);
   }
 }
