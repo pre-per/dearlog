@@ -15,6 +15,19 @@ class CallRepository {
     }
   }
 
+  Future<Call?> getCallById(String userId, String callId) async {
+    try {
+      final doc = await _firestore.doc('users/$userId/call/$callId').get();
+      if (!doc.exists) return null;
+
+      return Call.fromJson(doc.data()!);
+    } catch (e, st) {
+      print('🔥 getCallById error: $e');
+      print(st);
+      return null;
+    }
+  }
+
   Future<void> saveCall(String userId, Call call) async {
     try {
       await _firestore.doc('users/$userId/call/${call.callId}').set(call.toJson());

@@ -13,3 +13,13 @@ final userCallsProvider = FutureProvider<List<Call>>((ref) async {
   final repo = ref.read(callRepositoryProvider);
   return repo.fetchCalls(userId);
 });
+
+final findCallProvider = FutureProvider.family<Call?, String>((
+  ref,
+  callId,
+) async {
+  final userId = ref.watch(userIdProvider);
+  if (userId == null) return null;
+  final repo = ref.read(callRepositoryProvider);
+  return repo.getCallById(userId, callId);
+});

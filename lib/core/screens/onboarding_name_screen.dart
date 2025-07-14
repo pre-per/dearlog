@@ -101,9 +101,10 @@ class _NicknameInputScreenState extends ConsumerState<OnboardingNameScreen> {
                         await repo.saveProfile(userId, newProfile);
 
                         if (!mounted) return;
-                        Navigator.pushReplacement(
+                        Navigator.pushAndRemoveUntil(
                           context,
                           MaterialPageRoute(builder: (_) => const MainScreen()),
+                          (route) => false,
                         );
                       }
                       : null,
