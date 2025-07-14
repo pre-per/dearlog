@@ -1,4 +1,4 @@
-import 'package:dearlog/core/screens/onboarding_screen.dart';
+import 'package:dearlog/core/screens/onboarding_agreement_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dearlog/main.dart';
@@ -37,10 +37,9 @@ class LoginScreen extends ConsumerWidget {
           email: email,
         );
 
-        Navigator.pushAndRemoveUntil(
+        Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-              (route) => false,
+          MaterialPageRoute(builder: (_) => const OnboardingAgreementScreen()),
         );
       } else {
         // 메인화면 이동
