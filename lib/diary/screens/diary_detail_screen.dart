@@ -1,16 +1,53 @@
 import 'package:dearlog/diary/models/diary_entry.dart';
+import 'package:dearlog/diary/repository/diary_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../user/providers/user_fetch_providers.dart';
 
-class DiaryDetailScreen extends StatelessWidget {
+class DiaryDetailScreen extends ConsumerWidget {
   final DiaryEntry diary;
 
   const DiaryDetailScreen({super.key, required this.diary});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userId = ref.watch(userIdProvider);
+
     return Scaffold(
-      appBar: AppBar(title: Text(diary.title)),
+      appBar: AppBar(
+        title: Text(diary.title),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('일기 삭제'),
+                  content: const Text('정말로 이 일기를 삭제할까요?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('취소'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('삭제'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirm == true && userId != null) {
+                await DiaryRepository().deleteDiary(userId, diary.id);
+                ref.invalidate(userProvider);
+                if (context.mounted) Navigator.pop(context);
+              }
+            },
+          )
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(

@@ -153,7 +153,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
         callId: callId,
       );
       ref.read(diaryListNotifierProvider.notifier).saveDiary(diary);
-      ref.read(generatedDiaryProvider.notifier).state = diary;
       ref.invalidate(userProvider);
     } catch (e) {
       debugPrint('일기 생성 또는 통화 저장 실패: \$e');
@@ -222,8 +221,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
               await _handleDiaryCreationToProvider();
 
               if (context.mounted) Navigator.of(context).pop(); // loading 닫기
-              if (context.mounted)
+              if (context.mounted) {
                 Navigator.of(context).popUntil((route) => route.isFirst);
+              }
             },
           ),
     );
