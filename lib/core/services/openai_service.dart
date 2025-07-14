@@ -47,7 +47,7 @@ class OpenAIService {
     }
   }
 
-  Future<DiaryEntry> generateDiaryFromMessages(List<Message> messages) async {
+  Future<DiaryEntry> generateDiaryFromMessages(List<Message> messages, {String? callId}) async {
     // 1단계: 일기 요약 요청
     final promptMessages = [
       {
@@ -128,6 +128,7 @@ JSON 외의 말은 하지 마.
       content: diaryJson['content'],
       emotion: diaryJson['emotion'],
       imageUrls: [imageUrl],
+      callId: callId,
     );
   }
 }

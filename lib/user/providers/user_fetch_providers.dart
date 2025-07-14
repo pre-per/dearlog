@@ -1,7 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../call/models/conversation/call_day.dart';
 import '../models/user.dart';
 import '../models/user_preferences.dart';
 import '../models/user_profile.dart';
@@ -43,9 +41,4 @@ final userPreferencesProvider = Provider<UserPreferences?>((ref) {
 final userTraitsProvider = Provider<UserTraits?>((ref) {
   final user = ref.watch(userProvider).maybeWhen(data: (u) => u, orElse: () => null);
   return user?.traits;
-});
-
-final callHistoryProvider = Provider<List<CallDay>>((ref) {
-  final user = ref.watch(userProvider).maybeWhen(data: (u) => u, orElse: () => null);
-  return user?.callHistory ?? [];
 });

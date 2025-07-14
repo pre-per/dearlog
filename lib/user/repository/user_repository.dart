@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../call/models/conversation/call_day.dart';
-import '../../call/models/conversation/conversation.dart';
+import '../../call/models/conversation/call.dart';
 import '../../diary/models/diary_entry.dart';
 import '../../match/models/match.dart';
 import '../models/user.dart';
@@ -17,6 +16,13 @@ class UserRepository {
       if (!docSnap.exists) return null;
 
       final data = docSnap.data()!;
+
+      final callSnap = await _firestore.collection('users/$userId/call').get();
+      final calls = callSnap.docs.map((doc) => Call.fromJson(doc.data())).toList();
+
+      final diarySnap = await _firestore.collection('users/$userId/diary').get();
+      final diaries = diarySnap.docs.map((doc) => DiaryEntry.fromJson(doc.data())).toList();
+
       return UserModel(
         id: userId,
         email: data['email'] ?? '',
@@ -24,17 +30,10 @@ class UserRepository {
         profile: UserProfile.fromJson(data['profile']),
         preferences: UserPreferences.fromJson(data['preferences']),
         traits: UserTraits.fromJson(data['traits']),
-        callHistory: (data['callHistory'] as List<dynamic>? ?? [])
-            .map((e) => CallDay.fromJson(e))
-            .toList(),
-        conversations: (data['conversations'] as List<dynamic>? ?? [])
-            .map((e) => Conversation.fromJson(e))
-            .toList(),
+        calls: calls,
+        diaries: diaries,
         matches: (data['matches'] as List<dynamic>? ?? [])
             .map((e) => Match.fromJson(e))
-            .toList(),
-        diaries: (data['diaries'] as List<dynamic>? ?? [])
-            .map((e) => DiaryEntry.fromJson(e))
             .toList(),
       );
     } catch (e, st) {
@@ -69,10 +68,7 @@ class UserRepository {
           interestsScore: {},
           lastAnalyzedAt: DateTime.now(),
         ).toJson(),
-        'callHistory': [],
-        'conversations': [],
         'matches': [],
-        'diaries': [],
       });
       print('✅ 신규 유저 초기화 완료: $userId');
     } catch (e, st) {
@@ -105,16 +101,16 @@ class UserRepository {
     }, SetOptions(merge: true));
   }
 
-  Future<void> saveCallHistory(String userId, List<CallDay> callDays) async {
-    await _firestore.doc('users/$userId').set({
-      'callHistory': callDays.map((e) => e.toJson()).toList(),
-    }, SetOptions(merge: true));
-  }
+  Future<void> saveCalls(String userId, List<Call> calls) async {
+    final batch = _firestore.batch();
+    final collectionRef = _firestore.collection('users/$userId/call');
 
-  Future<void> saveConversations(String userId, List<Conversation> conversations) async {
-    await _firestore.doc('users/$userId').set({
-      'conversations': conversations.map((e) => e.toJson()).toList(),
-    }, SetOptions(merge: true));
+    for (final call in calls) {
+      final docRef = collectionRef.doc(call.callId);
+      batch.set(docRef, call.toJson());
+    }
+
+    await batch.commit();
   }
 
   Future<void> saveMatches(String userId, List<Match> matches) async {
@@ -124,8 +120,14 @@ class UserRepository {
   }
 
   Future<void> saveDiaries(String userId, List<DiaryEntry> diaries) async {
-    await _firestore.doc('users/$userId').set({
-      'diaries': diaries.map((e) => e.toJson()).toList(),
-    }, SetOptions(merge: true));
+    final batch = _firestore.batch();
+    final collectionRef = _firestore.collection('users/$userId/diary');
+
+    for (final diary in diaries) {
+      final docRef = collectionRef.doc();
+      batch.set(docRef, diary.toJson());
+    }
+
+    await batch.commit();
   }
 }

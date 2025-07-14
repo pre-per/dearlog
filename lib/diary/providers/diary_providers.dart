@@ -39,18 +39,13 @@ class DiaryListNotifier extends StateNotifier<AsyncValue<List<DiaryEntry>>> {
     }
   }
 
-  Future<void> addDiary(DiaryEntry entry) async {
-    await repo.addDiary(userId, entry);
+  Future<void> saveDiary(DiaryEntry entry) async {
+    await repo.saveDiary(userId, entry);
     await loadDiaries();
   }
 
   Future<void> deleteDiary(String diaryId) async {
     await repo.deleteDiary(userId, diaryId);
-    await loadDiaries();
-  }
-
-  Future<void> updateDiary(DiaryEntry entry) async {
-    await repo.updateDiary(userId, entry);
     await loadDiaries();
   }
 }

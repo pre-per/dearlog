@@ -5,6 +5,7 @@ class DiaryEntry {
   final String content;
   final String emotion; // "happy", "sad", "angry" 등 감정 코드
   final List<String> imageUrls; // 이미지 경로 (클라우드 저장소 경로 등)
+  final String? callId; // 연관된 통화 ID (있을 경우)
 
   DiaryEntry({
     required this.id,
@@ -13,6 +14,7 @@ class DiaryEntry {
     required this.content,
     required this.emotion,
     required this.imageUrls,
+    this.callId,
   });
 
   factory DiaryEntry.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class DiaryEntry {
       content: json['content'],
       emotion: json['emotion'],
       imageUrls: List<String>.from(json['imageUrls']),
+      callId: json['callId'],
     );
   }
 
@@ -34,6 +37,7 @@ class DiaryEntry {
       'content': content,
       'emotion': emotion,
       'imageUrls': imageUrls,
+      if (callId != null) 'callId': callId,
     };
   }
 }

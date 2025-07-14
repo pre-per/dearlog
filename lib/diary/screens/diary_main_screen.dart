@@ -3,9 +3,7 @@ import 'package:dearlog/diary/providers/diary_providers.dart';
 import 'package:dearlog/diary/screens/diary_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../core/screens/auth_error_screen.dart';
-import '../../core/shared_widgets/chart/emotion_chart_widget.dart';
 import '../../user/providers/user_fetch_providers.dart';
 
 class DiaryMainScreen extends ConsumerWidget {
@@ -31,7 +29,6 @@ class DiaryMainScreen extends ConsumerWidget {
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                   ),
                 ),
-                EmotionChartWidget(callDays: user.callHistory),
                 const SizedBox(height: 20),
                 InkWell(
                   onTap: () {

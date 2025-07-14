@@ -58,7 +58,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               children: [
                 CallStarterSection(),
                 DiaryPreviewSection(diaries: user.diaries),
-                EmotionChartSection(callDays: user.callHistory),
                 AdditionalServiceSection(ref: ref),
               ],
             ),

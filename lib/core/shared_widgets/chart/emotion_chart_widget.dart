@@ -1,13 +1,10 @@
-import 'package:dearlog/call/models/conversation/call_day.dart';
 import 'package:dearlog/core/shared_widgets/elevated_card_container.dart';
 import 'package:flutter/material.dart';
 import 'package:dearlog/core/models/chart/chart_data.dart';
 import 'simple_bar_chart.dart';
 
 class EmotionChartWidget extends StatelessWidget {
-  final List<CallDay> callDays;
-
-  const EmotionChartWidget({super.key, required this.callDays});
+  const EmotionChartWidget({super.key});
 
   @override
   Widget build(BuildContext context) {

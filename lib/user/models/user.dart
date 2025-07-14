@@ -1,9 +1,7 @@
 import 'package:dearlog/user/models/user_preferences.dart';
 import 'package:dearlog/user/models/user_profile.dart';
 import 'package:dearlog/user/models/user_traits.dart';
-
-import '../../call/models/conversation/call_day.dart';
-import '../../call/models/conversation/conversation.dart';
+import '../../call/models/conversation/call.dart';
 import '../../diary/models/diary_entry.dart';
 import '../../match/models/match.dart';
 
@@ -13,10 +11,9 @@ class UserModel {
   final UserProfile profile;
   final UserTraits traits;
   final UserPreferences preferences;
-  final List<CallDay> callHistory;
-  final List<Conversation> conversations;
-  final List<Match> matches;
+  final List<Call> calls;
   final List<DiaryEntry> diaries;
+  final List<Match> matches;
   final bool isCompleted;
 
   UserModel({
@@ -25,10 +22,9 @@ class UserModel {
     required this.profile,
     required this.traits,
     required this.preferences,
-    required this.callHistory,
-    required this.conversations,
-    required this.matches,
+    required this.calls,
     required this.diaries,
+    required this.matches,
     this.isCompleted = false,
   });
 
@@ -39,16 +35,9 @@ class UserModel {
       profile: UserProfile.fromJson(json['profile']),
       traits: UserTraits.fromJson(json['traits']),
       preferences: UserPreferences.fromJson(json['preferences']),
-      callHistory: (json['callHistory'] as List)
-          .map((e) => CallDay.fromJson(e))
-          .toList(),
-      conversations: (json['conversations'] as List)
-          .map((e) => Conversation.fromJson(e))
-          .toList(),
+      calls: (json['calls'] as List).map((e) => Call.fromJson(e)).toList(),
+      diaries: (json['diaries'] as List).map((e) => DiaryEntry.fromJson(e)).toList(),
       matches: (json['matches'] as List).map((e) => Match.fromJson(e)).toList(),
-      diaries: (json['diaries'] as List)
-          .map((e) => DiaryEntry.fromJson(e))
-          .toList(),
       isCompleted: json['isCompleted'] ?? false,
     );
   }
@@ -59,10 +48,9 @@ class UserModel {
     'profile': profile.toJson(),
     'traits': traits.toJson(),
     'preferences': preferences.toJson(),
-    'callHistory': callHistory.map((e) => e.toJson()).toList(),
-    'conversations': conversations.map((e) => e.toJson()).toList(),
-    'matches': matches.map((e) => e.toJson()).toList(),
+    'calls': calls.map((e) => e.toJson()).toList(),
     'diaries': diaries.map((e) => e.toJson()).toList(),
+    'matches': matches.map((e) => e.toJson()).toList(),
     'isCompleted': isCompleted,
   };
 }

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:uuid/uuid.dart';
+
 import '../../core/services/openai_service.dart';
 import '../../core/shared_widgets/dialog/lottie_popup_dialog.dart';
 import '../../diary/providers/diary_providers.dart';
 import '../../user/providers/user_fetch_providers.dart';
-import '../models/conversation/message.dart';
+import '../../call/models/conversation/message.dart';
+import '../../call/models/conversation/call.dart';
+import '../providers/call_provider.dart';
 import '../widgets/chat_appbar.dart';
 import '../widgets/loading_dialog.dart';
 import '../widgets/message_bubble.dart';
@@ -29,6 +33,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
   String _currentText = '';
 
   final ScrollController _scrollController = ScrollController();
+  DateTime? _startTime;
 
   @override
   void initState() {
@@ -40,13 +45,14 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
       setState(() {
         messages.add(Message(role: 'assistant', content: '여보세요? 오늘 하루는 어땠어?'));
       });
+      _startTime = DateTime.now();
     });
   }
 
   Future<void> _initializeSpeech() async {
     _isSpeechAvailable = await _speech.initialize(
-      onStatus: (status) => debugPrint('Speech status: $status'),
-      onError: (error) => debugPrint('Speech error: $error'),
+      onStatus: (status) => debugPrint('Speech status: \$status'),
+      onError: (error) => debugPrint('Speech error: \$error'),
     );
   }
 
@@ -127,15 +133,32 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
     final openaiService = OpenAIService();
 
     try {
-      final diary = await openaiService.generateDiaryFromMessages(messages);
-      ref.read(diaryListNotifierProvider.notifier).addDiary(diary);
+      final userId = ref.read(userIdProvider);
+      final callId = const Uuid().v4();
+
+      // 통화 저장
+      if (userId != null && _startTime != null) {
+        final call = Call(
+          callId: callId,
+          timestamp: DateTime.now(),
+          duration: DateTime.now().difference(_startTime!),
+          messages: messages,
+        );
+        await ref.read(callRepositoryProvider).saveCall(userId, call);
+      }
+
+      // 일기 생성 및 저장
+      final diary = await openaiService.generateDiaryFromMessages(
+        messages,
+        callId: callId,
+      );
+      ref.read(diaryListNotifierProvider.notifier).saveDiary(diary);
       ref.read(generatedDiaryProvider.notifier).state = diary;
       ref.invalidate(userProvider);
     } catch (e) {
-      debugPrint('일기 생성 실패: $e');
+      debugPrint('일기 생성 또는 통화 저장 실패: \$e');
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +174,10 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
               Expanded(
                 child: ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     return MessageBubble(message: messages[index]);
@@ -175,30 +201,31 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen>
         ],
       ),
     );
-
   }
 
   void _showPopupDialog(BuildContext context) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => LottiePopupDialog(
-        lottieAsset: 'asset/lottie/check.json',
-        messageText: '디어로그와 통화에 성공했어요🥳',
-        confirmButtonText: '확인',
-        onConfirm: () async {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => const LoadingDialog(),
-          );
+      builder:
+          (_) => LottiePopupDialog(
+            lottieAsset: 'asset/lottie/check.json',
+            messageText: '디어로그와 통화에 성공했어요🥳',
+            confirmButtonText: '확인',
+            onConfirm: () async {
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => const LoadingDialog(),
+              );
 
-          await _handleDiaryCreationToProvider();
+              await _handleDiaryCreationToProvider();
 
-          if (context.mounted) Navigator.of(context).pop(); // loading 닫기
-          if (context.mounted) Navigator.of(context).popUntil((route) => route.isFirst);
-        },
-      ),
+              if (context.mounted) Navigator.of(context).pop(); // loading 닫기
+              if (context.mounted)
+                Navigator.of(context).popUntil((route) => route.isFirst);
+            },
+          ),
     );
   }
 }
