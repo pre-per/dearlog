@@ -1,4 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dearlog/core/screens/onboarding_agreement_screen.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dearlog/main.dart';
@@ -29,6 +31,8 @@ class LoginScreen extends ConsumerWidget {
 
       // 유저 데이터 존재 여부 확인
       final existingUser = await userRepo.fetchUser(userId);
+
+      saveUserPushToken(userId);
 
       if (existingUser == null) {
         // 신규 유저 → Firestore에 초기 데이터 생성
@@ -92,4 +96,14 @@ class LoginScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+
+Future<void> saveUserPushToken(String userId) async {
+  final fcmToken = await FirebaseMessaging.instance.getToken();
+  print("🔥 사용자 FCM 토큰: $fcmToken");
+
+  await FirebaseFirestore.instance.collection('users').doc(userId).set({
+    'pushToken': fcmToken,
+  }, SetOptions(merge: true));
 }

@@ -47,6 +47,9 @@ dependencies:
   firebase_auth: ^5.6.2
   google_sign_in: 6.3.0
   uuid: ^4.5.1
+  firebase_storage: ^12.4.9
+  firebase_messaging: ^15.2.9
+  flutter_local_notifications: ^19.3.0
 
 dev_dependencies:
   flutter_test:
@@ -76,6 +79,10 @@ flutter:
     - asset/image/logo.png
     - asset/image/google_icon.png
     - asset/image/warning.png
+    - asset/illustrations/angry.png
+    - asset/illustrations/fear.png
+    - asset/illustrations/happy.png
+    - asset/illustrations/sad.png
     - asset/lottie/check.json
     - asset/lottie/gift.json
     - asset/lottie/loading.json

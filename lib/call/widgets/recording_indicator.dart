@@ -10,14 +10,14 @@ class RecordingIndicator extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(12),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
         decoration: BoxDecoration(
-          color: Colors.deepPurple.withOpacity(0.1),
+          color: Colors.redAccent.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
-            const Icon(Icons.volume_up, size: 20, color: Colors.deepPurple),
+            const Icon(Icons.volume_up, size: 20, color: Colors.redAccent),
             const SizedBox(width: 8),
             Expanded(
               child: Text(

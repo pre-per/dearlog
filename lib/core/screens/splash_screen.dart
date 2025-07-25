@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'package:dearlog/core/screens/auth_error_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dearlog/core/screens/login_screen.dart';
-import 'package:dearlog/core/screens/onboarding_agreement_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dearlog/main.dart';
@@ -36,6 +36,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
       // 3. user가 존재하면 MainScreen, 없으면 LoginScreen
       if (user != null) {
+        /* saveUserPushToken(user.id);
+        String? _fcmToken = await FirebaseMessaging.instance.getToken();
+        print('Token: $_fcmToken'); */
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const MainScreen()),
@@ -73,4 +77,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       ),
     );
   }
+}
+
+Future<void> saveUserPushToken(String userId) async {
+  await Future.delayed(Duration(seconds: 2));
+  final messaging = FirebaseMessaging.instance;
+
+  final fcmToken = await messaging.getToken();
+  if (fcmToken != null) {
+    print('🔑 FCM 토큰: $fcmToken');
+    await FirebaseFirestore.instance.collection('users').doc(userId).set({
+      'fcmToken': fcmToken,
+    }, SetOptions(merge: true));
+  }
+  FirebaseMessaging.instance.onTokenRefresh.listen((token) {
+    print("🔄 FCM 토큰 갱신됨: $token");
+  });
 }

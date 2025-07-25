@@ -6,6 +6,7 @@ import 'package:dearlog/home/screens/homescreen.dart';
 import 'package:dearlog/profile/screens/profile_screen.dart';
 import 'package:dearlog/core/screens/splash_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/services/remote_config_service.dart';
@@ -16,6 +17,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await RemoteConfigService().initialize();
+  await _requestNotificationPermission();
   runApp(ProviderScope(child: MyApp()));
 }
 
@@ -85,4 +87,16 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       ),
     );
   }
+}
+
+Future<void> _requestNotificationPermission() async {
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+  NotificationSettings settings = await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  print('🔔 권한 상태: ${settings.authorizationStatus}');
 }

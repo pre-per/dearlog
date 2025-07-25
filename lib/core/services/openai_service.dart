@@ -57,7 +57,7 @@ class OpenAIService {
 
 {
   "title": "일기 제목",
-  "emotion": "행복, 기쁨, 슬픔, 불안, 분노 중 하나", 
+  "emotion": "행복, 슬픔, 불안, 분노 중 하나", 
   "content": "일기 내용은 사용자가 직접 쓴 것처럼 5~7문장으로."
 }
 

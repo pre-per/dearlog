@@ -47,6 +47,10 @@
 	<true/>
 	<key>NSLocalNetworkUsageDescription</key>
     <string>이 앱은 로컬 네트워크를 사용하여 디버깅 정보를 전송합니다.</string>
+    <key>NSBonjourServices</key>
+    <array>
+      <string>_dartobservatory._tcp</string>
+    </array>
     <key>NSMicrophoneUsageDescription</key>
     <string>앱에서 음성 인식을 위해 마이크를 사용합니다.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
@@ -67,7 +71,10 @@
       <string>google</string>
       <string>com.googleusercontent.apps.66007203323-tpeercicm3rreance409or1sq95aqktr</string>
     </array>
-
-
+    <key>UIBackgroundModes</key>
+    <array>
+      <string>fetch</string>
+      <string>remote-notification</string>
+    </array>
 </dict>
 </plist>

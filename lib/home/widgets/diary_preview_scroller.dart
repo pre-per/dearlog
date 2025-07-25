@@ -58,15 +58,25 @@ class DiaryPreviewScroller extends StatelessWidget {
                           bottomLeft: Radius.circular(0),
                           bottomRight: Radius.circular(0),
                         ),
-                        child:
-                            imageUrl.startsWith('http')
-                                ? Image.network(imageUrl, fit: BoxFit.cover)
-                                : Image.asset(imageUrl, fit: BoxFit.cover),
+                        child: Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Image.asset(
+                              getEmotionIllustration(entry.emotion),
+                              scale: 7,
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.only(top: 8.0, left: 10, right: 10),
+                    padding: const EdgeInsets.only(
+                      top: 8.0,
+                      left: 10,
+                      right: 10,
+                    ),
                     child: Text(
                       entry.title,
                       style: TextStyle(
@@ -79,7 +89,11 @@ class DiaryPreviewScroller extends StatelessWidget {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.only(top: 4.0, left: 10, right: 10),
+                    padding: const EdgeInsets.only(
+                      top: 4.0,
+                      left: 10,
+                      right: 10,
+                    ),
                     child: Text(
                       DateFormat('MM/dd').format(entry.date),
                       style: TextStyle(
@@ -101,16 +115,16 @@ class DiaryPreviewScroller extends StatelessWidget {
   /// 감정 코드에 따른 기본 이미지 asset 경로 반환
   String getEmotionIllustration(String emotion) {
     switch (emotion) {
-      case 'happy':
-        return 'assets/illustrations/happy.png';
-      case 'sad':
-        return 'assets/illustrations/sad.png';
-      case 'angry':
-        return 'assets/illustrations/angry.png';
-      case 'fear':
-        return 'assets/illustrations/fear.png';
+      case '행복':
+        return 'asset/illustrations/happy.png';
+      case '슬픔':
+        return 'asset/illustrations/sad.png';
+      case '분노':
+        return 'asset/illustrations/angry.png';
+      case '불안':
+        return 'asset/illustrations/fear.png';
       default:
-        return 'assets/illustrations/neutral.png';
+        return 'asset/illustrations/neutral.png';
     }
   }
 }
