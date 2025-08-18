@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../diary/models/diary_entry.dart';
-import '../widgets/diary_preview_scroller.dart';
+import '../widgets/storybook_scroller.dart';
 
-class DiaryPreviewSection extends StatelessWidget {
+class StorybookSection extends StatelessWidget {
   final List<DiaryEntry> diaries;
 
-  const DiaryPreviewSection({
+  const StorybookSection({
     super.key,
     required this.diaries,
   });
@@ -21,11 +21,11 @@ class DiaryPreviewSection extends StatelessWidget {
         const Padding(
           padding: EdgeInsets.only(top: 50, bottom: 10),
           child: Text(
-            '그림일기로 돌아보는 하루',
+            '스토리북',
             style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
           ),
         ),
-        DiaryPreviewScroller(entries: diaries),
+        StorybookScroller(entries: diaries),
       ],
     );
   }

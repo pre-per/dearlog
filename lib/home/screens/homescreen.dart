@@ -57,7 +57,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: ListView(
               children: [
                 CallStarterSection(),
-                DiaryPreviewSection(diaries: user.diaries),
+                StorybookSection(diaries: user.diaries),
                 AdditionalServiceSection(ref: ref),
               ],
             ),

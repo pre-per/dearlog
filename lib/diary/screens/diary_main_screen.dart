@@ -1,6 +1,5 @@
-import 'package:dearlog/diary/models/diary_entry.dart';
-import 'package:dearlog/diary/providers/diary_providers.dart';
-import 'package:dearlog/diary/screens/diary_detail_screen.dart';
+import 'package:dearlog/diary/sections/storybook_section_diary.dart';
+import 'package:dearlog/diary/widgets/searchbar_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/screens/auth_error_screen.dart';
@@ -19,16 +18,13 @@ class DiaryMainScreen extends ConsumerWidget {
           if (user == null) return AuthErrorScreen();
 
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             child: ListView(
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 20, bottom: 10),
-                  child: Text(
-                    '내 감정 그래프',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                  ),
-                ),
+                const SizedBox(height: 10),
+                SearchBarUI(),
+                const SizedBox(height: 20),
+                StorybookSectionDiary(entries: user.diaries),
                 const SizedBox(height: 20),
               ],
             ),
