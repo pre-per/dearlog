@@ -2,9 +2,8 @@ import 'package:dearlog/main.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import '../../app/di/providers.dart';
 import '../../user/models/user_profile.dart';
-import '../../user/repository/user_repository.dart';
 
 class OnboardingNameScreen extends ConsumerStatefulWidget {
   const OnboardingNameScreen({super.key});
@@ -89,7 +88,7 @@ class _NicknameInputScreenState extends ConsumerState<OnboardingNameScreen> {
                   isValid
                       ? () async {
                         final userId = FirebaseAuth.instance.currentUser!.uid;
-                        final repo = UserRepository();
+                        final repo = ref.read(userRepositoryProvider);
 
                         final newProfile = UserProfile(
                           nickname: nickname,

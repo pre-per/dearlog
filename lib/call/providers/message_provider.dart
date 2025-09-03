@@ -1,25 +1,26 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../app/di/providers.dart';
 import '../../call/models/conversation/message.dart';
-import '../../core/services/openai_service.dart';
 
 final messageProvider = StateNotifierProvider<MessageNotifier, List<Message>>(
-      (ref) => MessageNotifier(),
+      (ref) => MessageNotifier(ref)..init(),
 );
 
 class MessageNotifier extends StateNotifier<List<Message>> {
-  MessageNotifier()
-      : super([
-    Message(role: 'assistant', content: '여보세요? 오늘 하루는 어땠어?'),
-  ]);
+  final Ref ref;
+  MessageNotifier(this.ref) : super(const []);
+
+  void init() {
+    state = [Message(role: 'assistant', content: '여보세요? 오늘 하루는 어땠어?')];
+  }
 
   void addUserMessage(String text) {
-    final userMsg = Message(role: 'user', content: text);
-    state = [...state, userMsg, Message(role: 'assistant', content: '__loading__')];
+    state = [...state, Message(role: 'user', content: text), Message(role: 'assistant', content: '__loading__')];
   }
 
   Future<void> getAssistantResponse() async {
     try {
-      final service = OpenAIService();
+      final service = ref.read(openAIServiceProvider); // ⬅️ di 주입 사용
       final response = await service.getChatResponse(state);
       state = [
         for (final m in state)

@@ -1,4 +1,4 @@
-import 'package:dearlog/core/screens/login_screen.dart';
+import 'package:dearlog/auth/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 
 import 'onboarding_name_screen.dart';

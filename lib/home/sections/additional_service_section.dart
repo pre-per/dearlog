@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/providers/mainscreen_index_provider.dart';
-import '../../core/shared_widgets/dialog/subscription_dialog.dart';
-import '../../core/shared_widgets/tile/promotile.dart';
+import '../../app/navigation/mainscreen_index_provider.dart';
+import '../../shared_ui/widgets/dialog/subscription_dialog.dart';
+import '../../shared_ui/widgets/tile/promotile.dart';
 
 
 class AdditionalServiceSection extends StatelessWidget {

@@ -1,9 +1,9 @@
-import 'package:dearlog/core/shared_widgets/chart/emotion_chart_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
-import '../../core/screens/auth_error_screen.dart';
-import '../../core/shared_widgets/elevated_card_container.dart';
+import '../../auth/screens/auth_error_screen.dart';
+import '../../shared_ui/widgets/chart/emotion_chart_widget.dart';
+import '../../shared_ui/widgets/elevated_card_container.dart';
 import '../../user/providers/user_fetch_providers.dart';
 
 class AnalyticsMainScreen extends ConsumerWidget {

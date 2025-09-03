@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
 
 import '../../call/screens/ai_chat_screen.dart';
-import '../../core/shared_widgets/elevated_card_container.dart';
+import '../../shared_ui/widgets/elevated_card_container.dart';
 import 'IncomingCallBanner.dart';
 
 class CallStarterCard extends ConsumerWidget {

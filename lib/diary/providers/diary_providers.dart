@@ -1,27 +1,54 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../models/diary_entry.dart';
-import '../repository/diary_repository.dart';
+import '../../app/di/providers.dart';           // di
 import '../../user/providers/user_fetch_providers.dart';
+import '../../shared_ui/utils/search_utils.dart';
+import '../models/diary_entry.dart';
 
-final diaryRepositoryProvider = Provider<DiaryRepository>((ref) {
-  return DiaryRepository();
+/// 검색어 상태
+final searchQueryProvider = StateProvider<String>((ref) => '');
+
+/// 필터링된 일기 목록 Provider
+final filteredDiaryListProvider = Provider<AsyncValue<List<DiaryEntry>>>((ref) {
+  final base  = ref.watch(diaryListProvider);    // 원본 비동기 목록
+  final query = ref.watch(searchQueryProvider);  // 입력 쿼리
+
+  return base.whenData((entries) {
+    if (query.trim().isEmpty) return entries;
+
+    return entries.where((e) {
+      // ✅ DiaryEntry의 실제 필드명에 맞춰 주세요.
+      // 아래는 예시: title, content, date(DateTime)
+      final String title   = (e.title ?? '');
+      final String content = (e.content ?? '');
+      final DateTime? date = e.date; // ⬅️ DateTime 확정!
+
+      return entryMatchesQuery(
+        queryRaw: query,
+        title: title,
+        content: content,
+        date: date,
+      );
+    }).toList();
+  });
 });
+
 
 final diaryListProvider = FutureProvider<List<DiaryEntry>>((ref) async {
   final userId = ref.watch(userIdProvider);
-  final repo = ref.watch(diaryRepositoryProvider);
-  return repo.fetchDiaries(userId!);
+  if (userId == null) return [];
+  final repo = ref.read(diaryRepositoryProvider); // di
+  return repo.fetchDiaries(userId);
 });
 
-final diaryListNotifierProvider = StateNotifierProvider<DiaryListNotifier, AsyncValue<List<DiaryEntry>>>((ref) {
-  final repo = ref.watch(diaryRepositoryProvider);
-  final userId = ref.watch(userIdProvider);
-  return DiaryListNotifier(repo, userId!);
+final diaryListNotifierProvider =
+StateNotifierProvider<DiaryListNotifier, AsyncValue<List<DiaryEntry>>>((ref) {
+  final repo = ref.read(diaryRepositoryProvider); // di
+  final userId = ref.watch(userIdProvider) ?? '';
+  return DiaryListNotifier(repo, userId);
 });
 
 class DiaryListNotifier extends StateNotifier<AsyncValue<List<DiaryEntry>>> {
-  final DiaryRepository repo;
+  final dynamic repo; // DiaryRepository
   final String userId;
 
   DiaryListNotifier(this.repo, this.userId) : super(const AsyncValue.loading()) {
@@ -46,4 +73,32 @@ class DiaryListNotifier extends StateNotifier<AsyncValue<List<DiaryEntry>>> {
     await repo.deleteDiary(userId, diaryId);
     await loadDiaries();
   }
+}
+
+
+
+// Korean Util Functions
+const _CHOSEONG = [
+  "ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ",
+  "ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ",
+  "ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"
+];
+
+/// 문자열을 초성 문자열로 변환 (예: "평범하다" -> "ㅍㅂㅎㄷ")
+String toChoseong(String input) {
+  final sb = StringBuffer();
+  for (var rune in input.runes) {
+    if (rune >= 0xAC00 && rune <= 0xD7A3) {
+      final uniVal = rune - 0xAC00;
+      final cho = uniVal ~/ (21 * 28);
+      sb.write(_CHOSEONG[cho]);
+    } else {
+      sb.write(String.fromCharCode(rune)); // 한글 외 문자는 그대로
+    }
+  }
+  return sb.toString();
+}
+
+String normalizeForSearch(String input) {
+  return input.replaceAll(' ', ''); // 띄어쓰기 제거
 }

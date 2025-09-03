@@ -1,4 +1,4 @@
-import 'package:dearlog/core/shared_widgets/storybook_widget.dart';
+import 'package:dearlog/shared_ui/widgets/storybook_widget.dart';
 import 'package:flutter/material.dart';
 
 import '../models/diary_entry.dart';
@@ -30,7 +30,7 @@ class StorybookSectionDiary extends StatelessWidget {
       ),
       itemCount: entries.length,
       itemBuilder: (context, index) {
-        final entry = entries[index];
+        final entry = entries.reversed.toList()[index];
         return StorybookWidget(entry: entry);
       },
     );

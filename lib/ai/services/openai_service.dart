@@ -1,7 +1,7 @@
 import '../../call/models/conversation/chat_response.dart';
 import '../../call/models/conversation/message.dart';
+import '../../core/config/remote_config_service.dart';
 import '../../diary/models/diary_entry.dart';
-import 'remote_config_service.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 

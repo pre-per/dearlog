@@ -1,11 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dearlog/core/screens/onboarding_agreement_screen.dart';
+import 'package:dearlog/auth/screens/onboarding_agreement_screen.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dearlog/main.dart';
 import '../../user/providers/user_fetch_providers.dart';
 import '../providers/google_auth_provider.dart';
+import '../../app/di/providers.dart';
 
 class LoginScreen extends ConsumerWidget {
   const LoginScreen({super.key});

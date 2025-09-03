@@ -1,21 +1,21 @@
-import 'package:dearlog/core/shared_widgets/tile/simple_title_tile.dart';
+import 'package:dearlog/shared_ui/widgets/tile/simple_title_tile.dart';
 import 'package:dearlog/user/providers/user_fetch_providers.dart';
-import 'package:dearlog/settings/screens/app_version_screen.dart';
-import 'package:dearlog/settings/screens/faq_screen.dart';
-import 'package:dearlog/settings/screens/notice_screen.dart';
-import 'package:dearlog/settings/screens/notification_setting_screen.dart';
-import 'package:dearlog/core/shared_widgets/elevated_card_container.dart';
+import 'package:dearlog/settings/screens/sub_screens/app_version_screen.dart';
+import 'package:dearlog/settings/screens/sub_screens/faq_screen.dart';
+import 'package:dearlog/settings/screens/sub_screens/notice_screen.dart';
+import 'package:dearlog/settings/screens/sub_screens/notification_setting_screen.dart';
+import 'package:dearlog/shared_ui/widgets/elevated_card_container.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import '../../core/screens/auth_error_screen.dart';
-import '../../core/screens/login_screen.dart';
-import '../../settings/widgets/bottom_modal_sheet/feedback_modal_sheet.dart';
+import '../../auth/screens/auth_error_screen.dart';
+import '../../auth/screens/login_screen.dart';
+import '../widgets/bottom_modal_sheet/feedback_modal_sheet.dart';
 
-class ProfileScreen extends ConsumerWidget {
-  const ProfileScreen({super.key});
+class SettingMainScreen extends ConsumerWidget {
+  const SettingMainScreen({super.key});
 
   void handleLogout(BuildContext context, WidgetRef ref) async {
     try {

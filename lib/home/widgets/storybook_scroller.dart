@@ -1,4 +1,4 @@
-import 'package:dearlog/core/shared_widgets/storybook_widget.dart';
+import 'package:dearlog/shared_ui/widgets/storybook_widget.dart';
 import 'package:flutter/material.dart';
 import '../../diary/models/diary_entry.dart';
 
@@ -15,7 +15,7 @@ class StorybookScroller extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         itemCount: entries.length,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (context, index) => StorybookWidget(entry: entries[index])
+        itemBuilder: (context, index) => StorybookWidget(entry: entries.reversed.toList()[index])
         ,
       ),
     );

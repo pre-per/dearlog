@@ -2,7 +2,7 @@ import 'package:dearlog/settings/providers/faq_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../widgets/tile/faq_tile.dart';
+import '../../widgets/tile/faq_tile.dart';
 
 class FAQScreen extends ConsumerWidget {
   const FAQScreen({super.key});

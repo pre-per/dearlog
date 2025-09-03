@@ -8,7 +8,7 @@ class RecordingIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(5),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
         decoration: BoxDecoration(

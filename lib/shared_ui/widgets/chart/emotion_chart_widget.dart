@@ -1,6 +1,6 @@
-import 'package:dearlog/core/shared_widgets/elevated_card_container.dart';
+import 'package:dearlog/shared_ui/widgets/elevated_card_container.dart';
 import 'package:flutter/material.dart';
-import 'package:dearlog/core/models/chart/chart_data.dart';
+import '../../models/chart/chart_data.dart';
 import 'simple_bar_chart.dart';
 
 class EmotionChartWidget extends StatelessWidget {

@@ -1,15 +1,15 @@
 import 'package:dearlog/firebase_options.dart';
-import 'package:dearlog/core/providers/mainscreen_index_provider.dart';
+import 'package:dearlog/app/navigation/mainscreen_index_provider.dart';
 import 'package:dearlog/analytics/screens/analytics_main_screen.dart';
 import 'package:dearlog/diary/screens/diary_main_screen.dart';
 import 'package:dearlog/home/screens/homescreen.dart';
-import 'package:dearlog/profile/screens/profile_screen.dart';
-import 'package:dearlog/core/screens/splash_screen.dart';
+import 'package:dearlog/settings/screens/setting_main_screen.dart';
+import 'package:dearlog/auth/screens/splash_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'core/services/remote_config_service.dart';
+import 'core/config/remote_config_service.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:unicons/unicons.dart';
 
@@ -64,7 +64,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     HomeScreen(),
     DiaryMainScreen(),
     AnalyticsMainScreen(),
-    ProfileScreen(),
+    SettingMainScreen(),
   ];
 
   @override
