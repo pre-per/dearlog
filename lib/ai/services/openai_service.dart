@@ -26,7 +26,7 @@ class OpenAIService {
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        "model": "gpt-4.1-mini-2025-04-14",
+        "model": "gpt-5-mini",
         "messages": allMessages,
         "max_tokens": 200,
         "temperature": 0.8,
