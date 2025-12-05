@@ -74,31 +74,3 @@ class DiaryListNotifier extends StateNotifier<AsyncValue<List<DiaryEntry>>> {
     await loadDiaries();
   }
 }
-
-
-
-// Korean Util Functions
-const _CHOSEONG = [
-  "ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ",
-  "ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ",
-  "ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"
-];
-
-/// 문자열을 초성 문자열로 변환 (예: "평범하다" -> "ㅍㅂㅎㄷ")
-String toChoseong(String input) {
-  final sb = StringBuffer();
-  for (var rune in input.runes) {
-    if (rune >= 0xAC00 && rune <= 0xD7A3) {
-      final uniVal = rune - 0xAC00;
-      final cho = uniVal ~/ (21 * 28);
-      sb.write(_CHOSEONG[cho]);
-    } else {
-      sb.write(String.fromCharCode(rune)); // 한글 외 문자는 그대로
-    }
-  }
-  return sb.toString();
-}
-
-String normalizeForSearch(String input) {
-  return input.replaceAll(' ', ''); // 띄어쓰기 제거
-}

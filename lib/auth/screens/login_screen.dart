@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dearlog/auth/screens/onboarding_agreement_screen.dart';
+import 'package:dearlog/auth/screens/splash_screen.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -69,7 +70,7 @@ class LoginScreen extends ConsumerWidget {
         child: Column(
           children: [
             const SizedBox(height: 80),
-            Image.asset('asset/image/logo.png', width: 400, height: 300),
+            Image.asset('asset/image/logo_black.png', width: 300, height: 300),
             const Spacer(),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -97,14 +98,4 @@ class LoginScreen extends ConsumerWidget {
       ),
     );
   }
-}
-
-
-Future<void> saveUserPushToken(String userId) async {
-  final fcmToken = await FirebaseMessaging.instance.getToken();
-  print("🔥 사용자 FCM 토큰: $fcmToken");
-
-  await FirebaseFirestore.instance.collection('users').doc(userId).set({
-    'pushToken': fcmToken,
-  }, SetOptions(merge: true));
 }

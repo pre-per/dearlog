@@ -50,6 +50,7 @@ dependencies:
   firebase_storage: ^12.4.9
   firebase_messaging: ^15.2.9
   flutter_local_notifications: ^19.3.0
+  flutter_svg: ^2.2.2
 
 dev_dependencies:
   flutter_test:
@@ -75,19 +76,13 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - asset/image/kitty.png
-    - asset/image/logo.png
-    - asset/image/google_icon.png
-    - asset/image/warning.png
-    - asset/illustrations/angry.png
-    - asset/illustrations/fear.png
-    - asset/illustrations/happy.png
-    - asset/illustrations/sad.png
-    - asset/lottie/check.json
-    - asset/lottie/gift.json
-    - asset/lottie/loading.json
-    - asset/lottie/call.json
-    - asset/lottie/loading_hourglass.json
+    - asset/image/
+    - asset/image/moon_images/
+    - asset/illustrations/
+    - asset/lottie/
+    - asset/icons/navigation/
+    - asset/icons/basic/
+    - asset/icons/call/
 
   #   - images/a_dot_ham.jpeg
 
@@ -103,6 +98,9 @@ flutter:
   # list giving the asset and other descriptors for the font. For
   # example:
   fonts:
+    - family: Alumni
+      fonts:
+        - asset: asset/fonts/AlumniSansSC-VariableFont_wght.ttf
     - family: Pretendard
       fonts:
         - asset: asset/fonts/Pretendard-Thin.otf

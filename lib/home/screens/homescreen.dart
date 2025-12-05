@@ -1,12 +1,5 @@
-import 'package:dearlog/auth/screens/auth_error_screen.dart';
-import 'package:dearlog/diary/providers/diary_providers.dart';
-import 'package:dearlog/user/providers/user_fetch_providers.dart';
-import 'package:dearlog/settings/screens/sub_screens/notice_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dearlog/app.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
-import '../../main.dart';
-import '../../home/sections/index.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -31,7 +24,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               (Route<dynamic> route) => false,
             );
           },
-          child: Image.asset('asset/image/logo.png', width: 120, height: 120),
+          child: Image.asset(
+            'asset/image/logo_white.png',
+            width: 120,
+            height: 120,
+          ),
         ),
         actions: [
           IconButton(
@@ -42,7 +39,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             },
             icon: Icon(
               IconsaxPlusBold.notification,
-              color: Colors.grey[400],
+              color: Colors.white,
               size: 30,
             ),
           ),
@@ -55,24 +52,66 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           if (user == null) return AuthErrorScreen();
 
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                CallStarterSection(),
-
-                diaryAsync.when(
-                  loading: () => const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(child: CircularProgressIndicator()),
+                const SizedBox(height: 24),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '11월 7일 (금)',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  error: (e, _) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Text('일기를 불러오는 중 오류가 발생했어요.\n$e'),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '오늘의 행성을 채워주세요!',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  data: (diaries) => StorybookSection(diaries: diaries),
+                ),
+                const SizedBox(height: 68),
+                Image.asset(
+                  'asset/image/moon_images/grey_moon.png',
+                  width: 232,
+                  height: 232,
+                ),
+                const SizedBox(height: 28),
+                Stack(
+                  alignment: Alignment.center, // 말풍선 중앙에 텍스트
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 5),
+                      child: Image.asset(
+                        'asset/image/lang_bubble.png',
+                        width: 350,
+                        height: 55,
+                      ),
+                    ),
+                    Text(
+                      '디어로그와 대화하면 행성을 채울 수 있어요',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
 
-                AdditionalServiceSection(ref: ref),
+                const SizedBox(height: 28),
+                CallStartIconbutton(),
               ],
             ),
           );

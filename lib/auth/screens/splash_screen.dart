@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dearlog/auth/screens/login_screen.dart';
-import 'package:dearlog/call/screens/ai_chat_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -68,7 +67,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset('asset/image/logo.png', width: 400, height: 300),
+            Image.asset('asset/image/logo_black.png', width: 300, height: 300),
             SizedBox(height: 50),
             CircularProgressIndicator(color: Colors.blueAccent),
             SizedBox(height: 50),

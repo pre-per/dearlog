@@ -1,15 +1,8 @@
-import 'package:dearlog/firebase_options.dart';
-import 'package:dearlog/app/navigation/mainscreen_index_provider.dart';
-import 'package:dearlog/analytics/screens/analytics_main_screen.dart';
-import 'package:dearlog/diary/screens/diary_main_screen.dart';
-import 'package:dearlog/home/screens/homescreen.dart';
-import 'package:dearlog/settings/screens/setting_main_screen.dart';
-import 'package:dearlog/auth/screens/splash_screen.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+import 'app.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'core/config/remote_config_service.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:unicons/unicons.dart';
 
@@ -38,14 +31,12 @@ class MyApp extends StatelessWidget {
             color: Colors.black,
           ),
         ),
-        scaffoldBackgroundColor: Colors.grey.shade50,
+        scaffoldBackgroundColor: Colors.transparent,
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
           backgroundColor: Colors.white,
         ),
-        bottomAppBarTheme: BottomAppBarTheme(
-          color: Colors.grey[50],
-        ),
-        fontFamily: 'Pretendard',
+        bottomAppBarTheme: BottomAppBarTheme(color: Colors.grey[50]),
+        fontFamily: 'Alumni',
       ),
       home: SplashScreen(),
     );
@@ -70,19 +61,79 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   @override
   Widget build(BuildContext context) {
     int currentIndex = ref.watch(MainIndexProvider);
-    return Scaffold(
+    return BaseScaffold(
       body: _screens[currentIndex],
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Color(0xff000000),
         currentIndex: currentIndex,
-        selectedItemColor: Colors.deepPurple,
+        selectedItemColor: Colors.white,
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
-        onTap: (index) => setState(() => ref.read(MainIndexProvider.notifier).state = index),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.home_2), label: '홈'),
-          BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.note_text), label: '일기장'),
-          BottomNavigationBarItem(icon: Icon(UniconsSolid.chart), label: '분석'),
-          BottomNavigationBarItem(icon: Icon(IconsaxPlusBold.user), label: '내 정보'),
+        onTap:
+            (index) => setState(
+              () => ref.read(MainIndexProvider.notifier).state = index,
+            ),
+        items: [
+          BottomNavigationBarItem(
+            icon: SvgPicture.asset(
+              'asset/icons/navigation/planet.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+            ),
+            activeIcon: SvgPicture.asset(
+              'asset/icons/navigation/planet.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+            ),
+            label: '홈',
+          ),
+          BottomNavigationBarItem(
+            icon: SvgPicture.asset(
+              'asset/icons/navigation/moon_stars.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+            ),
+            activeIcon: SvgPicture.asset(
+              'asset/icons/navigation/moon_stars.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+            ),
+            label: '일기장',
+          ),
+          BottomNavigationBarItem(
+            icon: SvgPicture.asset(
+              'asset/icons/navigation/analytics.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+            ),
+            activeIcon: SvgPicture.asset(
+              'asset/icons/navigation/analytics.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+            ),
+            label: '분석',
+          ),
+          BottomNavigationBarItem(
+            icon: SvgPicture.asset(
+              'asset/icons/navigation/user.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+            ),
+            activeIcon: SvgPicture.asset(
+              'asset/icons/navigation/user.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+            ),
+            label: '마이',
+          ),
         ],
       ),
     );
