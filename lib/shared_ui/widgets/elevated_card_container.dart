@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dearlog/app.dart';
 
 class ElevatedCardContainer extends StatelessWidget {
   final List<Widget> children;
@@ -11,7 +12,7 @@ class ElevatedCardContainer extends StatelessWidget {
     required this.children,
     this.padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
     this.title = '',
-    this.backgroundColor = Colors.white,
+    this.backgroundColor = const Color(0x1affffff),
   });
 
   @override

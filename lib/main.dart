@@ -3,8 +3,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'app.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:unicons/unicons.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

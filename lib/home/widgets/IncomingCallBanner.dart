@@ -68,7 +68,7 @@ class _IncomingCallBannerState extends State<IncomingCallBanner>
             margin: const EdgeInsets.all(12),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
-              color: Color(0xFF131b28),
+              color: deep_grey_blue_color,
               borderRadius: BorderRadius.circular(16),
             ),
             constraints: const BoxConstraints(

@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../app/di/providers.dart';           // di
+import '../../app/di/providers.dart'; // di
 import '../../user/providers/user_fetch_providers.dart';
 import '../../shared_ui/utils/search_utils.dart';
 import '../models/diary_entry.dart';
@@ -9,8 +9,8 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 
 /// 필터링된 일기 목록 Provider
 final filteredDiaryListProvider = Provider<AsyncValue<List<DiaryEntry>>>((ref) {
-  final base  = ref.watch(diaryListProvider);    // 원본 비동기 목록
-  final query = ref.watch(searchQueryProvider);  // 입력 쿼리
+  final base = ref.watch(diaryListProvider); // 원본 비동기 목록
+  final query = ref.watch(searchQueryProvider); // 입력 쿼리
 
   return base.whenData((entries) {
     if (query.trim().isEmpty) return entries;
@@ -18,7 +18,7 @@ final filteredDiaryListProvider = Provider<AsyncValue<List<DiaryEntry>>>((ref) {
     return entries.where((e) {
       // ✅ DiaryEntry의 실제 필드명에 맞춰 주세요.
       // 아래는 예시: title, content, date(DateTime)
-      final String title   = (e.title ?? '');
+      final String title = (e.title ?? '');
       final String content = (e.content ?? '');
       final DateTime? date = e.date; // ⬅️ DateTime 확정!
 
@@ -32,7 +32,6 @@ final filteredDiaryListProvider = Provider<AsyncValue<List<DiaryEntry>>>((ref) {
   });
 });
 
-
 final diaryListProvider = FutureProvider<List<DiaryEntry>>((ref) async {
   final userId = ref.watch(userIdProvider);
   if (userId == null) return [];
@@ -41,17 +40,20 @@ final diaryListProvider = FutureProvider<List<DiaryEntry>>((ref) async {
 });
 
 final diaryListNotifierProvider =
-StateNotifierProvider<DiaryListNotifier, AsyncValue<List<DiaryEntry>>>((ref) {
-  final repo = ref.read(diaryRepositoryProvider); // di
-  final userId = ref.watch(userIdProvider) ?? '';
-  return DiaryListNotifier(repo, userId);
-});
+    StateNotifierProvider<DiaryListNotifier, AsyncValue<List<DiaryEntry>>>((
+      ref,
+    ) {
+      final repo = ref.read(diaryRepositoryProvider); // di
+      final userId = ref.watch(userIdProvider) ?? '';
+      return DiaryListNotifier(repo, userId);
+    });
 
 class DiaryListNotifier extends StateNotifier<AsyncValue<List<DiaryEntry>>> {
   final dynamic repo; // DiaryRepository
   final String userId;
 
-  DiaryListNotifier(this.repo, this.userId) : super(const AsyncValue.loading()) {
+  DiaryListNotifier(this.repo, this.userId)
+    : super(const AsyncValue.loading()) {
     loadDiaries();
   }
 
@@ -74,3 +76,16 @@ class DiaryListNotifier extends StateNotifier<AsyncValue<List<DiaryEntry>>> {
     await loadDiaries();
   }
 }
+
+final latestDiaryProvider = Provider<DiaryEntry?>((ref) {
+  final state = ref.watch(diaryListNotifierProvider);
+
+  return state.when(
+    data: (list) {
+      if (list.isEmpty) return null;
+      return list.last;
+    },
+    error: (_, _) => null,
+    loading: () => null,
+  );
+});

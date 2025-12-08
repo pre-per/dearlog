@@ -1,21 +1,7 @@
 import 'dart:async';
-
-import 'package:dearlog/call/widgets/call_func_island.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:uuid/uuid.dart';
-
-import '../../app/di/providers.dart';
-import '../../ai/services/openai_service.dart';
-import '../../shared_ui/widgets/dialog/lottie_popup_dialog.dart';
-import '../../diary/providers/diary_providers.dart';
-import '../../user/providers/user_fetch_providers.dart';
-import '../../call/models/conversation/call.dart';
-import '../providers/speech_provider.dart';
-import '../providers/message_provider.dart';
-import '../widgets/message_bubble.dart';
-import '../widgets/recording_indicator.dart';
-import '../widgets/loading_dialog.dart';
+import 'package:dearlog/app.dart';
 
 class AiChatScreen extends ConsumerStatefulWidget {
   const AiChatScreen({super.key});
@@ -29,11 +15,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
   // ✅ 일시정지/재개 정확한 타이머를 위한 상태
   Timer? _timer;
-  Duration _elapsedAccum = Duration.zero;   // 누적 시간(일시정지 중에도 유지)
-  DateTime? _runningSince;                  // 진행 중 시작 시각(null이면 멈춤)
+  Duration _elapsedAccum = Duration.zero; // 누적 시간(일시정지 중에도 유지)
+  DateTime? _runningSince; // 진행 중 시작 시각(null이면 멈춤)
 
-  bool _isPaused = false;     // 통화 일시정지 상태
-  bool _isTextMode = false;   // 글로 작성 모드
+  bool _isPaused = false; // 통화 일시정지 상태
+  bool _isTextMode = false; // 글로 작성 모드
 
   final _textController = TextEditingController();
 
@@ -60,8 +46,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     // ✅ 상시 음성 인식: 화면 진입 시 자동 시작
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final speech = ref.read(speechNotifierProvider.notifier);
-      await speech.ensureInitialized();                  // ⬅️ 추가
-      await speech.startListening(_handleUserMessage);   // ⬅️ 보장된 상태에서 시작
+      await speech.ensureInitialized(); // ⬅️ 추가
+      await speech.startListening(_handleUserMessage); // ⬅️ 보장된 상태에서 시작
     });
   }
 
@@ -95,7 +81,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
     // 응답 후 자동 재청취 (텍스트 모드 X && 일시정지 X)
     if (!_isTextMode && !_isPaused) {
-      await ref.read(speechNotifierProvider.notifier)
+      await ref
+          .read(speechNotifierProvider.notifier)
           .startListening(_handleUserMessage);
       // ↳ speech_provider에 restartListening이 있다면 위 줄을 그걸로 바꿔도 OK
     }
@@ -175,34 +162,14 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     }
   }
 
-  void _showPopupDialog(BuildContext context) {
+  void _onCallEnd() async {
     // 종료 시 타이머/음성 정지
     _timer?.cancel();
     ref.read(speechNotifierProvider.notifier).stopListening();
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => LottiePopupDialog(
-        lottieAsset: 'asset/lottie/check.json',
-        messageText: '디어로그와 통화에 성공했어요🥳',
-        confirmButtonText: '확인',
-        onConfirm: () async {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => const LoadingDialog(),
-          );
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => CallDoneScreen()));
 
-          await _createDiaryAndSaveToProvider();
-
-          if (context.mounted) Navigator.of(context).pop();
-          if (context.mounted) {
-            Navigator.of(context).popUntil((route) => route.isFirst);
-          }
-        },
-      ),
-    );
+    await _createDiaryAndSaveToProvider();
   }
 
   String _formatDuration(Duration duration) {
@@ -213,11 +180,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final speechState = ref.watch(speechNotifierProvider);
     final messages = ref.watch(messageProvider);
-    final showIndicator = !_isTextMode && !_isPaused && speechState.isRecording;
 
-    return Scaffold(
+    return BaseScaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -225,99 +190,56 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.timer_outlined, color: Colors.black, size: 18),
+            SvgPicture.asset(
+              'asset/icons/call/timer.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(
+                Color(0x80ffffff),
+                BlendMode.srcIn,
+              ),
+            ),
             const SizedBox(width: 6),
             Text(
               _formatDuration(_currentElapsed), // ✅ 변경됨
-              style: const TextStyle(color: Colors.black),
+              style: const TextStyle(color: Color(0x80ffffff), fontFamily: 'Alumni'),
             ),
           ],
         ),
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
-      backgroundColor: Colors.green[50],
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => FocusScope.of(context).unfocus(),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            children: [
-              // 대화 표시
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white, borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    itemCount: messages.length,
-                    itemBuilder: (context, index) => MessageBubble(message: messages[index]),
-                  ),
+        child: Column(
+          children: [
+            // 대화 표시
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
                 ),
+                itemCount: messages.length,
+                itemBuilder:
+                    (context, index) =>
+                        MessageBubble(message: messages[index]),
               ),
-
-              const SizedBox(height: 10),
-
-              // 녹음 중 인디케이터: 텍스트 모드 X & 일시정지 X & 녹음 중만 표시
-              Visibility(
-                visible: showIndicator,
-                maintainState: false,
-                maintainSize: false,
-                maintainAnimation: false,
-                child: SizedBox(
-                  height: 60,
-                  child: RecordingIndicator(currentText: speechState.currentText),
-                ),
+            ),
+            Spacer(),
+            SizedBox(
+              height: 250,
+              width: double.infinity,
+              child: CallFuncIsland(
+                onPauseToggle: _onPauseToggle,
+                onTextToggle: _onTextToggle,
+                onCallEnd: _onCallEnd,
               ),
-
-              // ✅ 텍스트 모드 입력창(한 줄 고정)
-              if (_isTextMode)
-                Container(
-                  height: 52,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white, borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _textController,
-                          maxLines: 1,
-                          textInputAction: TextInputAction.send,
-                          onSubmitted: (_) => _sendTextMessage(),
-                          decoration: const InputDecoration(
-                            hintText: '메시지를 입력하세요',
-                            border: InputBorder.none,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.send),
-                        onPressed: _sendTextMessage,
-                      ),
-                    ],
-                  ),
-                ),
-
-              const SizedBox(height: 12),
-
-              // 기능 버튼(녹음 버튼 제거)
-              SizedBox(
-                height: 300,
-                width: double.infinity,
-                child: CallFuncIsland(
-                  onPauseToggle: _onPauseToggle,
-                  onTextToggle: _onTextToggle,
-                  onCallEnd: () => _showPopupDialog(context),
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
+            ),
+            const SizedBox(height: 20),
+          ],
         ),
       ),
     );

@@ -19,19 +19,19 @@ class SimpleTitleTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.only(top: 15, bottom: 15),
         decoration: const BoxDecoration(
-          color: Colors.white, // 배경색 필요시 변경
+          color: Colors.transparent, // 배경색 필요시 변경
         ),
         child: Row(
           children: [
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white),
               ),
             ),
             if (trailing != null) trailing!,
             const SizedBox(width: 10),
-            const Icon(Icons.chevron_right, color: Colors.black),
+            const Icon(Icons.chevron_right, color: Colors.white),
           ],
         ),
       ),

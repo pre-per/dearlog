@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:dearlog/app.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
-import 'call_func_icon_button.dart';
 class CallFuncIsland extends StatelessWidget {
   final VoidCallback onPauseToggle;   // 통화 멈추기/재개
   final VoidCallback onTextToggle;    // 글로 작성 모드 토글
@@ -16,9 +16,9 @@ class CallFuncIsland extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(30),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0x26ffffff),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -27,32 +27,73 @@ class CallFuncIsland extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              CallFuncIconButton(
-                iconData: Icons.pause,
-                unTappedText: '통화 멈추기',
-                tappedText: '통화 다시 시작',
-                onTap: onPauseToggle,
+              GestureDetector(
+                onTap: onCallEnd,
+                child: Container(
+                  height: 52,
+                  width: 52,
+                  decoration: BoxDecoration(
+                    color: call_red_color,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Center(
+                    child: SvgPicture.asset('asset/icons/call/phone_red.svg', width: 30.52, height: 30.52),
+                  ),
+                ),
               ),
-              CallFuncIconButton(
-                iconData: Icons.edit_note,
-                unTappedText: '글로 작성하기',
-                tappedText: '음성 통화하기',
+              GestureDetector(
+                onTap: onPauseToggle,
+                child: Container(
+                  height: 52,
+                  width: 52,
+                  decoration: BoxDecoration(
+                    color: Color(0x1affffff),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Center(
+                    child: SvgPicture.asset('asset/icons/call/pause.svg', width: 20, height: 20),
+                  ),
+                ),
+              ),
+              GestureDetector(
                 onTap: onTextToggle,
+                child: Container(
+                  height: 52,
+                  width: 92,
+                  decoration: BoxDecoration(
+                    color: Color(0x1affffff),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SvgPicture.asset('asset/icons/call/keyboard.svg', width: 20, height: 20),
+                      const SizedBox(width: 6),
+                      const Text('입력', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),)
+                    ],
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: onTextToggle,
+                child: Container(
+                  height: 52,
+                  width: 92,
+                  decoration: BoxDecoration(
+                    color: Color(0x1affffff),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SvgPicture.asset('asset/icons/call/microphone.svg', width: 20, height: 20),
+                      const SizedBox(width: 6),
+                      const Text('녹음', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),)
+                    ],
+                  ),
+                ),
               ),
             ],
-          ),
-          const SizedBox(height: 40),
-          GestureDetector(
-            onTap: onCallEnd,
-            child: Container(
-              height: 70,
-              width: 70,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.red,
-              ),
-              child: const Icon(Icons.call_end, color: Colors.white, size: 30),
-            ),
           ),
         ],
       ),

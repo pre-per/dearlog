@@ -1,3 +1,4 @@
+import 'package:dearlog/app.dart';
 import 'package:flutter/material.dart';
 import '../models/conversation/message.dart';
 
@@ -34,14 +35,14 @@ class MessageBubble extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 6),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isUser ? Colors.blueAccent : Colors.grey[200],
+          color: isUser ? Colors.white : deep_grey_blue_color,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
           message.content,
           style: TextStyle(
-            color: isUser ? Colors.white : Colors.black87,
-            fontSize: 15,
+            color: isUser ? Colors.black87 : Colors.white,
+            fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
         ),

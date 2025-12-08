@@ -52,6 +52,29 @@ class SettingMainScreen extends ConsumerWidget {
               children: [
                 _TitleSettingRow(),
                 const SizedBox(height: 20),
+                _OpinionGiveMe(
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(16),
+                        ),
+                      ),
+                      backgroundColor: Colors.white,
+                      builder:
+                          (context) => FeedbackBottomSheet(
+                        controller: _feedbackController,
+                        onSubmit: () {
+                          final feedback = _feedbackController.text;
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 20),
                 ElevatedCardContainer(
                   children: [
                     SimpleTitleTile(
@@ -61,11 +84,10 @@ class SettingMainScreen extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w600,
-                          color: Colors.blueAccent[700],
+                          color: Colors.white,
                         ),
                       ),
                     ),
-                    Divider(color: Colors.grey[200]),
                     SimpleTitleTile(
                       title: '자주 묻는 질문',
                       onTap: () {
@@ -86,7 +108,7 @@ class SettingMainScreen extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
-                        color: Colors.grey[500],
+                        color: Colors.grey[400],
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -104,7 +126,7 @@ class SettingMainScreen extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
-                        color: Colors.grey[500],
+                        color: Colors.grey[400],
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -125,7 +147,7 @@ class SettingMainScreen extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w600,
-                          color: Colors.greenAccent[700],
+                          color: Colors.white,
                         ),
                       ),
                       onTap: () {
@@ -147,29 +169,6 @@ class SettingMainScreen extends ConsumerWidget {
                       onTap: () => handleLogout(context, ref),
                     ),
                   ],
-                ),
-                const SizedBox(height: 20),
-                _OpinionGiveMe(
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(16),
-                        ),
-                      ),
-                      backgroundColor: Colors.white,
-                      builder:
-                          (context) => FeedbackBottomSheet(
-                            controller: _feedbackController,
-                            onSubmit: () {
-                              final feedback = _feedbackController.text;
-                              Navigator.of(context).pop();
-                            },
-                          ),
-                    );
-                  },
                 ),
                 const SizedBox(height: 20),
               ],
@@ -195,8 +194,8 @@ class _TitleSettingRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         const Text(
-          '전체',
-          style: TextStyle(fontSize: 25, fontWeight: FontWeight.w700),
+          '마이',
+          style: TextStyle(fontSize: 25, fontWeight: FontWeight.w700, color: Colors.white),
         ),
         IconButton(
           onPressed: () {},
