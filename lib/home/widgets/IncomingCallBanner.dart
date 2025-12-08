@@ -1,4 +1,6 @@
+import 'package:dearlog/app.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class IncomingCallBanner extends StatefulWidget {
   final String callerName;
@@ -28,7 +30,7 @@ class _IncomingCallBannerState extends State<IncomingCallBanner>
     super.initState();
 
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 350),
+      duration: const Duration(milliseconds: 500),
       vsync: this,
     );
 
@@ -40,7 +42,7 @@ class _IncomingCallBannerState extends State<IncomingCallBanner>
     _controller.forward();
 
     // ✅ 10초 후 자동 종료
-    Future.delayed(const Duration(seconds: 10), () async {
+    Future.delayed(const Duration(seconds: 100000), () async {
       if (!mounted) return;
       await _controller.reverse();
       if (mounted) {
@@ -64,23 +66,17 @@ class _IncomingCallBannerState extends State<IncomingCallBanner>
           alignment: Alignment.topCenter,
           child: Container(
             margin: const EdgeInsets.all(12),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.grey[800],
+              color: Color(0xFF131b28),
               borderRadius: BorderRadius.circular(16),
             ),
             constraints: const BoxConstraints(
-              maxHeight: 100, // 상단 일부만 사용
+              maxHeight: 80, // 상단 일부만 사용
               maxWidth: 600,
             ),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundImage: AssetImage('asset/image/kitty.png'),
-                  backgroundColor: Colors.white,
-                ),
-                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -90,7 +86,7 @@ class _IncomingCallBannerState extends State<IncomingCallBanner>
                         widget.callerName,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 19,
+                          fontSize: 18,
                           fontWeight: FontWeight.w700,
                           decoration: TextDecoration.none,
                         ),
@@ -99,7 +95,7 @@ class _IncomingCallBannerState extends State<IncomingCallBanner>
                         widget.callerSubtitle,
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.8),
-                          fontSize: 13,
+                          fontSize: 16,
                           decoration: TextDecoration.none,
                         ),
                       ),
@@ -108,13 +104,34 @@ class _IncomingCallBannerState extends State<IncomingCallBanner>
                 ),
                 Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.call_end, color: Colors.red),
-                      onPressed: widget.onDecline,
+                    GestureDetector(
+                      onTap: widget.onAccept,
+                      child: Container(
+                        height: 40,
+                        width: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: call_green_color,
+                        ),
+                        child: Center(
+                          child: SvgPicture.asset('asset/icons/call/phone_green.svg', width: 17.5, height: 17.5),
+                        ),
+                      ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.call, color: Colors.green),
-                      onPressed: widget.onAccept,
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: widget.onDecline,
+                      child: Container(
+                        height: 40,
+                        width: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: call_red_color,
+                        ),
+                        child: Center(
+                          child: SvgPicture.asset('asset/icons/call/phone_red.svg', width: 23.47, height: 23.47),
+                        ),
+                      ),
                     ),
                   ],
                 ),
