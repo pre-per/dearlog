@@ -1,9 +1,5 @@
-import 'package:dearlog/main.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../app/di/providers.dart';
-import '../../user/models/user_profile.dart';
+import 'package:dearlog/app.dart';
 
 class OnboardingNameScreen extends ConsumerStatefulWidget {
   const OnboardingNameScreen({super.key});
@@ -31,10 +27,10 @@ class _NicknameInputScreenState extends ConsumerState<OnboardingNameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BaseScaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.white,),
           onPressed: () => Navigator.pop(context),
         ),
         elevation: 0,
@@ -48,12 +44,12 @@ class _NicknameInputScreenState extends ConsumerState<OnboardingNameScreen> {
           children: [
             const Text(
               '디어로그에서 사용할\n이름을 입력해주세요.',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
             ),
             const SizedBox(height: 12),
             const Text(
               '이름은 공백없이 12자 이하,\n기호는 _ . 만 사용 가능합니다.',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: Colors.white, fontSize: 18),
             ),
             const SizedBox(height: 30),
             TextField(

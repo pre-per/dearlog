@@ -1,13 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dearlog/auth/screens/onboarding_agreement_screen.dart';
-import 'package:dearlog/auth/screens/splash_screen.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dearlog/main.dart';
-import '../../user/providers/user_fetch_providers.dart';
-import '../providers/google_auth_provider.dart';
-import '../../app/di/providers.dart';
+import 'package:dearlog/app.dart';
 
 class LoginScreen extends ConsumerWidget {
   const LoginScreen({super.key});
@@ -64,32 +55,35 @@ class LoginScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      backgroundColor: Colors.white,
+    return BaseScaffold(
       body: SafeArea(
         child: Column(
           children: [
             const SizedBox(height: 80),
-            Image.asset('asset/image/logo_black.png', width: 300, height: 300),
+            Image.asset('asset/image/logo_white.png', width: 300, height: 300),
             const Spacer(),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: ElevatedButton.icon(
-                icon: Image.asset(
-                  'asset/image/google_icon.png',
-                  width: 24,
-                  height: 24,
-                ),
-                label: const Text("Google 계정으로 계속하기"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black87,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              child: GestureDetector(
+                onTap: () => _handleGoogleSignIn(context, ref),
+                child: Container(
+                  height: 70,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(40),
+                    color: Colors.white
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'asset/image/google_icon.png',
+                        width: 40,
+                      ),
+                      const SizedBox(width: 10),
+                      const Text('구글로 로그인하기', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 18),)
+                    ],
                   ),
                 ),
-                onPressed: () => _handleGoogleSignIn(context, ref),
               ),
             ),
             const SizedBox(height: 40),

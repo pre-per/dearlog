@@ -25,14 +25,9 @@ class AnalyticsMainScreen extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: 20, bottom: 10),
                   child: Text(
-                    '내 감정 그래프',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                    '분석',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white),
                   ),
-                ),
-                EmotionChartWidget(),
-                Padding(
-                  padding: const EdgeInsets.only(top: 20, bottom: 10),
-                  child: _WhoMatchesWithMeWidget(),
                 ),
               ],
             ),
@@ -44,51 +39,6 @@ class AnalyticsMainScreen extends ConsumerWidget {
             ),
         loading: () => const Center(child: CircularProgressIndicator()),
       ),
-    );
-  }
-}
-
-class _WhoMatchesWithMeWidget extends StatelessWidget {
-  const _WhoMatchesWithMeWidget();
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedCardContainer(
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 10, bottom: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '나와 알맞는 상대는?',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    '궁금하면 클릭해보세요',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-              Icon(
-                IconsaxPlusBold.heart,
-                color: Colors.pinkAccent[100],
-                size: 40,
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

@@ -1,7 +1,4 @@
-import 'package:dearlog/auth/screens/login_screen.dart';
-import 'package:flutter/material.dart';
-
-import 'onboarding_name_screen.dart';
+import 'package:dearlog/app.dart';
 
 class OnboardingAgreementScreen extends StatefulWidget {
   const OnboardingAgreementScreen({super.key});
@@ -36,10 +33,10 @@ class _OnboardingAgreementScreenState extends State<OnboardingAgreementScreen> {
   Widget build(BuildContext context) {
     final enabled = termsOfUse && privacyPolicy;
 
-    return Scaffold(
+    return BaseScaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.white,),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -51,7 +48,7 @@ class _OnboardingAgreementScreenState extends State<OnboardingAgreementScreen> {
             const SizedBox(height: 10),
             const Text(
               ' 서비스 이용 동의',
-              style: TextStyle(fontSize: 27, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 27, fontWeight: FontWeight.bold, color: Colors.white),
             ),
             const SizedBox(height: 40),
 
@@ -141,6 +138,7 @@ class _OnboardingAgreementScreenState extends State<OnboardingAgreementScreen> {
             value: value,
             onChanged: onChanged,
             activeColor: Colors.green[400],
+            side: BorderSide(color: Colors.white),
           ),
           Expanded(
             child: Text(
@@ -148,12 +146,13 @@ class _OnboardingAgreementScreenState extends State<OnboardingAgreementScreen> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+                color: Colors.white
               ),
             ),
           ),
           if (onTapDetail != null)
             IconButton(
-              icon: const Icon(Icons.arrow_forward_ios, size: 16),
+              icon: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white,),
               onPressed: onTapDetail,
             ),
         ],

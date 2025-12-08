@@ -1,12 +1,8 @@
 import 'dart:async';
+import 'package:dearlog/app.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dearlog/auth/screens/login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dearlog/main.dart';
-import '../../user/providers/user_fetch_providers.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -61,17 +57,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
+    return BaseScaffold(
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset('asset/image/logo_black.png', width: 300, height: 300),
+            Image.asset('asset/image/logo_white.png', width: 300, height: 300),
             SizedBox(height: 50),
             CircularProgressIndicator(color: Colors.blueAccent),
             SizedBox(height: 50),
-            Text("앱을 시작하는 중입니다...", style: TextStyle(fontSize: 16)),
+            Text("앱을 시작하는 중입니다...", style: TextStyle(fontSize: 16, color: Colors.white)),
           ],
         ),
       ),
