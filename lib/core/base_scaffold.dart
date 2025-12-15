@@ -27,6 +27,7 @@ class BaseScaffold extends StatelessWidget {
         ),
         // 🔹 그 위에 실제 화면 내용(Scaffold)
         Scaffold(
+          extendBody: true,
           backgroundColor: Colors.transparent,
           appBar: appBar,
           body: body,

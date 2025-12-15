@@ -32,7 +32,7 @@ class SearchBarUI extends ConsumerWidget {
                 onChanged: (v) =>
                 ref.read(searchQueryProvider.notifier).state = v,
                 decoration: InputDecoration(
-                  hintText: '검색어를 입력하세요',
+                  hintText: '검색어를 입력해 일기를 찾아보세요',
                   border: InputBorder.none,
                   hintStyle: TextStyle(
                     fontSize: 16,

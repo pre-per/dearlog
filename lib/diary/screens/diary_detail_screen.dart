@@ -1,11 +1,8 @@
-import 'package:dearlog/diary/models/diary_entry.dart';
-import 'package:dearlog/diary/repository/diary_repository.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:ui';
+
+import 'package:dearlog/app.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:intl/intl.dart';
-import '../../call/screens/call_record_screen.dart';
-import '../../user/providers/user_fetch_providers.dart';
-import 'diary_edit_screen.dart';
 
 class DiaryDetailScreen extends ConsumerStatefulWidget {
   final DiaryEntry diary;
@@ -28,9 +25,7 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
   Future<void> _navigateToEdit() async {
     final updated = await Navigator.push<DiaryEntry>(
       context,
-      MaterialPageRoute(
-        builder: (_) => DiaryEditScreen(diary: _diary),
-      ),
+      MaterialPageRoute(builder: (_) => DiaryEditScreen(diary: _diary)),
     );
 
     if (updated != null) {
@@ -40,115 +35,289 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
     }
   }
 
+  Future<bool> showDeleteConfirmDialog(BuildContext context) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true, // 바깥 눌러 닫기(원하면 false)
+      barrierColor: Colors.black.withOpacity(0.45), // 배경 어둡게
+      builder: (_) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40), // 블러
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 30),
+                decoration: BoxDecoration(
+                  color: Colors.grey[800], // 유리 느낌
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withOpacity(0.12)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      '일기를 정말 삭제하시겠어요?',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      '한 번 삭제하면 다시 되돌릴 수 없어요.\n잠시 더 가지고 있고 싶다면 닫아주세요.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white70,
+                        height: 1.4,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 44,
+                            child: TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              style: TextButton.styleFrom(
+                                backgroundColor: Colors.white.withOpacity(0.14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text(
+                                '그냥 둘래요',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: SizedBox(
+                            height: 44,
+                            child: TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              style: TextButton.styleFrom(
+                                backgroundColor: const Color(0xFFD75B3A),
+                                // 주황/레드톤
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text(
+                                '삭제할게요',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    return result ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final userId = ref.watch(userIdProvider);
-
-    return Scaffold(
+    return BaseScaffold(
       appBar: AppBar(
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit),
+            icon: SvgPicture.asset('asset/icons/basic/pencil.svg'),
             onPressed: _navigateToEdit,
           ),
-          PopupMenuButton<String>(
-            onSelected: (value) async {
-              if (value == 'delete') {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    title: const Text('일기 삭제'),
-                    content: const Text('정말로 이 일기를 삭제할까요?'),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('삭제')),
-                    ],
-                  ),
-                );
+          IconButton(
+            icon: SvgPicture.asset('asset/icons/basic/trashcan.svg'),
+            onPressed: () async {
+              final ok = await showDeleteConfirmDialog(context);
+              if (!ok) return;
 
-                if (confirm == true && userId != null) {
-                  await DiaryRepository().deleteDiary(userId, _diary.id);
-                  ref.invalidate(userProvider);
-                  if (context.mounted) Navigator.pop(context);
-                }
-              } else if (value == 'view_call') {
-                final callId = _diary.callId;
-                if (callId != null) {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => CallRecordScreen(callId: callId)));
-                }
-              }
+              // 여기서 실제 삭제 처리
+              final userId = ref.read(userIdProvider);
+              if (userId == null) return;
+
+              await DiaryRepository().deleteDiary(
+                userId,
+                _diary.id,
+              ); // delete 함수명은 너 repo에 맞게
+              ref.invalidate(filteredDiaryListProvider);
+
+              if (mounted) Navigator.pop(context); // 상세 화면 닫고 목록으로
             },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'view_call', child: Text('대화 확인하기')),
-              PopupMenuItem(value: 'delete', child: Text('삭제하기')),
-            ],
           ),
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            Text(
-              _diary.title,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 30),
-            Text(
-              '생성 일시: ${DateFormat('yyyy-MM-dd HH:mm:ss').format(_diary.date)}',
-              textAlign: TextAlign.end,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, height: 1.6, color: Colors.grey[500]),
-            ),
-            _diary.imageUrls.isEmpty
-                ? const SizedBox.shrink()
-                : SizedBox(
-              height: 250,
-              width: double.infinity,
-              child: Center(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    _diary.imageUrls.first,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Image.asset(
-                        getEmotionIllustration(_diary.emotion),
-                        scale: 5,
-                      );
-                    },
+        padding: const EdgeInsets.all(12),
+        child: SizedBox.expand(
+          child: Stack(
+            children: [
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Image.asset(
+                  'asset/image/moon_images/${planetBaseNameMap[_diary.emotion] ?? 'grey_moon'}.png',
+                  height: 264,
+                  width: 264,
+                ),
+              ),
+              Positioned(
+                top: 50,
+                left: 110,
+                right: 110,
+                child: Container(
+                  width: 150,
+                  height: 45,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.grey,
+                  ),
+                  child: Center(
+                    child: Text(
+                      DateFormat('yyyy년 MM월 dd일').format(_diary.date),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              _diary.emotion,
-              style: TextStyle(fontSize: 16, height: 1.6, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              _diary.content,
-              style: const TextStyle(fontSize: 16, height: 1.6),
-            ),
-          ],
+              ListView(
+                children: [
+                  const SizedBox(height: 100),
+                  Stack(
+                    alignment: Alignment.topCenter,
+                    children: [
+                      Image.asset(
+                        'asset/image/diary_white_page.png',
+                        width: double.infinity,
+                      ),
+                      Positioned(
+                        top: 60, // 종이 위에서 텍스트 시작 위치
+                        left: 43,
+                        right: 43,
+                        child: Text(
+                          _diary.title, // 일기 내용
+                          style: const TextStyle(
+                            fontSize: 18,
+                            height: 1.6,
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+
+                      Positioned(
+                        top: 100, // 종이 위에서 텍스트 시작 위치
+                        left: 43,
+                        right: 43,
+                        child: Text(
+                          _diary.content, // 일기 내용
+                          style: const TextStyle(
+                            fontSize: 16,
+                            height: 1.6,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+
+                      Positioned(
+                        top: 430, // 종이 위에서 텍스트 시작 위치
+                        left: 43,
+                        right: 43,
+                        child: Image.asset(
+                          'asset/image/horizontal_line.png',
+                          width: 500,
+                        ),
+                      ),
+
+                      Positioned(
+                        top: 450, // 종이 위에서 텍스트 시작 위치
+                        left: 43,
+                        right: 280,
+                        child: Container(
+                          width: 45,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            color: Colors.grey[200],
+                          ),
+                          child: Center(
+                            child: Text(
+                              _diary.emotion, // 일기 내용
+                              style: const TextStyle(
+                                fontSize: 16,
+                                height: 1.6,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 25,
+                      vertical: 0,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.network(
+                        _diary.imageUrls.first,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: double.infinity,
+                            height: 200,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.broken_image_outlined,
+                                size: 40,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
-  }
-}
-
-/// 감정 코드에 따른 기본 이미지 asset 경로 반환
-String getEmotionIllustration(String emotion) {
-  switch (emotion) {
-    case '행복':
-      return 'asset/illustrations/happy.png';
-    case '슬픔':
-      return 'asset/illustrations/sad.png';
-    case '분노':
-      return 'asset/illustrations/angry.png';
-    case '불안':
-      return 'asset/illustrations/fear.png';
-    default:
-      return 'asset/illustrations/neutral.png';
   }
 }

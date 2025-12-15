@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter_svg/flutter_svg.dart';
 
 import 'app.dart';
@@ -61,78 +63,89 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     int currentIndex = ref.watch(MainIndexProvider);
     return BaseScaffold(
       body: _screens[currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Color(0xff000000),
-        currentIndex: currentIndex,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        onTap:
-            (index) => setState(
-              () => ref.read(MainIndexProvider.notifier).state = index,
+      bottomNavigationBar: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX:25.0, sigmaY: 25.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.05),
             ),
-        items: [
-          BottomNavigationBarItem(
-            icon: SvgPicture.asset(
-              'asset/icons/navigation/planet.svg',
-              width: 24,
-              height: 24,
-              colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+            child: BottomNavigationBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              currentIndex: currentIndex,
+              selectedItemColor: Colors.white,
+              unselectedItemColor: Colors.grey,
+              type: BottomNavigationBarType.fixed,
+              onTap:
+                  (index) => setState(
+                    () => ref.read(MainIndexProvider.notifier).state = index,
+                  ),
+              items: [
+                BottomNavigationBarItem(
+                  icon: SvgPicture.asset(
+                    'asset/icons/navigation/planet.svg',
+                    width: 30,
+                    height: 30,
+                    colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+                  ),
+                  activeIcon: SvgPicture.asset(
+                    'asset/icons/navigation/planet.svg',
+                    width: 30,
+                    height: 30,
+                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                  ),
+                  label: '홈',
+                ),
+                BottomNavigationBarItem(
+                  icon: SvgPicture.asset(
+                    'asset/icons/navigation/moon_stars.svg',
+                    width: 30,
+                    height: 30,
+                    colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+                  ),
+                  activeIcon: SvgPicture.asset(
+                    'asset/icons/navigation/moon_stars.svg',
+                    width: 30,
+                    height: 30,
+                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                  ),
+                  label: '일기장',
+                ),
+                BottomNavigationBarItem(
+                  icon: SvgPicture.asset(
+                    'asset/icons/navigation/analytics.svg',
+                    width: 30,
+                    height: 30,
+                    colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+                  ),
+                  activeIcon: SvgPicture.asset(
+                    'asset/icons/navigation/analytics.svg',
+                    width: 30,
+                    height: 30,
+                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                  ),
+                  label: '분석',
+                ),
+                BottomNavigationBarItem(
+                  icon: SvgPicture.asset(
+                    'asset/icons/navigation/user.svg',
+                    width: 30,
+                    height: 30,
+                    colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+                  ),
+                  activeIcon: SvgPicture.asset(
+                    'asset/icons/navigation/user.svg',
+                    width: 30,
+                    height: 30,
+                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                  ),
+                  label: '마이',
+                ),
+              ],
             ),
-            activeIcon: SvgPicture.asset(
-              'asset/icons/navigation/planet.svg',
-              width: 24,
-              height: 24,
-              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-            ),
-            label: '홈',
           ),
-          BottomNavigationBarItem(
-            icon: SvgPicture.asset(
-              'asset/icons/navigation/moon_stars.svg',
-              width: 24,
-              height: 24,
-              colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
-            ),
-            activeIcon: SvgPicture.asset(
-              'asset/icons/navigation/moon_stars.svg',
-              width: 24,
-              height: 24,
-              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-            ),
-            label: '일기장',
-          ),
-          BottomNavigationBarItem(
-            icon: SvgPicture.asset(
-              'asset/icons/navigation/analytics.svg',
-              width: 24,
-              height: 24,
-              colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
-            ),
-            activeIcon: SvgPicture.asset(
-              'asset/icons/navigation/analytics.svg',
-              width: 24,
-              height: 24,
-              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-            ),
-            label: '분석',
-          ),
-          BottomNavigationBarItem(
-            icon: SvgPicture.asset(
-              'asset/icons/navigation/user.svg',
-              width: 24,
-              height: 24,
-              colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
-            ),
-            activeIcon: SvgPicture.asset(
-              'asset/icons/navigation/user.svg',
-              width: 24,
-              height: 24,
-              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-            ),
-            label: '마이',
-          ),
-        ],
+        ),
       ),
     );
   }
