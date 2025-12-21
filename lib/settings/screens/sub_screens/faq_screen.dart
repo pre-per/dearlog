@@ -1,9 +1,4 @@
-import 'package:dearlog/settings/providers/faq_provider.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../widgets/tile/faq_tile.dart';
-
+import 'package:dearlog/app.dart';
 class FAQScreen extends ConsumerWidget {
   const FAQScreen({super.key});
 
@@ -11,7 +6,7 @@ class FAQScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final faqList = ref.watch(faqProvider);
 
-    return Scaffold(
+    return BaseScaffold(
       appBar: AppBar(),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 25),

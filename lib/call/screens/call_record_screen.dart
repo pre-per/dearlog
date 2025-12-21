@@ -1,8 +1,4 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../providers/call_provider.dart';
-import '../widgets/message_bubble.dart';
+import 'package:dearlog/app.dart';
 
 class CallRecordScreen extends ConsumerWidget {
   final String callId;
@@ -13,7 +9,7 @@ class CallRecordScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncCall = ref.watch(findCallProvider(callId));
 
-    return Scaffold(
+    return BaseScaffold(
       appBar: AppBar(),
       body: asyncCall.when(
         data: (call) {

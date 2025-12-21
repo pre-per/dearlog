@@ -38,6 +38,7 @@ export 'call/providers/speech_provider.dart';
 export 'call/repository/call_repository.dart';
 export 'call/screens/ai_chat_screen.dart';
 export 'call/screens/call_done_screen.dart';
+export 'call/screens/call_loading_screen.dart';
 export 'call/screens/call_record_screen.dart';
 export 'call/screens/select_planet_done_screen.dart';
 export 'call/screens/select_planet_screen.dart';

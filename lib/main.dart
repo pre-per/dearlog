@@ -23,12 +23,13 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         appBarTheme: AppBarTheme(
+          iconTheme: const IconThemeData(color: Colors.white),
           scrolledUnderElevation: 0,
           backgroundColor: Colors.transparent,
           titleTextStyle: TextStyle(
             fontSize: 20.0,
             fontWeight: FontWeight.w600,
-            color: Colors.black,
+            color: Colors.white,
           ),
         ),
         scaffoldBackgroundColor: Colors.transparent,
@@ -37,6 +38,7 @@ class MyApp extends StatelessWidget {
         ),
         bottomAppBarTheme: BottomAppBarTheme(color: Colors.grey[50]),
         fontFamily: 'Alumni',
+        brightness: Brightness.dark,
       ),
       home: SplashScreen(),
     );

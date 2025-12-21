@@ -49,7 +49,10 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40), // 블러
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 30),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 20,
+                  horizontal: 30,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.grey[800], // 유리 느낌
                   borderRadius: BorderRadius.circular(20),
@@ -208,111 +211,43 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
                   ),
                 ),
               ),
-              ListView(
-                children: [
-                  const SizedBox(height: 100),
-                  Stack(
-                    alignment: Alignment.topCenter,
-                    children: [
-                      Image.asset(
-                        'asset/image/diary_white_page.png',
-                        width: double.infinity,
-                      ),
-                      Positioned(
-                        top: 60, // 종이 위에서 텍스트 시작 위치
-                        left: 43,
-                        right: 43,
-                        child: Text(
-                          _diary.title, // 일기 내용
-                          style: const TextStyle(
-                            fontSize: 18,
-                            height: 1.6,
-                            color: Colors.black87,
-                            fontWeight: FontWeight.w800,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 15),
+                child: ListView(
+                  children: [
+                    const SizedBox(height: 100),
+                    _paperCard(_diary),
+                    const SizedBox(height: 20),
+                    _imageCards(_diary.imageUrls),
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder:
+                                (_) => CallRecordScreen(callId: _diary.callId!),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          color: Color(0x1dffffff),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 20,
+                          horizontal: 20,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '대화 확인하기',
+                            style: TextStyle(fontSize: 16),
                           ),
                         ),
-                      ),
-
-                      Positioned(
-                        top: 100, // 종이 위에서 텍스트 시작 위치
-                        left: 43,
-                        right: 43,
-                        child: Text(
-                          _diary.content, // 일기 내용
-                          style: const TextStyle(
-                            fontSize: 16,
-                            height: 1.6,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),
-
-                      Positioned(
-                        top: 430, // 종이 위에서 텍스트 시작 위치
-                        left: 43,
-                        right: 43,
-                        child: Image.asset(
-                          'asset/image/horizontal_line.png',
-                          width: 500,
-                        ),
-                      ),
-
-                      Positioned(
-                        top: 450, // 종이 위에서 텍스트 시작 위치
-                        left: 43,
-                        right: 280,
-                        child: Container(
-                          width: 45,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            color: Colors.grey[200],
-                          ),
-                          child: Center(
-                            child: Text(
-                              _diary.emotion, // 일기 내용
-                              style: const TextStyle(
-                                fontSize: 16,
-                                height: 1.6,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 25,
-                      vertical: 0,
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
-                        _diary.imageUrls.first,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: double.infinity,
-                            height: 200,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.broken_image_outlined,
-                                size: 40,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          );
-                        },
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -320,4 +255,121 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
       ),
     );
   }
+}
+
+Widget _paperCard(DiaryEntry diary) {
+  return Container(
+    width: double.infinity,
+    // ✅ Stack이 내용 높이에 맞춰 늘어나도록: 배경을 fill로 깔기
+    child: Stack(
+      children: [
+        // ✅ 배경은 "부모(Stack)의 최종 높이"를 전부 채움
+        Positioned.fill(
+          child: Image.asset(
+            'asset/image/diary_white_page.png',
+            fit: BoxFit.fill,
+          ),
+        ),
+
+        // ✅ 이 Column이 Stack의 "높이"를 결정한다
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 30),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min, // ✅ 중요: 내용만큼만 높이
+            children: [
+              Text(
+                diary.title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  height: 1.6,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                diary.content,
+                style: const TextStyle(
+                  fontSize: 16,
+                  height: 1.6,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Image.asset(
+                'asset/image/horizontal_line.png',
+                width: double.infinity,
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color: Colors.grey[200],
+                ),
+                child: Text(
+                  diary.emotion,
+                  style: const TextStyle(fontSize: 16, color: Colors.black87),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _imageCards(List<String> imageUrls) {
+  return Column(
+    children:
+        imageUrls.map((url) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.network(
+                url,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: double.infinity,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.broken_image_outlined,
+                        size: 40,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
+        }).toList(),
+  );
+}
+
+Widget _checkMessages(String callId) {
+  return GestureDetector(
+    onTap: () {},
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        color: Color(0x1dffffff),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+      child: Center(child: Text('대화 확인하기', style: TextStyle(fontSize: 16))),
+    ),
+  );
 }

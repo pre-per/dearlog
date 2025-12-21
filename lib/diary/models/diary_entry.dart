@@ -17,6 +17,27 @@ class DiaryEntry {
     this.callId,
   });
 
+  /// ✅ copyWith
+  DiaryEntry copyWith({
+    String? id,
+    DateTime? date,
+    String? title,
+    String? content,
+    String? emotion,
+    List<String>? imageUrls,
+    String? callId,
+  }) {
+    return DiaryEntry(
+      id: id ?? this.id,
+      date: date ?? this.date,
+      title: title ?? this.title,
+      content: content ?? this.content,
+      emotion: emotion ?? this.emotion,
+      imageUrls: imageUrls ?? List<String>.from(this.imageUrls),
+      callId: callId ?? this.callId,
+    );
+  }
+
   factory DiaryEntry.fromJson(Map<String, dynamic> json) {
     return DiaryEntry(
       id: json['id'],

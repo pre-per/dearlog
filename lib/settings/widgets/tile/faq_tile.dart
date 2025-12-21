@@ -58,7 +58,7 @@ class _FaqTileState extends State<FaqTile> {
             margin: const EdgeInsets.only(bottom: 16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
+              color: Color(0x1dffffff),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(

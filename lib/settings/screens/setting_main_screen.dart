@@ -42,6 +42,16 @@ class SettingMainScreen extends ConsumerWidget {
     final _feedbackController = TextEditingController();
 
     return Scaffold(
+      appBar: AppBar(
+        title: Text('마이', style: TextStyle().copyWith(fontSize: 25),),
+        centerTitle: false,
+        actions: [
+          IconButton(
+            onPressed: () {},
+            icon: Icon(IconsaxPlusBold.setting_2, color: Colors.grey[400]),
+          ),
+        ],
+      ),
       body: userAsync.when(
         data: (user) {
           if (user == null) return AuthErrorScreen();
@@ -50,10 +60,9 @@ class SettingMainScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 25),
             child: ListView(
               children: [
-                _TitleSettingRow(),
                 const SizedBox(height: 20),
                 _OpinionGiveMe(
-                  onTap: () {
+                  onTap: () { /*
                     showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
@@ -71,7 +80,7 @@ class SettingMainScreen extends ConsumerWidget {
                           Navigator.of(context).pop();
                         },
                       ),
-                    );
+                    ); */
                   },
                 ),
                 const SizedBox(height: 20),
@@ -143,7 +152,7 @@ class SettingMainScreen extends ConsumerWidget {
                     SimpleTitleTile(
                       title: '공지사항',
                       trailing: Text(
-                        '1개',
+                        '0개',
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w600,
@@ -185,27 +194,6 @@ class SettingMainScreen extends ConsumerWidget {
   }
 }
 
-class _TitleSettingRow extends StatelessWidget {
-  const _TitleSettingRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const Text(
-          '마이',
-          style: TextStyle(fontSize: 25, fontWeight: FontWeight.w700, color: Colors.white),
-        ),
-        IconButton(
-          onPressed: () {},
-          icon: Icon(IconsaxPlusBold.setting_2, color: Colors.grey[400]),
-        ),
-      ],
-    );
-  }
-}
-
 class _OpinionGiveMe extends StatelessWidget {
   final VoidCallback onTap;
 
@@ -230,9 +218,10 @@ class _OpinionGiveMe extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 3),
                   Text(
                     '디어로그에서의 경험은 어떠셨나요?',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 17),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 17, color: Colors.grey[700]),
                   ),
                   const SizedBox(height: 5),
                   Text(
@@ -240,12 +229,12 @@ class _OpinionGiveMe extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.w500,
                       fontSize: 15,
-                      color: Colors.grey[600],
+                      color: Colors.grey[700],
                     ),
                   ),
                 ],
               ),
-              Icon(IconsaxPlusLinear.edit, size: 35),
+              Icon(IconsaxPlusLinear.edit, size: 35, color: Colors.grey[700],),
             ],
           ),
         ),

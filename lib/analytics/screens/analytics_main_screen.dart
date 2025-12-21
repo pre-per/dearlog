@@ -14,23 +14,19 @@ class AnalyticsMainScreen extends ConsumerWidget {
     final userAsync = ref.watch(userProvider);
 
     return Scaffold(
+      appBar: AppBar(
+        title: Text('분석', style: TextStyle().copyWith(fontSize: 25),),
+        centerTitle: false,
+      ),
       body: userAsync.when(
         data: (user) {
           if (user == null) return AuthErrorScreen();
 
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: ListView(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 20, bottom: 10),
-                  child: Text(
-                    '분석',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
+            child: Center(
+              child: Text('추후 업데이트 예정입니다', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),),
+            )
           );
         },
         error:

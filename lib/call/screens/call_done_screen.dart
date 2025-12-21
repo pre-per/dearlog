@@ -21,7 +21,7 @@ class CallDoneScreen extends StatelessWidget {
               const SizedBox(height: 40),
               Container(
                 width: 327,
-                height: 67,
+                height: 70,
                 decoration: BoxDecoration(
                   color: Color(0x1affffff),
                   borderRadius: BorderRadius.circular(12),

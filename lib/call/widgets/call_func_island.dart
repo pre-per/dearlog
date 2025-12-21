@@ -69,7 +69,7 @@ class CallFuncIsland extends StatelessWidget {
                     children: [
                       SvgPicture.asset('asset/icons/call/keyboard.svg', width: 20, height: 20),
                       const SizedBox(width: 6),
-                      const Text('입력', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),)
+                      const Text('입력', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white, decoration: TextDecoration.lineThrough),)
                     ],
                   ),
                 ),
@@ -88,7 +88,7 @@ class CallFuncIsland extends StatelessWidget {
                     children: [
                       SvgPicture.asset('asset/icons/call/microphone.svg', width: 20, height: 20),
                       const SizedBox(width: 6),
-                      const Text('녹음', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),)
+                      const Text('녹음', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white, decoration: TextDecoration.lineThrough),)
                     ],
                   ),
                 ),
