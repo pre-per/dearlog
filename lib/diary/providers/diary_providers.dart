@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../app/di/providers.dart'; // di
+import '../../app/di/providers.dart';
 import '../../user/providers/user_fetch_providers.dart';
 import '../../shared_ui/utils/search_utils.dart';
 import '../models/diary_entry.dart';
@@ -7,85 +7,46 @@ import '../models/diary_entry.dart';
 /// 검색어 상태
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
-/// 필터링된 일기 목록 Provider
+/// ✅ (핵심) 실시간 일기 목록 StreamProvider
+final diaryStreamProvider = StreamProvider.autoDispose<List<DiaryEntry>>((ref) {
+  final userId = ref.watch(userIdProvider);
+  if (userId == null) return const Stream.empty();
+
+  final repo = ref.watch(diaryRepositoryProvider);
+  return repo.watchDiaries(userId);
+});
+
+/// ✅ 필터링된 일기 목록 (Stream 결과를 그대로 필터)
 final filteredDiaryListProvider = Provider<AsyncValue<List<DiaryEntry>>>((ref) {
-  final base = ref.watch(diaryListProvider); // 원본 비동기 목록
-  final query = ref.watch(searchQueryProvider); // 입력 쿼리
+  final base = ref.watch(diaryStreamProvider);
+  final query = ref.watch(searchQueryProvider);
 
   return base.whenData((entries) {
-    if (query.trim().isEmpty) return entries;
+    final q = query.trim();
+    if (q.isEmpty) return entries;
 
     return entries.where((e) {
-      // ✅ DiaryEntry의 실제 필드명에 맞춰 주세요.
-      // 아래는 예시: title, content, date(DateTime)
-      final String title = (e.title ?? '');
-      final String content = (e.content ?? '');
-      final DateTime? date = e.date; // ⬅️ DateTime 확정!
+      final title = e.title;   // title이 non-null이면 그대로, nullable면 ?? '' 처리
+      final content = e.content;
+      final date = e.date;
 
       return entryMatchesQuery(
-        queryRaw: query,
-        title: title,
-        content: content,
+        queryRaw: q,
+        title: title ?? '',
+        content: content ?? '',
         date: date,
       );
     }).toList();
   });
 });
 
-final diaryListProvider = FutureProvider<List<DiaryEntry>>((ref) async {
-  final userId = ref.watch(userIdProvider);
-  if (userId == null) return [];
-  final repo = ref.read(diaryRepositoryProvider); // di
-  return repo.fetchDiaries(userId);
-});
-
-final diaryListNotifierProvider =
-    StateNotifierProvider<DiaryListNotifier, AsyncValue<List<DiaryEntry>>>((
-      ref,
-    ) {
-      final repo = ref.read(diaryRepositoryProvider); // di
-      final userId = ref.watch(userIdProvider) ?? '';
-      return DiaryListNotifier(repo, userId);
-    });
-
-class DiaryListNotifier extends StateNotifier<AsyncValue<List<DiaryEntry>>> {
-  final dynamic repo; // DiaryRepository
-  final String userId;
-
-  DiaryListNotifier(this.repo, this.userId)
-    : super(const AsyncValue.loading()) {
-    loadDiaries();
-  }
-
-  Future<void> loadDiaries() async {
-    try {
-      final diaries = await repo.fetchDiaries(userId);
-      state = AsyncValue.data(diaries);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
-  }
-
-  Future<void> saveDiary(DiaryEntry entry) async {
-    await repo.saveDiary(userId, entry);
-    await loadDiaries();
-  }
-
-  Future<void> deleteDiary(String diaryId) async {
-    await repo.deleteDiary(userId, diaryId);
-    await loadDiaries();
-  }
-}
-
+/// ✅ 최신 일기
 final latestDiaryProvider = Provider<DiaryEntry?>((ref) {
-  final state = ref.watch(diaryListNotifierProvider);
+  final state = ref.watch(diaryStreamProvider);
 
   return state.when(
-    data: (list) {
-      if (list.isEmpty) return null;
-      return list.last;
-    },
-    error: (_, _) => null,
+    data: (list) => list.isEmpty ? null : list.last,
     loading: () => null,
+    error: (_, __) => null,
   );
 });

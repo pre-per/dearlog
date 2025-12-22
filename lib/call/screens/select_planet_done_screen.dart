@@ -1,4 +1,7 @@
+import 'dart:ui';
+
 import 'package:dearlog/app.dart';
+import 'package:intl/intl.dart';
 
 class SelectPlanetDoneScreen extends ConsumerWidget {
   const SelectPlanetDoneScreen({super.key});
@@ -24,12 +27,19 @@ class SelectPlanetDoneScreen extends ConsumerWidget {
             onTap: () {
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(builder: (_) => MainScreen()),
-                  (route) => false,
+                (route) => false,
               );
             },
             child: SizedBox(
               height: 30,
-              child: Text('홈으로', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),),
+              child: Text(
+                '홈으로',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -48,19 +58,22 @@ class SelectPlanetDoneScreen extends ConsumerWidget {
                 height: 232,
               ),
               const SizedBox(height: 40),
-              Container(
-                width: 327,
-                height: 67,
-                decoration: BoxDecoration(
-                  color: Color(0x1affffff),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(10),
-                    child: const Text(
-                      '11월 7일(금) 행성이 생성되었어요!',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
+              ClipRRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Color(0x1affffff),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Text(
+                          '${DateFormat('MM월 dd일(E)', 'ko_KR').format(DateTime.now())} 행성이 생성되었어요!',
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -71,7 +84,7 @@ class SelectPlanetDoneScreen extends ConsumerWidget {
                   final DiaryEntry diary = ref.read(latestDiaryProvider)!;
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => MainScreen()),
-                        (route) => false, // 🔥 모든 기존 라우트 제거
+                    (route) => false, // 🔥 모든 기존 라우트 제거
                   );
                   // 2) 그 위에 바로 방금 만든 일기 상세 화면 올리기
                   Navigator.of(context).push(
@@ -81,18 +94,20 @@ class SelectPlanetDoneScreen extends ConsumerWidget {
                   );
                 },
                 child: Container(
-                  width: 327,
-                  height: 56,
                   decoration: BoxDecoration(
                     color: Color(0xff313345),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(15),
                       child: const Text(
                         '일기장 바로가기',
-                        style: TextStyle(color: Colors.white, fontSize: 16),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),

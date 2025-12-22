@@ -197,62 +197,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     }
   }
 
-  Future<void> _sendTextMessage() async {
-    final text = _textController.text.trim();
-    if (text.isEmpty) return;
-    _textController.clear();
-    await _handleUserMessage(text);
-  }
-
-  Future<void> _createDiaryAndSaveToProvider() async {
-    final openaiService = OpenAIService();
-
-    void log(String msg) => debugPrint('[DIARY_FLOW] $msg');
-
-    try {
-      log('start');
-
-      final userId = ref.read(userIdProvider);
-      log('userId=$userId');
-
-      final callId = const Uuid().v4();
-      log('callId=$callId');
-
-      final messages = ref.read(messageProvider);
-      log('messages=${messages.length}');
-
-      if (userId != null) {
-        log('saving call...');
-        final call = Call(
-          callId: callId,
-          timestamp: DateTime.now(),
-          duration: _currentElapsed,
-          messages: messages,
-        );
-        await ref.read(callRepositoryProvider).saveCall(userId, call);
-        log('call saved');
-      } else {
-        log('userId null - skip call save');
-      }
-
-      log('generating diary...');
-      final diary = await openaiService.generateDiaryFromMessages(
-        messages,
-        callId: callId,
-      );
-      log('diary generated id=${diary.id} imageUrls=${diary.imageUrls.length}');
-
-      log('saving diary to firestore...');
-      await ref.read(diaryRepositoryProvider).saveDiary(userId!, diary);
-      log('diary saved to firestore');
-
-      ref.invalidate(diaryListProvider);
-      log('invalidate done');
-    } catch (e, st) {
-      debugPrint('[DIARY_FLOW][ERROR] $e\n$st');
-    }
-  }
-
   /// ✅ 통화 종료: 마이크 완전 종료 + 세션 종료 플래그
   Future<void> _onCallEnd() async {
     _sessionActive = false;
@@ -298,8 +242,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           children: [
             SvgPicture.asset(
               'asset/icons/call/timer.svg',
-              width: 24,
-              height: 24,
+              width: 22,
+              height: 22,
               colorFilter: const ColorFilter.mode(
                 Color(0x80ffffff),
                 BlendMode.srcIn,
@@ -311,6 +255,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               style: const TextStyle(
                 color: Color(0x80ffffff),
                 fontFamily: 'Alumni',
+                fontSize: 16,
+                fontWeight: FontWeight.w700
               ),
             ),
           ],

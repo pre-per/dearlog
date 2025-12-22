@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:dearlog/app.dart';
 
 class DiaryEditScreen extends ConsumerStatefulWidget {
@@ -56,39 +58,42 @@ class _DiaryEditScreenState extends ConsumerState<DiaryEditScreen> {
             onPressed: _saveEditedDiary,
             child: const Text(
               '수정 완료',
-              style: TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(color: Colors.white, fontSize: 14),
             ),
           ),
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              cursorColor: Colors.white,
-              style: TextStyle(color: Colors.white),
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: '제목',
-                labelStyle: TextStyle(color: Colors.white70),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: TextField(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: Column(
+            children: [
+              TextField(
                 cursorColor: Colors.white,
-                style: TextStyle(color: Colors.white),
-                controller: _contentController,
+                style: TextStyle(color: Colors.white, fontFamily: 'Pretendard'),
+                controller: _titleController,
                 decoration: const InputDecoration(
-                  labelText: '내용',
+                  labelText: '제목',
                   labelStyle: TextStyle(color: Colors.white70),
                 ),
-                maxLines: null,
-                expands: true,
               ),
-            ),
-          ],
+              const SizedBox(height: 20),
+              Expanded(
+                child: TextField(
+                  cursorColor: Colors.white,
+                  style: TextStyle(color: Colors.white, fontFamily: 'Pretendard'),
+                  controller: _contentController,
+                  decoration: const InputDecoration(
+                    labelText: '내용',
+                    labelStyle: TextStyle(color: Colors.white70),
+                  ),
+                  maxLines: null,
+                  expands: true,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -37,7 +37,6 @@ class _DiaryMainScreenState extends ConsumerState<DiaryMainScreen> {
           style: TextStyle(
             color: Colors.white,
             fontSize: 24,
-            fontWeight: FontWeight.w700,
           ),
         ),
         centerTitle: false,
@@ -119,9 +118,9 @@ class _DiaryMainScreenState extends ConsumerState<DiaryMainScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Row(
-                                        children: const [
+                                        children: [
                                           Text(
-                                            '2025년 12월',
+                                            DateFormat('yyyy년 MM월', 'ko_KR').format(DateTime.now()),
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontSize: 20,
@@ -138,13 +137,13 @@ class _DiaryMainScreenState extends ConsumerState<DiaryMainScreen> {
                                       Text(
                                         '총 ${diaries.length}개의 행성이 있어요',
                                         style: TextStyle(
-                                          fontWeight: FontWeight.w600,
                                           fontSize: 16,
-                                          color: Colors.grey,
+                                          color: Colors.grey[400],
                                         ),
                                       ),
                                     ],
                                   ),
+                                  /*
                                   // 보기 변경
                                   Container(
                                     width: 75,
@@ -196,7 +195,7 @@ class _DiaryMainScreenState extends ConsumerState<DiaryMainScreen> {
                                         ),
                                       ],
                                     ),
-                                  ),
+                                  ), */
                                 ],
                               ),
                             ),

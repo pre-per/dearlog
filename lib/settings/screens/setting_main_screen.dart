@@ -91,7 +91,7 @@ class SettingMainScreen extends ConsumerWidget {
                       trailing: Text(
                         '98점',
                         style: TextStyle(
-                          fontSize: 17,
+                          fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                         ),
@@ -115,8 +115,8 @@ class SettingMainScreen extends ConsumerWidget {
                     Text(
                       '내 정보',
                       style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                         color: Colors.grey[400],
                       ),
                     ),
@@ -133,8 +133,8 @@ class SettingMainScreen extends ConsumerWidget {
                     Text(
                       '기타 서비스',
                       style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                         color: Colors.grey[400],
                       ),
                     ),
@@ -221,20 +221,20 @@ class _OpinionGiveMe extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     '디어로그에서의 경험은 어떠셨나요?',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 17, color: Colors.grey[700]),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 3),
                   Text(
                     '솔직한 의견을 들려주세요',
                     style: TextStyle(
                       fontWeight: FontWeight.w500,
-                      fontSize: 15,
+                      fontSize: 14,
                       color: Colors.grey[700],
                     ),
                   ),
                 ],
               ),
-              Icon(IconsaxPlusLinear.edit, size: 35, color: Colors.grey[700],),
+              Icon(IconsaxPlusLinear.edit, size: 35, color: Colors.black,),
             ],
           ),
         ),

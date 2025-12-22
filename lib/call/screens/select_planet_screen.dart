@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:dearlog/app.dart';
 
 class SelectPlanetScreen extends ConsumerWidget {
@@ -25,111 +27,116 @@ class SelectPlanetScreen extends ConsumerWidget {
           const SizedBox(height: 120),
           Image.asset(topImagePath, width: 232, height: 232),
           Spacer(),
-          Container(
-            height: 416,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Color(0x1affffff),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 29,
-                vertical: 24,
-              ),
-              child: Column(
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: const Text(
-                      '    행성의 색상',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+          ClipRRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                height: 416,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Color(0x1affffff),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 29,
+                    vertical: 24,
                   ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(planets.length, (i) {
-                      final isSelected = i == selectedIndex;
-                      return Row(
+                  child: Column(
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: const Text(
+                          '    행성의 색상',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(planets.length, (i) {
+                          final isSelected = i == selectedIndex;
+                          return Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  ref
+                                      .read(selectedPlanetProvider.notifier)
+                                      .state = i;
+                                },
+                                child: PlanetItem(
+                                  label: planets[i],
+                                  isSelected: isSelected,
+                                ),
+                              ),
+                              if (i != planets.length - 1)
+                                const SizedBox(width: 12), // 🔥 마지막 제외하고 간격 12
+                            ],
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 33),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: const Text(
+                          '    행성의 모양',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
                         children: [
-                          GestureDetector(
+                          const SizedBox(width: 15),
+                          _ShapeItem(
+                            label: '원형',
+                            isSelected: selectedShape == PlanetShape.circle,
                             onTap: () {
                               ref
-                                  .read(selectedPlanetProvider.notifier)
-                                  .state = i;
+                                  .read(selectedPlanetShapeProvider.notifier)
+                                  .state = PlanetShape.circle;
                             },
-                            child: PlanetItem(
-                              label: planets[i],
-                              isSelected: isSelected,
+                          ),
+                          const SizedBox(width: 12),
+                          _ShapeItem(
+                            label: '고리형',
+                            isSelected: selectedShape == PlanetShape.ring,
+                            onTap: () {
+                              ref
+                                  .read(selectedPlanetShapeProvider.notifier)
+                                  .state = PlanetShape.ring;
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SelectPlanetDoneScreen())),
+                        child: Container(
+                          width: 327,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: Color(0xff313345),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: const Text('완료', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),),
                             ),
                           ),
-                          if (i != planets.length - 1)
-                            const SizedBox(width: 12), // 🔥 마지막 제외하고 간격 12
-                        ],
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 33),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: const Text(
-                      '    행성의 모양',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      const SizedBox(width: 15),
-                      _ShapeItem(
-                        label: '원형',
-                        isSelected: selectedShape == PlanetShape.circle,
-                        onTap: () {
-                          ref
-                              .read(selectedPlanetShapeProvider.notifier)
-                              .state = PlanetShape.circle;
-                        },
-                      ),
-                      const SizedBox(width: 12),
-                      _ShapeItem(
-                        label: '고리형',
-                        isSelected: selectedShape == PlanetShape.ring,
-                        onTap: () {
-                          ref
-                              .read(selectedPlanetShapeProvider.notifier)
-                              .state = PlanetShape.ring;
-                        },
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SelectPlanetDoneScreen())),
-                    child: Container(
-                      width: 327,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: Color(0xff313345),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: const Text('완료', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

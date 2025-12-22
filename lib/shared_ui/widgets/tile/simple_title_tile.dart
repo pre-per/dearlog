@@ -17,7 +17,7 @@ class SimpleTitleTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.only(top: 15, bottom: 15),
+        padding: const EdgeInsets.only(top: 10, bottom: 10),
         decoration: const BoxDecoration(
           color: Colors.transparent, // 배경색 필요시 변경
         ),
@@ -26,7 +26,7 @@ class SimpleTitleTile extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white),
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
               ),
             ),
             if (trailing != null) trailing!,

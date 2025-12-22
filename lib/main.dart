@@ -5,12 +5,14 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'app.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await RemoteConfigService().initialize();
   await _requestNotificationPermission();
+  await initializeDateFormatting('ko_KR', null);
   runApp(ProviderScope(child: MyApp()));
 }
 
@@ -28,7 +30,7 @@ class MyApp extends StatelessWidget {
           backgroundColor: Colors.transparent,
           titleTextStyle: TextStyle(
             fontSize: 20.0,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
             color: Colors.white,
           ),
         ),
@@ -87,14 +89,14 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 BottomNavigationBarItem(
                   icon: SvgPicture.asset(
                     'asset/icons/navigation/planet.svg',
-                    width: 30,
-                    height: 30,
+                    width: 28,
+                    height: 28,
                     colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
                   ),
                   activeIcon: SvgPicture.asset(
                     'asset/icons/navigation/planet.svg',
-                    width: 30,
-                    height: 30,
+                    width: 28,
+                    height: 28,
                     colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                   ),
                   label: '홈',
@@ -102,14 +104,14 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 BottomNavigationBarItem(
                   icon: SvgPicture.asset(
                     'asset/icons/navigation/moon_stars.svg',
-                    width: 30,
-                    height: 30,
+                    width: 28,
+                    height: 28,
                     colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
                   ),
                   activeIcon: SvgPicture.asset(
                     'asset/icons/navigation/moon_stars.svg',
-                    width: 30,
-                    height: 30,
+                    width: 28,
+                    height: 28,
                     colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                   ),
                   label: '일기장',
@@ -117,14 +119,14 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 BottomNavigationBarItem(
                   icon: SvgPicture.asset(
                     'asset/icons/navigation/analytics.svg',
-                    width: 30,
-                    height: 30,
+                    width: 28,
+                    height: 28,
                     colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
                   ),
                   activeIcon: SvgPicture.asset(
                     'asset/icons/navigation/analytics.svg',
-                    width: 30,
-                    height: 30,
+                    width: 28,
+                    height: 28,
                     colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                   ),
                   label: '분석',
@@ -132,14 +134,14 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 BottomNavigationBarItem(
                   icon: SvgPicture.asset(
                     'asset/icons/navigation/user.svg',
-                    width: 30,
-                    height: 30,
+                    width: 28,
+                    height: 28,
                     colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
                   ),
                   activeIcon: SvgPicture.asset(
                     'asset/icons/navigation/user.svg',
-                    width: 30,
-                    height: 30,
+                    width: 28,
+                    height: 28,
                     colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                   ),
                   label: '마이',

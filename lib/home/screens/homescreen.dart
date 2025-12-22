@@ -1,5 +1,7 @@
 import 'package:dearlog/app.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
+import 'package:intl/intl.dart';
+import 'dart:ui';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -12,7 +14,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final userAsync = ref.watch(userProvider);
-    final diaryAsync = ref.watch(diaryListProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -40,7 +41,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             icon: Icon(
               IconsaxPlusBold.notification,
               color: Colors.white,
-              size: 30,
+              size: 28,
             ),
           ),
           const SizedBox(width: 15),
@@ -60,7 +61,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    '11월 7일 (금)',
+                    DateFormat('MM월 dd일(E)', 'ko_KR').format(DateTime.now()),
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -74,8 +75,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Text(
                     '오늘의 행성을 채워주세요!',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 19,
+                      color: Color(0x9dffffff),
+                      fontSize: 18,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -87,30 +88,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   height: 232,
                 ),
                 const SizedBox(height: 28),
-                Stack(
-                  alignment: Alignment.center, // 말풍선 중앙에 텍스트
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 5),
-                      child: Image.asset(
-                        'asset/image/lang_bubble.png',
-                        width: 350,
-                        height: 55,
-                      ),
-                    ),
-                    Text(
+                Container(
+                  width: 350,
+                  height: 55,
+                  decoration: BoxDecoration(
+                    image: DecorationImage(image: AssetImage('asset/image/lang_bubble.png'))
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 11),
+                    child: Text(
                       '디어로그와 대화하면 행성을 채울 수 있어요',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w500,
                       ),
                       textAlign: TextAlign.center,
                     ),
-                  ],
+                  ),
                 ),
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 19),
                 CallStartIconbutton(),
               ],
             ),

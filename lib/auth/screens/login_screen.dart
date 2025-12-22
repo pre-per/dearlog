@@ -67,7 +67,7 @@ class LoginScreen extends ConsumerWidget {
               child: GestureDetector(
                 onTap: () => _handleGoogleSignIn(context, ref),
                 child: Container(
-                  height: 70,
+                  height: 60,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(40),
                     color: Colors.white
@@ -77,10 +77,10 @@ class LoginScreen extends ConsumerWidget {
                     children: [
                       Image.asset(
                         'asset/image/google_icon.png',
-                        width: 40,
+                        width: 32,
                       ),
                       const SizedBox(width: 10),
-                      const Text('구글로 로그인하기', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 18),)
+                      const Text('구글로 로그인하기', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 16),)
                     ],
                   ),
                 ),

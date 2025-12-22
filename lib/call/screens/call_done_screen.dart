@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:dearlog/app.dart';
 
 class CallDoneScreen extends StatelessWidget {
@@ -19,22 +21,26 @@ class CallDoneScreen extends StatelessWidget {
                 height: 232,
               ),
               const SizedBox(height: 40),
-              Container(
-                width: 327,
-                height: 70,
-                decoration: BoxDecoration(
-                  color: Color(0x1affffff),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Text('대화가 잘 기록되었어요!', style: TextStyle(color: Colors.white, fontSize: 16),),
-                        const Text('이제 오늘의 행성을 같이 채워볼까요?', style: TextStyle(color: Colors.white, fontSize: 16),),
-                      ],
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Color(0x1affffff),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(15),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text('대화가 잘 기록되었어요!', style: TextStyle(color: Colors.white, fontSize: 16),),
+                            const Text('이제 오늘의 행성을 같이 채워볼까요?', style: TextStyle(color: Colors.white, fontSize: 16),),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -43,16 +49,14 @@ class CallDoneScreen extends StatelessWidget {
               GestureDetector(
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SelectPlanetScreen())),
                 child: Container(
-                  width: 327,
-                  height: 56,
                   decoration: BoxDecoration(
                     color: Color(0xff313345),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: const Text('네! 준비됐어요', style: TextStyle(color: Colors.white, fontSize: 16),),
+                      padding: const EdgeInsets.all(15),
+                      child: const Text('네! 준비됐어요', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),),
                     ),
                   ),
                 ),

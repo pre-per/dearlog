@@ -86,7 +86,7 @@ class _IncomingCallBannerState extends State<IncomingCallBanner>
                         widget.callerName,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.w700,
                           decoration: TextDecoration.none,
                         ),
@@ -94,9 +94,10 @@ class _IncomingCallBannerState extends State<IncomingCallBanner>
                       Text(
                         widget.callerSubtitle,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
-                          fontSize: 16,
+                          color: Color(0x9dffffff),
+                          fontSize: 14,
                           decoration: TextDecoration.none,
+                          fontWeight: FontWeight.w500
                         ),
                       ),
                     ],

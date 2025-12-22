@@ -54,9 +54,6 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen> {
       await ref.read(diaryRepositoryProvider).saveDiary(userId!, diary);
       log('diary saved');
 
-      ref.invalidate(diaryListProvider);
-      log('invalidate diary list done');
-
       if (!mounted) return;
 
       // ✅ 완료되면 Done으로 교체 이동
@@ -93,15 +90,13 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen> {
               ),
               const SizedBox(height: 40),
               Container(
-                width: 327,
-                height: 70,
                 decoration: BoxDecoration(
                   color: Color(0x1affffff),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(15),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -114,16 +109,14 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen> {
               ),
               const SizedBox(height: 10),
               Container(
-                width: 327,
-                height: 56,
                 decoration: BoxDecoration(
                   color: Color(0xff313345),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(10),
-                    child: const Text('로딩중...', style: TextStyle(color: Colors.white, fontSize: 16),),
+                    padding: const EdgeInsets.all(15),
+                    child: const Text('로딩중...', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),),
                   ),
                 ),
               ),

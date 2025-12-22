@@ -1,13 +1,11 @@
-import 'package:flutter/material.dart';
-
-import 'login_screen.dart';
+import 'package:dearlog/app.dart';
 
 class AuthErrorScreen extends StatelessWidget {
   const AuthErrorScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BaseScaffold(
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),

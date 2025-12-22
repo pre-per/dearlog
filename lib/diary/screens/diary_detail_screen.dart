@@ -149,11 +149,11 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: SvgPicture.asset('asset/icons/basic/pencil.svg'),
+            icon: SvgPicture.asset('asset/icons/basic/pencil.svg', colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn)),
             onPressed: _navigateToEdit,
           ),
           IconButton(
-            icon: SvgPicture.asset('asset/icons/basic/trashcan.svg'),
+            icon: SvgPicture.asset('asset/icons/basic/trashcan.svg', colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn)),
             onPressed: () async {
               final ok = await showDeleteConfirmDialog(context);
               if (!ok) return;
@@ -174,7 +174,7 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         child: SizedBox.expand(
           child: Stack(
             children: [
@@ -190,22 +190,29 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
               ),
               Positioned(
                 top: 50,
-                left: 110,
-                right: 110,
-                child: Container(
-                  width: 150,
-                  height: 45,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: Colors.grey,
-                  ),
-                  child: Center(
-                    child: Text(
-                      DateFormat('yyyy년 MM월 dd일').format(_diary.date),
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
+                left: 100,
+                right: 100,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 7, sigmaY: 7),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: Color(0x1d0f0f0f),
+                      ),
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Text(
+                            DateFormat('yyyy년 MM월 dd일(E)', 'ko_KR').format(_diary.date),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -215,7 +222,7 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 15),
                 child: ListView(
                   children: [
-                    const SizedBox(height: 100),
+                    const SizedBox(height: 120),
                     _paperCard(_diary),
                     const SizedBox(height: 20),
                     _imageCards(_diary.imageUrls),
@@ -229,23 +236,29 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
                           ),
                         );
                       },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          color: Color(0x1dffffff),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 20,
-                          horizontal: 20,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '대화 확인하기',
-                            style: TextStyle(fontSize: 16),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              color: Color(0x1dffffff),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 15,
+                            ),
+                            child: Center(
+                              child: Text(
+                                '대화 확인하기',
+                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
@@ -284,16 +297,17 @@ Widget _paperCard(DiaryEntry diary) {
                   fontSize: 18,
                   height: 1.6,
                   color: Colors.black87,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 12),
               Text(
                 diary.content,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 14.5,
                   height: 1.6,
-                  color: Colors.black87,
+                  color: Colors.black,
+                  fontFamily: 'Pretendard',
                 ),
               ),
               const SizedBox(height: 20),
@@ -301,7 +315,7 @@ Widget _paperCard(DiaryEntry diary) {
                 'asset/image/horizontal_line.png',
                 width: double.infinity,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
@@ -313,7 +327,7 @@ Widget _paperCard(DiaryEntry diary) {
                 ),
                 child: Text(
                   diary.emotion,
-                  style: const TextStyle(fontSize: 16, color: Colors.black87),
+                  style: const TextStyle(fontSize: 14, color: Colors.black),
                 ),
               ),
             ],
@@ -329,7 +343,7 @@ Widget _imageCards(List<String> imageUrls) {
     children:
         imageUrls.map((url) {
           return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(5),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: Image.network(
