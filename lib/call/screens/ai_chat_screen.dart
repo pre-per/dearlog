@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:dearlog/call/services/tts_service.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:uuid/uuid.dart';
 import 'package:dearlog/app.dart';
 
 class AiChatScreen extends ConsumerStatefulWidget {
@@ -68,14 +67,13 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     _timer?.cancel();
     _timer = null;
 
-    // ✅ 화면 나갈 때 마이크 확실히 종료(연속 재시작 OFF 포함)
-    ref.read(speechNotifierProvider.notifier).shutdown(); // best-effort
-
     _scrollController.dispose();
     _textController.dispose();
     _tts.dispose();
+
     super.dispose();
   }
+
 
   /// ✅ 연속 듣기 안전 시작 (조건/중복 방지)
   Future<void> _startListeningSafely() async {

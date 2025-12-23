@@ -1,7 +1,6 @@
 import 'package:dearlog/app.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
-import 'dart:ui';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});

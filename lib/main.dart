@@ -48,7 +48,12 @@ class MyApp extends StatelessWidget {
 }
 
 class MainScreen extends ConsumerStatefulWidget {
-  const MainScreen({super.key});
+  final String? snackMessage;
+
+  const MainScreen({
+    super.key,
+    this.snackMessage,
+  });
 
   @override
   ConsumerState<MainScreen> createState() => _MainScreenState();
@@ -61,6 +66,37 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     AnalyticsMainScreen(),
     SettingMainScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final msg = widget.snackMessage;
+      if (msg == null) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            msg,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              color: Colors.white,
+            ),
+          ),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          backgroundColor: Colors.grey[600],
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

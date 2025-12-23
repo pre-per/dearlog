@@ -19,6 +19,7 @@ class _DiaryMainScreenState extends ConsumerState<DiaryMainScreen> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
       _scrollController.jumpTo(
         _scrollController.position.maxScrollExtent,
       );

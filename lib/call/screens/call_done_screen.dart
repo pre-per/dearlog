@@ -3,11 +3,38 @@ import 'dart:ui';
 import 'package:dearlog/app.dart';
 
 class CallDoneScreen extends StatelessWidget {
-  const CallDoneScreen({super.key});
+  final DiaryEntry diary;
+  const CallDoneScreen({super.key, required this.diary});
 
   @override
   Widget build(BuildContext context) {
+
     return BaseScaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        actions: [
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => MainScreen()),
+                    (route) => false,
+              );
+            },
+            child: SizedBox(
+              height: 30,
+              child: Text(
+                '홈으로',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Center(
@@ -16,7 +43,7 @@ class CallDoneScreen extends StatelessWidget {
             children: [
               const SizedBox(height: 200),
               Image.asset(
-                'asset/image/moon_images/grey_moon.png',
+                'asset/image/moon_images/${planetBaseNameMap[diary.emotion] ?? 'grey_moon'}.png',
                 width: 232,
                 height: 232,
               ),
@@ -37,7 +64,7 @@ class CallDoneScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             const Text('대화가 잘 기록되었어요!', style: TextStyle(color: Colors.white, fontSize: 16),),
-                            const Text('이제 오늘의 행성을 같이 채워볼까요?', style: TextStyle(color: Colors.white, fontSize: 16),),
+                            const Text('이제 오늘의 일기를 같이 확인해볼까요?', style: TextStyle(color: Colors.white, fontSize: 16),),
                           ],
                         ),
                       ),
@@ -47,7 +74,17 @@ class CallDoneScreen extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               GestureDetector(
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SelectPlanetScreen())),
+                onTap: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => MainScreen()),
+                        (route) => false, // 🔥 모든 기존 라우트 제거
+                  );
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => DiaryDetailScreen(diary: diary),
+                    ),
+                  );
+                },
                 child: Container(
                   decoration: BoxDecoration(
                     color: Color(0xff313345),
@@ -56,7 +93,7 @@ class CallDoneScreen extends StatelessWidget {
                   child: Center(
                     child: Padding(
                       padding: const EdgeInsets.all(15),
-                      child: const Text('네! 준비됐어요', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),),
+                      child: const Text('오늘의 일기 확인하기', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),),
                     ),
                   ),
                 ),

@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:dearlog/app.dart';
 import 'package:uuid/uuid.dart';
 
@@ -54,21 +56,26 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen> {
       await ref.read(diaryRepositoryProvider).saveDiary(userId!, diary);
       log('diary saved');
 
+      ref.invalidate(latestDiaryProvider);
+
       if (!mounted) return;
 
       // ✅ 완료되면 Done으로 교체 이동
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => CallDoneScreen()),
+        MaterialPageRoute(builder: (_) => CallDoneScreen(diary: diary,)),
       );
     } catch (e, st) {
       debugPrint('[CALL_LOADING][ERROR] $e\n$st');
 
       if (!mounted) return;
 
-      // 실패 시: 최소한 Done으로 가거나, 에러 UI 제공
-      // 여기서는 간단히 Done으로 보냄(원하면 에러 화면 만들어도 됨)
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => CallDoneScreen()),
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => MainScreen(
+            snackMessage: '일기 생성에 실패했어요. 잠시 후 다시 시도해 주세요.',
+          ),
+        ),
+            (route) => false,
       );
     }
   }
@@ -89,37 +96,31 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen> {
                 height: 232,
               ),
               const SizedBox(height: 40),
-              Container(
-                decoration: BoxDecoration(
-                  color: Color(0x1affffff),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(15),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Text('일기 생성 중...', style: TextStyle(color: Colors.white, fontSize: 16),),
-                        const Text('잠시만 기다려주세요...', style: TextStyle(color: Colors.white, fontSize: 16),),
-                      ],
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Color(0x1affffff),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(15),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text('일기 생성 중', style: TextStyle(color: Colors.white, fontSize: 16),),
+                            const Text('잠시만 기다려주세요', style: TextStyle(color: Colors.white, fontSize: 16),),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
               const SizedBox(height: 10),
-              Container(
-                decoration: BoxDecoration(
-                  color: Color(0xff313345),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(15),
-                    child: const Text('로딩중...', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),),
-                  ),
-                ),
-              ),
             ],
           ),
         ),

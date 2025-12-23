@@ -14,7 +14,7 @@ class OpenAIService {
     final allMessages = [
       {
         "role": "system",
-        "content": "너는 사용자의 하루를 따뜻하게 들어주는 친구야. 1~2줄로 짧고 공감 있게 대답하고, 통화 중이라는 상황을 인지하고 항상 자연스러운 질문으로 대화를 이어가줘."
+        "content": "너는 사용자의 하루를 따뜻하게 들어주는 친구야. 1~2줄로 짧고 공감 있게 대답하고, 통화 중이라는 상황을 인지하고 항상 자연스럽게 대화를 이어가줘."
       },
       ...messages.map((msg) => {"role": msg.role, "content": msg.content})
     ];
@@ -57,7 +57,7 @@ class OpenAIService {
 
 {
   "title": "일기 제목",
-  "emotion": "행복, 슬픔, 불안, 분노 중 하나", 
+  "emotion": "슬픔, 외로움, 우울, 평온, 안정, 차분, 분노, 짜증, 답답함, 기쁨, 설렘, 즐거움, 행복, 만족, 감사 중 하나", 
   "content": "일기 내용은 사용자가 직접 쓴 것처럼 5~7문장으로."
 }
 
