@@ -35,6 +35,7 @@ final filteredDiaryListProvider = Provider<AsyncValue<List<DiaryEntry>>>((ref) {
         title: title ?? '',
         content: content ?? '',
         date: date,
+        emotion: e.emotion
       );
     }).toList();
   });

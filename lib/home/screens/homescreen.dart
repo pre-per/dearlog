@@ -94,7 +94,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     image: DecorationImage(image: AssetImage('asset/image/lang_bubble.png'))
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 11),
+                    padding: const EdgeInsets.only(top: 13),
                     child: Text(
                       '디어로그와 대화하면 행성을 채울 수 있어요',
                       style: const TextStyle(

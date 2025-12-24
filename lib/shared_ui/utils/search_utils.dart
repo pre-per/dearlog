@@ -48,12 +48,12 @@ List<String> buildDateTokens(DateTime dt) {
   ];
 }
 
-/// 엔트리 매칭 로직 (본문/제목/초성/날짜)
 bool entryMatchesQuery({
   required String queryRaw,
   required String title,
   required String content,
-  required DateTime? date, // ⬅️ DiaryEntry의 DateTime 바로 전달
+  required DateTime? date,
+  String? emotion, // ✅ 추가
 }) {
   final q = normalizeForSearch(queryRaw);
   if (q.isEmpty) return true;
@@ -63,17 +63,22 @@ bool entryMatchesQuery({
   final normContent = normalizeForSearch(content);
   final normalMatch = normTitle.contains(q) || normContent.contains(q);
 
+  // ✅ 감정 문자열 매칭 추가
+  final normEmotion = normalizeForSearch(emotion ?? '');
+  final emotionMatch = normEmotion.isNotEmpty && normEmotion.contains(q);
+
   // 2) 초성 매칭
   final choTitle   = normalizeForSearch(toChoseong(title));
   final choContent = normalizeForSearch(toChoseong(content));
   final chosungMatch = choTitle.contains(q) || choContent.contains(q);
 
-  // 3) 날짜 매칭 (DateTime 확정)
+  // 3) 날짜 매칭
   bool dateMatch = false;
   if (date != null) {
     final tokens = buildDateTokens(date).map(normalizeForSearch);
     dateMatch = tokens.any((t) => t.contains(q) || q.contains(t));
   }
 
-  return normalMatch || chosungMatch || dateMatch;
+  return normalMatch || emotionMatch || chosungMatch || dateMatch;
 }
+

@@ -15,13 +15,14 @@ class SearchBarUI extends ConsumerWidget {
         width: double.infinity,
         height: 50,
         decoration: BoxDecoration(
-          color: Colors.grey[200],
+          color: Colors.grey[800],
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white.withOpacity(0.12))
         ),
         child: Row(
           children: [
             const SizedBox(width: 12),
-            Icon(Icons.search, size: 25, color: Colors.grey[600]),
+            Icon(Icons.search, size: 25, color: Colors.grey[400]),
             const SizedBox(width: 12),
             Expanded(
               child: TextField(
@@ -32,13 +33,18 @@ class SearchBarUI extends ConsumerWidget {
                 onChanged: (v) =>
                 ref.read(searchQueryProvider.notifier).state = v,
                 decoration: InputDecoration(
-                  hintText: '검색어를 입력해 일기를 찾아보세요',
+                  hintText: '제목, 내용, 날짜, 감정 등 검색',
                   border: InputBorder.none,
                   hintStyle: TextStyle(
                     fontSize: 16,
-                    color: Colors.grey[700],
+                    color: Colors.grey[400],
                     fontWeight: FontWeight.w600,
                   ),
+                ),
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[100],
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),

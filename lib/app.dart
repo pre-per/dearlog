@@ -61,6 +61,7 @@ export 'diary/repository/diary_repository.dart';
 export 'diary/screens/diary_detail_screen.dart';
 export 'diary/screens/diary_edit_screen.dart';
 export 'diary/screens/diary_main_screen.dart';
+export 'diary/screens/diary_search_screen.dart';
 export 'diary/sections/index.dart';
 export 'diary/sections/storybook_section_diary.dart';
 

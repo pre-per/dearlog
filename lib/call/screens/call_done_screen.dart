@@ -41,7 +41,7 @@ class CallDoneScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const SizedBox(height: 200),
+              const SizedBox(height: 100),
               Image.asset(
                 'asset/image/moon_images/${planetBaseNameMap[diary.emotion] ?? 'grey_moon'}.png',
                 width: 232,
