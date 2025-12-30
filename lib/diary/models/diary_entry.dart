@@ -1,11 +1,15 @@
+import 'package:dearlog/app.dart';
+
 class DiaryEntry {
-  final String id; // 고유 ID (UUID 권장)
-  final DateTime date; // 일기 날짜 (사용자가 선택한 날짜)
+  final String id;
+  final DateTime date;
   final String title;
   final String content;
-  final String emotion; // "happy", "sad", "angry" 등 감정 코드
-  final List<String> imageUrls; // 이미지 경로 (클라우드 저장소 경로 등)
-  final String? callId; // 연관된 통화 ID (있을 경우)
+  final String emotion;
+  final List<String> imageUrls;
+  final String? callId;
+
+  final DiaryAnalysis? analysis; // ✅ 추가
 
   DiaryEntry({
     required this.id,
@@ -15,9 +19,9 @@ class DiaryEntry {
     required this.emotion,
     required this.imageUrls,
     this.callId,
+    this.analysis, // ✅
   });
 
-  /// ✅ copyWith
   DiaryEntry copyWith({
     String? id,
     DateTime? date,
@@ -26,6 +30,7 @@ class DiaryEntry {
     String? emotion,
     List<String>? imageUrls,
     String? callId,
+    DiaryAnalysis? analysis, // ✅
   }) {
     return DiaryEntry(
       id: id ?? this.id,
@@ -35,6 +40,7 @@ class DiaryEntry {
       emotion: emotion ?? this.emotion,
       imageUrls: imageUrls ?? List<String>.from(this.imageUrls),
       callId: callId ?? this.callId,
+      analysis: analysis ?? this.analysis,
     );
   }
 
@@ -47,6 +53,9 @@ class DiaryEntry {
       emotion: json['emotion'],
       imageUrls: List<String>.from(json['imageUrls']),
       callId: json['callId'],
+      analysis: json['analysis'] != null
+          ? DiaryAnalysis.fromJson(Map<String, dynamic>.from(json['analysis']))
+          : null,
     );
   }
 
@@ -59,6 +68,7 @@ class DiaryEntry {
       'emotion': emotion,
       'imageUrls': imageUrls,
       if (callId != null) 'callId': callId,
+      if (analysis != null) 'analysis': analysis!.toJson(), // ✅
     };
   }
 }

@@ -1,9 +1,6 @@
-import '../../call/models/conversation/chat_response.dart';
-import '../../call/models/conversation/message.dart';
-import '../../core/config/remote_config_service.dart';
-import '../../diary/models/diary_entry.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:dearlog/app.dart';
 
 class OpenAIService {
   final _apiKey = RemoteConfigService().openAIApiKey;
@@ -121,7 +118,7 @@ JSON 외의 말은 하지 마.
     final imageUrl = jsonDecode(imageResponse.body)['data'][0]['url'];
 
     // 최종 DiaryEntry 반환
-    return DiaryEntry(
+    final diary = DiaryEntry(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       date: DateTime.now(),
       title: diaryJson['title'],
@@ -130,5 +127,83 @@ JSON 외의 말은 하지 마.
       imageUrls: [imageUrl],
       callId: callId,
     );
+
+    final analysis = await generateAnalysisFromDiary(diary);
+
+    return diary.copyWith(analysis: analysis);
+  }
+}
+
+
+extension OpenAIAnalysis on OpenAIService {
+  Future<DiaryAnalysis> generateAnalysisFromDiary(DiaryEntry diary) async {
+    final promptMessages = [
+      {
+        "role": "system",
+        "content": '''
+너는 감정 분석 리포트 생성기야.
+아래 일기 내용을 바탕으로 "오늘의 감정 분석"을 JSON으로만 출력해.
+
+반드시 아래 스키마를 지켜:
+{
+  "summary": "한 줄 요약(공감 톤)",
+  "moodScore": 0~100 정수 (낮을수록 힘듦),
+  "valence": "positive" | "neutral" | "negative",
+  "emotions": [
+    {"name":"감정명", "score":0~100, "keywords_emotion":["키워드","키워드"]},
+    ... (최대 3개)
+  ],
+  "evidence": [
+    {"quote":"일기에서 근거 문장 일부", "why":"어떤 감정 근거인지"},
+    ... (최대 3개)
+  ],
+  "recommendations": [
+    {"title":"행동 제안 제목", "minutes":3|10|20|30, "steps":["단계1","단계2"]},
+    ... (정확히 3개)
+  ],
+  "riskLevel": "low" | "medium" | "high",
+  "mainWords": ["핵심어1","핵심어2","핵심어3"],
+}
+
+mainWords 규칙:
+- 반드시 3개
+- 2~6글자의 명사/명사구 위주
+- '하루','오늘','아침','저녁','시간','일상','보냈다','생각','느낌' 같은 일반어/서술어 금지
+- 주제 단어를 우선: 일정/마감/공부/시험/관계/가족/친구/수면/건강/운동/돈/소비 등
+- 일기 내용을 바탕으로 핵심어를 추출할 것
+
+주의:
+- 진단/의료 판단처럼 말하지 마.
+- riskLevel이 medium/high면 recommendations 중 하나는 '도움을 요청하기' 관련으로.
+- JSON 외 텍스트 금지.
+'''
+      },
+      {
+        "role": "user",
+        "content": "일기 제목: ${diary.title}\n감정 라벨: ${diary.emotion}\n일기 내용:\n${diary.content}"
+      }
+    ];
+
+    final res = await http.post(
+      Uri.parse('https://api.openai.com/v1/chat/completions'),
+      headers: {
+        'Authorization': 'Bearer $_apiKey',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        "model": "gpt-4.1-mini",
+        "messages": promptMessages,
+        "max_tokens": 10000,
+        "temperature": 0.4,
+      }),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('분석 생성 실패: ${res.body}');
+    }
+
+    final content = jsonDecode(res.body)['choices'][0]['message']['content'];
+    final jsonMap = jsonDecode(content);
+    return DiaryAnalysis.fromJson(Map<String, dynamic>.from(jsonMap));
   }
 }

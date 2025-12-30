@@ -39,7 +39,7 @@ class MyApp extends StatelessWidget {
           backgroundColor: Colors.white,
         ),
         bottomAppBarTheme: BottomAppBarTheme(color: Colors.grey[50]),
-        fontFamily: 'Alumni',
+        fontFamily: 'GowunBatang',
         brightness: Brightness.dark,
       ),
       home: SplashScreen(),
@@ -63,7 +63,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   final List<Widget> _screens = [
     HomeScreen(),
     DiaryMainScreen(),
-    AnalyticsMainScreen(),
+    AnalysisScreen(),
     SettingMainScreen(),
   ];
 

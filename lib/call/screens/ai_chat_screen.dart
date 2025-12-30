@@ -15,6 +15,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   final _textController = TextEditingController();
   final TtsService _tts = TtsService();
   bool _isSpeaking = false;
+  final FocusNode _inputFocus = FocusNode();
+  bool _sending = false; // 중복 전송 방지용(선택)
 
   // ✅ 통화 세션 상태 (종료 후 재청취 금지)
   bool _sessionActive = true;
@@ -63,6 +65,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   @override
   void dispose() {
     _sessionActive = false;
+    _inputFocus.dispose();
 
     _timer?.cancel();
     _timer = null;
@@ -74,7 +77,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     super.dispose();
   }
 
-
   /// ✅ 연속 듣기 안전 시작 (조건/중복 방지)
   Future<void> _startListeningSafely() async {
     if (!_sessionActive || _isPaused || _isTextMode) return;
@@ -84,73 +86,77 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     try {
       final speech = ref.read(speechNotifierProvider.notifier);
       speech.enableContinuous(); // ✅ 연속 모드 ON
-      await speech.startListening(_handleUserMessage);
+      await speech.startListening(_sendText);
     } finally {
       _startingListening = false;
     }
   }
 
   void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!_scrollController.hasClients) return;
+
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+
+      // ✅ 레이아웃/키보드 변화로 maxScrollExtent가 또 바뀌는 경우 대비
+      await Future.delayed(const Duration(milliseconds: 60));
+      if (!_scrollController.hasClients) return;
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
     });
   }
 
-  /// ✅ 사용자 메시지 처리: 여기서는 "재청취"를 직접 하지 않는다.
-  /// (연속 재시작은 speech_provider의 onStatus가 담당)
-  Future<void> _handleUserMessage(String text) async {
+
+  Future<void> _sendText(String text) async {
     if (!_sessionActive) return;
+    if (_sending) return;
 
     final cleaned = text.trim();
     if (cleaned.isEmpty) return;
 
-    // 사용자가 말하는 동안/후 AI 처리 들어갈 때는 듣기 정리
-    final speech = ref.read(speechNotifierProvider.notifier);
-    speech.disableContinuous();
-    await speech.stopListening();
+    _sending = true;
+    try {
+      // 음성 모드였다면 안전하게 정리 (텍스트모드에서도 shutdown 되어있어서 문제 없음)
+      final speech = ref.read(speechNotifierProvider.notifier);
+      speech.disableContinuous();
+      await speech.stopListening();
 
-    final notifier = ref.read(messageProvider.notifier);
-    notifier.addUserMessage(cleaned);
+      final notifier = ref.read(messageProvider.notifier);
+      notifier.addUserMessage(cleaned);
+      _scrollToBottom();
 
-    // AI 응답 받기
-    await notifier.getAssistantResponse();
-    _scrollToBottom();
+      await notifier.getAssistantResponse();
+      _scrollToBottom();
 
-    // ✅ 마지막 assistant 메시지 텍스트 추출
-    final messages = ref.read(messageProvider);
-    final lastAssistant = messages.lastWhere(
-          (m) => m.role == 'assistant',
-      orElse: () => messages.last,
-    );
-    final reply = lastAssistant.content.trim();
+      final messages = ref.read(messageProvider);
+      final lastAssistant = messages.lastWhere(
+        (m) => m.role == 'assistant' && m.content != '__loading__',
+        orElse: () => messages.last,
+      );
+      final reply = lastAssistant.content.trim();
 
-    // ✅ TTS로 말하기
-    if (reply.isNotEmpty && _sessionActive && !_isPaused && !_isTextMode) {
-      _isSpeaking = true;
-      try {
-        await _tts.speakAndWait(reply);
-
-        // flutter_tts는 speak()가 "바로 반환"되는 설정/플랫폼도 있어.
-        // 그래서 완전 정확히 말끝까지 기다리려면 completion handler를 쓰는 편이 좋다.
-        // 일단은 간단하게 "짧은 딜레이 + 재청취"로 시작 가능:
-        await Future.delayed(const Duration(milliseconds: 300));
-      } finally {
-        _isSpeaking = false;
+      // 텍스트 모드에서도 TTS를 할지 여부는 선택
+      if (reply.isNotEmpty && _sessionActive && !_isPaused && !_isTextMode) {
+        _isSpeaking = true;
+        try {
+          await _tts.speakAndWait(reply);
+          await Future.delayed(const Duration(milliseconds: 300));
+        } finally {
+          _isSpeaking = false;
+        }
       }
-    }
 
-    // ✅ 말 끝나면 다시 듣기 재개
-    if (_sessionActive && !_isPaused && !_isTextMode) {
-      await _startListeningSafely(); // 너가 이전에 만든 안전 시작 함수
+      // 음성 모드라면 다시 듣기 재개
+      if (_sessionActive && !_isPaused && !_isTextMode) {
+        await _startListeningSafely();
+      }
+    } finally {
+      _sending = false;
     }
   }
-
 
   /// ⏯ 통화 멈추기/다시 시작
   Future<void> _onPauseToggle() async {
@@ -178,20 +184,28 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     }
   }
 
-  /// ✍️ 글로 작성하기 토글 (타이머는 그대로, 음성만 제어)
   Future<void> _onTextToggle() async {
     final speech = ref.read(speechNotifierProvider.notifier);
 
-    setState(() => _isTextMode = !_isTextMode);
+    // 텍스트 모드로 전환
+    if (!_isTextMode) {
+      setState(() => _isTextMode = true);
 
-    if (_isTextMode) {
-      // ✅ 텍스트 모드 진입: 마이크 완전 종료
+      // 음성 완전 종료
       await speech.shutdown();
-    } else {
-      // ✅ 텍스트 모드 종료: 일시정지가 아니면 다시 듣기 시작
-      if (!_isPaused) {
-        await _startListeningSafely();
-      }
+
+      if (!mounted) return;
+      // 키보드 올리기
+      _inputFocus.requestFocus();
+      return;
+    }
+
+    // 텍스트 모드 종료 -> 음성 모드 복귀
+    FocusScope.of(context).unfocus();
+    setState(() => _isTextMode = false);
+
+    if (!_isPaused) {
+      await _startListeningSafely();
     }
   }
 
@@ -209,19 +223,17 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => CallLoadingScreen(
-          elapsed: _currentElapsed, // 필요하면 넘기고
-        ),
+        builder:
+            (_) => CallLoadingScreen(
+              elapsed: _currentElapsed, // 필요하면 넘기고
+            ),
       ),
     );
   }
 
-
   String _formatDuration(Duration duration) {
-    final minutes =
-    duration.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds =
-    duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
   }
 
@@ -254,7 +266,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                 color: Color(0x80ffffff),
                 fontFamily: 'Alumni',
                 fontSize: 16,
-                fontWeight: FontWeight.w700
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
@@ -262,50 +274,78 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
-      body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                itemCount: messages.length,
-                itemBuilder: (context, index) =>
-                    MessageBubble(message: messages[index]),
-              ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)..copyWith(bottom: _bottomAreaHeight(context)),
+              itemCount: messages.length,
+              itemBuilder:
+                  (context, index) => MessageBubble(message: messages[index]),
             ),
+          ),
+          SizedBox(height: _bottomAreaHeight(context) + MediaQuery.of(context).viewInsets.bottom),
+        ],
+      ),
+      bottomNavigationBar: AnimatedPadding(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ✅ 텍스트모드면 입력바, 아니면 마이크 패널
+              if (_isTextMode)
+                _TextInputBar(
+                  controller: _textController,
+                  focusNode: _inputFocus,
+                  onSend: (v) async {
+                    await _sendText(v);
+                    _textController.clear();
+                  },
+                  onClose: _onTextToggle,
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+                  child: _MicStatusPanel(
+                    isSessionActive: _sessionActive,
+                    isPaused: _isPaused,
+                    isTextMode: _isTextMode,
+                    isSpeaking: _isSpeaking,
+                    isRecording: speechState.isRecording,
+                    liveText: speechState.currentText,
+                  ),
+                ),
 
-// ✅ 여기부터: 마이크 상태/실시간 텍스트 표시 영역
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
-              child: _MicStatusPanel(
-                isSessionActive: _sessionActive,
-                isPaused: _isPaused,
-                isTextMode: _isTextMode,
-                isSpeaking: _isSpeaking,
-                isRecording: speechState.isRecording,
-                liveText: speechState.currentText,
+              SizedBox(
+                height: 150,
+                width: double.infinity,
+                child: CallFuncIsland(
+                  onPauseToggle: _onPauseToggle,
+                  onTextToggle: _onTextToggle,
+                  onCallEnd: _onCallEnd,
+                  isTextMode: _isTextMode,
+                  isPaused: _isPaused,
+                ),
               ),
-            ),
-
-            SizedBox(
-              height: 150,
-              width: double.infinity,
-              child: CallFuncIsland(
-                onPauseToggle: _onPauseToggle,
-                onTextToggle: _onTextToggle,
-                onCallEnd: _onCallEnd,
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-          ],
+              const SizedBox(height: 12),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  double _bottomAreaHeight(BuildContext context) {
+    // 대충 값: CallFuncIsland(150) + 여백(12) + MicPanel(~90) or InputBar(~64)
+    final extra = _isTextMode ? 80.0 : 120.0;
+    return 150 + 12 + extra + MediaQuery.of(context).padding.bottom;
   }
 }
 
@@ -340,21 +380,22 @@ class _MicStatusPanel extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final titleText = showSpeaking
-        ? 'AI가 말하는 중...'
-        : (isRecording ? '말씀하세요...' : '마이크 준비 중...');
+    final titleText =
+        showSpeaking
+            ? 'AI가 말하는 중...'
+            : (isRecording ? '말씀하세요...' : '마이크 준비 중...');
 
-    final guideText = showSpeaking
-        ? '말이 끝나면 자동으로 다시 들을게요.'
-        : (isRecording ? '지금 말한 내용이 아래에 실시간으로 표시돼요.' : '잠시만 기다려 주세요.');
+    final guideText =
+        showSpeaking
+            ? '말이 끝나면 자동으로 다시 들을게요.'
+            : (isRecording ? '지금 말한 내용이 아래에 실시간으로 표시돼요.' : '잠시만 기다려 주세요.');
 
-    final displayText = liveText.trim().isEmpty
-        ? (showSpeaking ? '' : '…')
-        : liveText.trim();
+    final displayText =
+        liveText.trim().isEmpty ? (showSpeaking ? '' : '…') : liveText.trim();
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0x1AFFFFFF), // 투명 흰색
         borderRadius: BorderRadius.circular(18),
@@ -366,9 +407,7 @@ class _MicStatusPanel extends StatelessWidget {
           // 상단 타이틀 + 상태 점
           Row(
             children: [
-              _StatusDot(
-                active: showSpeaking ? true : isRecording,
-              ),
+              _StatusDot(active: showSpeaking ? true : isRecording),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -382,15 +421,16 @@ class _MicStatusPanel extends StatelessWidget {
               ),
               // 오른쪽 작은 라벨
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0x14FFFFFF),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  showSpeaking
-                      ? 'TTS'
-                      : (isRecording ? 'REC' : 'WAIT'),
+                  showSpeaking ? 'TTS' : (isRecording ? 'REC' : 'WAIT'),
                   style: const TextStyle(
                     color: Color(0xCCFFFFFF),
                     fontSize: 12,
@@ -401,14 +441,11 @@ class _MicStatusPanel extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
 
           Text(
             guideText,
-            style: const TextStyle(
-              color: Color(0xB3FFFFFF),
-              fontSize: 12,
-            ),
+            style: const TextStyle(color: Color(0xB3FFFFFF), fontSize: 12),
           ),
           const SizedBox(height: 10),
 
@@ -416,7 +453,7 @@ class _MicStatusPanel extends StatelessWidget {
           if (!showSpeaking)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0x12FFFFFF),
                 borderRadius: BorderRadius.circular(14),
@@ -440,6 +477,7 @@ class _MicStatusPanel extends StatelessWidget {
 
 class _StatusDot extends StatelessWidget {
   final bool active;
+
   const _StatusDot({required this.active});
 
   @override
@@ -451,6 +489,89 @@ class _StatusDot extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: active ? const Color(0xFFFFFFFF) : const Color(0x66FFFFFF),
+      ),
+    );
+  }
+}
+
+class _TextInputBar extends StatelessWidget {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final Future<void> Function(String) onSend;
+  final VoidCallback onClose;
+
+  const _TextInputBar({
+    required this.controller,
+    required this.focusNode,
+    required this.onSend,
+    required this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0x1AFFFFFF),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0x22FFFFFF)),
+        ),
+        child: Row(
+          children: [
+            // 닫기(입력 종료) 버튼
+            GestureDetector(
+              onTap: onClose,
+              child: const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Icon(Icons.close, color: Color(0xCCFFFFFF), size: 20),
+              ),
+            ),
+            const SizedBox(width: 6),
+
+            Expanded(
+              child: TextField(
+                controller: controller,
+                focusNode: focusNode,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (v) async {
+                  await onSend(v);
+                },
+                style: const TextStyle(color: Color(0xE6FFFFFF), fontSize: 14),
+                decoration: const InputDecoration(
+                  hintText: '키보드로 입력해 보세요…',
+                  hintStyle: TextStyle(color: Color(0x80FFFFFF)),
+                  border: InputBorder.none,
+                  isDense: true,
+                ),
+              ),
+            ),
+
+            GestureDetector(
+              onTap: () async {
+                await onSend(controller.text);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0x26FFFFFF),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Text(
+                  '전송',
+                  style: TextStyle(
+                    color: Color(0xE6FFFFFF),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

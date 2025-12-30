@@ -52,12 +52,12 @@ class _DiaryMainScreenState extends ConsumerState<DiaryMainScreen> {
                     (_viewMode == DiaryViewMode.planets)
                         ? 'asset/icons/basic/calendar.svg'
                         : 'asset/icons/navigation/planet.svg',
-                    height: 20,
+                    height: 18,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     (_viewMode == DiaryViewMode.planets) ? '캘린더 보기' : '행성 보기',
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    style: const TextStyle(color: Colors.white, fontSize: 15, fontFamily: 'GowunBatang'),
                   ),
                 ],
               ),
@@ -213,8 +213,8 @@ class _DiaryCalendarViewState extends State<DiaryCalendarView> {
                 monthTitle,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               Row(
@@ -247,12 +247,12 @@ class _DiaryCalendarViewState extends State<DiaryCalendarView> {
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 2),
           Text(
             '총 $totalCount개의 행성이 있어요',
-            style: TextStyle(fontSize: 16, color: Colors.grey[400]),
+            style: TextStyle(fontSize: 16, color: Colors.grey[300]),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 22),
 
           // 요일 헤더
           Row(
@@ -548,9 +548,8 @@ class _PlanetCard extends StatelessWidget {
                 child: Text(
                   DateFormat('MM/dd').format(diary.date),
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     color: Colors.white,
-                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),

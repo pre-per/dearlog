@@ -3,16 +3,14 @@ import '../../app/di/providers.dart';
 import '../../call/models/conversation/message.dart';
 
 final messageProvider = StateNotifierProvider<MessageNotifier, List<Message>>(
-      (ref) => MessageNotifier(ref)..init(),
+      (ref) => MessageNotifier(ref),
 );
 
 class MessageNotifier extends StateNotifier<List<Message>> {
   final Ref ref;
-  MessageNotifier(this.ref) : super(const []);
 
-  void init() {
-    state = [Message(role: 'assistant', content: '여보세요? 오늘 하루는 어땠어?')];
-  }
+  MessageNotifier(this.ref)
+      : super([Message(role: 'assistant', content: '여보세요? 오늘 하루는 어땠어?')]);
 
   void addUserMessage(String text) {
     state = [...state, Message(role: 'user', content: text), Message(role: 'assistant', content: '__loading__')];

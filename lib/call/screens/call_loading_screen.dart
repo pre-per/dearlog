@@ -48,13 +48,19 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen> {
       }
 
       log('generating diary...');
-      final diary =
+      final diaryBase =
       await openaiService.generateDiaryFromMessages(messages, callId: callId);
-      log('diary generated id=${diary.id} imageUrls=${diary.imageUrls.length}');
+      log('diary generated id=${diaryBase.id} imageUrls=${diaryBase.imageUrls.length}');
+
+      log('generating analysis...');
+      final analysis = await openaiService.generateAnalysisFromDiary(diaryBase);
+      final diary = diaryBase.copyWith(analysis: analysis);
+      log('analysis generated moodScore=${analysis.moodScore} valence=${analysis.valence}');
 
       log('saving diary to firestore...');
       await ref.read(diaryRepositoryProvider).saveDiary(userId!, diary);
       log('diary saved');
+
 
       ref.invalidate(latestDiaryProvider);
 

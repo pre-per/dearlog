@@ -74,7 +74,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Text(
                     '오늘의 행성을 채워주세요!',
                     style: TextStyle(
-                      color: Color(0x9dffffff),
+                      color: Color(0xdfffffff),
                       fontSize: 18,
                       fontWeight: FontWeight.w500,
                     ),
@@ -93,17 +93,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   decoration: BoxDecoration(
                     image: DecorationImage(image: AssetImage('asset/image/lang_bubble.png'))
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 13),
-                    child: Text(
-                      '디어로그와 대화하면 행성을 채울 수 있어요',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                  child: Text(
+                    '디어로그와 대화하면 행성을 채울 수 있어요',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
 

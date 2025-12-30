@@ -307,7 +307,6 @@ Widget _paperCard(DiaryEntry diary) {
                   fontSize: 14.5,
                   height: 1.6,
                   color: Colors.black,
-                  fontFamily: 'Pretendard',
                 ),
               ),
               const SizedBox(height: 20),

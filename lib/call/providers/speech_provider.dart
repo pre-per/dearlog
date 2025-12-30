@@ -50,7 +50,7 @@ class SpeechNotifier extends StateNotifier<SpeechState> {
   // =========================
   // ✅ 무음(텍스트 변화 없음) 자동 제출 로직
   // =========================
-  static const Duration _silenceThreshold = Duration(seconds: 2);
+  static const Duration _silenceThreshold = Duration(seconds: 1, milliseconds: 700);
 
   Timer? _silenceTimer;
   String _latestText = '';

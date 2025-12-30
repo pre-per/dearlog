@@ -16,6 +16,19 @@ class TtsService {
     await _tts.setSpeechRate(0.48);
     await _tts.setPitch(1.0);
     await _tts.setVolume(1.0);
+    await _tts.setSharedInstance(true);
+
+    await _tts.setIosAudioCategory(
+      IosTextToSpeechAudioCategory.playback,
+      [
+        IosTextToSpeechAudioCategoryOptions.mixWithOthers,
+        // 아래 옵션들은 상황에 따라 도움이 됨(특히 출력/라우팅)
+        IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
+        IosTextToSpeechAudioCategoryOptions.allowBluetooth,
+        IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
+      ],
+      IosTextToSpeechAudioMode.defaultMode,
+    );
 
     _tts.setCompletionHandler(() {
       _speakCompleter?.complete();
@@ -39,6 +52,17 @@ class TtsService {
     if (t.isEmpty) return;
 
     await _tts.stop();
+    await _tts.setIosAudioCategory(
+      IosTextToSpeechAudioCategory.playback,
+      [
+        IosTextToSpeechAudioCategoryOptions.mixWithOthers,
+        // 아래 옵션들은 상황에 따라 도움이 됨(특히 출력/라우팅)
+        IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
+        IosTextToSpeechAudioCategoryOptions.allowBluetooth,
+        IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
+      ],
+      IosTextToSpeechAudioMode.defaultMode,
+    );
     _speakCompleter = Completer<void>();
     await _tts.speak(t);
 

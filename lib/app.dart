@@ -9,8 +9,16 @@ export '../../firebase_options.dart';
 // ai
 export 'package:dearlog/ai/services/openai_service.dart';
 
-// analytics
-export 'package:dearlog/analytics/screens/analytics_main_screen.dart';
+// analysis
+export 'analysis/providers/analysis_providers.dart';
+export 'analysis/screens/analysis_main_screen.dart';
+export 'analysis/widget/emotion_trend_card.dart';
+export 'analysis/widget/analysis_range_tabs.dart';
+export 'analysis/widget/today_summary_card.dart';
+export 'analysis/widget/deep_insight_section.dart';
+export 'analysis/widget/emotion_distribution_card.dart';
+export 'analysis/widget/emotion_report_section.dart';
+
 
 // app
 export 'app/di/providers.dart';
@@ -56,6 +64,7 @@ export 'package:dearlog/core/base_scaffold.dart';
 
 // diary
 export 'diary/models/diary_entry.dart';
+export 'diary/models/diary_analysis.dart';
 export 'diary/providers/diary_providers.dart';
 export 'diary/repository/diary_repository.dart';
 export 'diary/screens/diary_detail_screen.dart';
@@ -83,6 +92,7 @@ export 'settings/widgets/tile/faq_tile.dart';
 // shared_ui
 export 'shared_ui/models/chart/chart_data.dart';
 export 'shared_ui/utils/search_utils.dart';
+export 'shared_ui/utils/planet_asset_mapper.dart';
 export 'shared_ui/widgets/chart/emotion_chart_widget.dart';
 export 'shared_ui/widgets/chart/simple_bar_chart.dart';
 export 'shared_ui/widgets/dialog/lottie_popup_dialog.dart';
@@ -92,6 +102,7 @@ export 'shared_ui/widgets/tile/simple_title_tile.dart';
 export 'shared_ui/widgets/elevated_card_container.dart';
 export 'shared_ui/widgets/searchbar_ui.dart';
 export 'shared_ui/widgets/storybook_widget.dart';
+export 'shared_ui/widgets/glass_card.dart';
 
 // user
 export 'user/models/user.dart';
