@@ -13,7 +13,7 @@ class AiChatScreen extends ConsumerStatefulWidget {
 class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final _textController = TextEditingController();
-  final TtsService _tts = TtsService();
+  final TtsService _tts = TtsService(apiKey: RemoteConfigService().openAIApiKey);
   bool _isSpeaking = false;
   final FocusNode _inputFocus = FocusNode();
   bool _sending = false; // 중복 전송 방지용(선택)

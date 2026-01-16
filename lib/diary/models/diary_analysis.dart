@@ -87,22 +87,79 @@ class EvidenceQuote {
   };
 }
 
+enum RecommendationType { solo, content, support }
+
+RecommendationType _recTypeFromJson(String? v) {
+  switch (v) {
+    case 'content':
+      return RecommendationType.content;
+    case 'support':
+      return RecommendationType.support;
+    default:
+      return RecommendationType.solo;
+  }
+}
+
+String _recTypeToJson(RecommendationType t) {
+  switch (t) {
+    case RecommendationType.content:
+      return 'content';
+    case RecommendationType.support:
+      return 'support';
+    case RecommendationType.solo:
+    default:
+      return 'solo';
+  }
+}
+
 class Recommendation {
   final String title;
   final int minutes;
   final List<String> steps;
 
-  Recommendation({required this.title, required this.minutes, required this.steps});
+  // ✅ 추가
+  final RecommendationType type; // solo|content|support
+  final String fromEmotion;      // 예: "불안"
+  final String toEmotion;        // 예: "안정"
+  final String why;              // 예: "오늘 불안 점수가 높아 마음을 가라앉히는 루틴이 도움될 수 있어요."
+  final String? ctaLabel;        // 예: "차분한 음악 듣기"
+  final String? deeplink;        // 예: "/content/music/calm"
+
+  Recommendation({
+    required this.title,
+    required this.minutes,
+    required this.steps,
+    required this.type,
+    required this.fromEmotion,
+    required this.toEmotion,
+    required this.why,
+    this.ctaLabel,
+    this.deeplink,
+  });
 
   factory Recommendation.fromJson(Map<String, dynamic> json) => Recommendation(
     title: json['title'] ?? '',
     minutes: (json['minutes'] ?? 10) as int,
     steps: List<String>.from(json['steps'] ?? const []),
+
+    // ✅ 하위 호환 (기존 데이터도 깨지지 않게 default)
+    type: _recTypeFromJson(json['type']),
+    fromEmotion: json['fromEmotion'] ?? '',
+    toEmotion: json['toEmotion'] ?? '',
+    why: json['why'] ?? '',
+    ctaLabel: json['ctaLabel'],
+    deeplink: json['deeplink'],
   );
 
   Map<String, dynamic> toJson() => {
     'title': title,
     'minutes': minutes,
     'steps': steps,
+    'type': _recTypeToJson(type),
+    'fromEmotion': fromEmotion,
+    'toEmotion': toEmotion,
+    'why': why,
+    'ctaLabel': ctaLabel,
+    'deeplink': deeplink,
   };
 }

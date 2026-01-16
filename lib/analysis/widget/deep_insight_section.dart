@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:dearlog/app.dart';
 
 class DeepInsightSection extends ConsumerWidget {
@@ -64,7 +66,7 @@ class _WeeklyKeywordsCard extends ConsumerWidget {
         data: (items) {
           if (items.isEmpty) {
             return const Text(
-              '이번 주 기록이 아직 부족해요. 일기를 조금만 더 써보면 키워드를 찾아줄게요.',
+              '일기를 작성하면 분석을 도와줄게요. 지금 디어로그와 대화해볼까요?',
               style: TextStyle(color: Colors.white70, height: 1.35),
             );
           }
@@ -140,16 +142,13 @@ class _ExtremeDaysCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(weeklyExtremeDaysProvider);
 
-    return GlassCard(
-      child: async.when(
-        data: (insight) {
-          if (insight == null) {
-            return const Text(
-              '이번 주 데이터가 부족해요.',
-              style: TextStyle(color: Colors.white70),
-            );
-          }
-          return Column(
+    return async.when(
+      data: (insight) {
+        if (insight == null) {
+          return const SizedBox.shrink();
+        }
+        return GlassCard(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               tappableRow(
@@ -164,17 +163,17 @@ class _ExtremeDaysCard extends ConsumerWidget {
                 entry: insight.worst,
               ),
             ],
-          );
-        },
-        loading:
-            () => const Padding(
-              padding: EdgeInsets.all(12),
-              child: LinearProgressIndicator(),
-            ),
-        error:
-            (e, _) =>
-                Text('오류: $e', style: const TextStyle(color: Colors.white70)),
-      ),
+          ),
+        );
+      },
+      loading:
+          () => const Padding(
+            padding: EdgeInsets.all(12),
+            child: LinearProgressIndicator(),
+          ),
+      error:
+          (e, _) =>
+              Text('오류: $e', style: const TextStyle(color: Colors.white70)),
     );
   }
 }
@@ -184,25 +183,22 @@ class _StabilityCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(weeklyStabilityProvider);
 
-    return GlassCard(
-      child: async.when(
-        data: (s) {
-          if (s == null) {
-            return const Text(
-              '이번 주 데이터가 더 필요해요.',
-              style: TextStyle(color: Colors.white70),
-            );
-          }
-
-          String volatilityLabel(int v) {
-            if (v <= 15) return '안정';
-            if (v <= 30) return '보통';
-            return '큼';
-          }
-
-          final vLabel = volatilityLabel(s.volatility);
-
-          return Column(
+    return async.when(
+      data: (s) {
+        if (s == null) {
+          return const SizedBox.shrink();
+        }
+    
+        String volatilityLabel(int v) {
+          if (v <= 15) return '안정';
+          if (v <= 30) return '보통';
+          return '큼';
+        }
+    
+        final vLabel = volatilityLabel(s.volatility);
+    
+        return GlassCard(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
@@ -210,7 +206,7 @@ class _StabilityCard extends ConsumerWidget {
                 style: TextStyle(color: Colors.white70, fontSize: 13),
               ),
               const SizedBox(height: 10),
-
+              
               Text(
                 '감정 기복: ${s.volatility}점 ($vLabel)',
                 style: const TextStyle(
@@ -220,35 +216,35 @@ class _StabilityCard extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 10),
-
+              
               Text(
                 '부정 감정 최대 연속: ${s.negativeStreakMax}일',
                 style: const TextStyle(color: Colors.white, fontSize: 14),
               ),
               const SizedBox(height: 6),
-
+              
               Text(
                 '안정/긍정 최대 연속: ${s.stablePositiveStreakMax}일',
                 style: const TextStyle(color: Colors.white, fontSize: 14),
               ),
               const SizedBox(height: 10),
-
+              
               const Text(
                 '※ 최근 7일 일기 기준으로 계산돼요.',
                 style: TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ],
-          );
-        },
-        loading:
-            () => const Padding(
-              padding: EdgeInsets.all(12),
-              child: LinearProgressIndicator(),
-            ),
-        error:
-            (e, _) =>
-                Text('오류: $e', style: const TextStyle(color: Colors.white70)),
-      ),
+          ),
+        );
+      },
+      loading:
+          () => const Padding(
+            padding: EdgeInsets.all(12),
+            child: LinearProgressIndicator(),
+          ),
+      error:
+          (e, _) =>
+              Text('오류: $e', style: const TextStyle(color: Colors.white70)),
     );
   }
 }
@@ -325,12 +321,11 @@ class _RecentRecommendationsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final diary = ref.watch(latestDiaryProvider);
 
-    // 최신 일기 없음
     if (diary == null || diary.analysis == null) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: const [
-          SectionTitle('오늘을 위한 제안'),
+          SectionTitle('오늘을 위한 작은 제안'),
           SizedBox(height: 12),
           GlassCard(
             child: Text(
@@ -342,13 +337,14 @@ class _RecentRecommendationsSection extends ConsumerWidget {
       );
     }
 
-    final recs = diary.analysis!.recommendations;
+    final a = diary.analysis!;
+    final recs = a.recommendations;
 
     if (recs.isEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: const [
-          SectionTitle('오늘을 위한 제안'),
+          SectionTitle('오늘을 위한 작은 제안'),
           SizedBox(height: 12),
           GlassCard(
             child: Text(
@@ -363,10 +359,11 @@ class _RecentRecommendationsSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionTitle('오늘을 위한 작은 제안'),
+        const SizedBox(height: 12),
+        const SectionTitle('비슷한 감정 패턴의 사람들은 이런 선택을 했어요'),
         const SizedBox(height: 12),
 
-        // 추천 카드 리스트
+        // ✅ 2) 추천 리스트 (각 타일이 why/type/from→to를 보여줌)
         ...List.generate(
           recs.length,
               (i) => Padding(
@@ -378,16 +375,15 @@ class _RecentRecommendationsSection extends ConsumerWidget {
           ),
         ),
 
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Text(
-          '※ 최근 작성한 일기 1개를 기준으로 추천했어요.',
+          '※ 오늘 일기의 감정/근거를 바탕으로 추천했어요.',
           style: TextStyle(color: Colors.white70, fontSize: 12),
         ),
       ],
     );
   }
 }
-
 
 class _RecommendationTile extends StatelessWidget {
   final Recommendation rec;
@@ -398,60 +394,162 @@ class _RecommendationTile extends StatelessWidget {
     required this.index,
   });
 
+  String _typeLabel(RecommendationType type) {
+    switch (type) {
+      case RecommendationType.content:
+        return '앱에서 하기';
+      case RecommendationType.support:
+        return '도움 옵션';
+      case RecommendationType.solo:
+      default:
+        return '혼자 해보기';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final r = rec;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.10)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 상단: 번호 + 제목 + 분 뱃지
-          Row(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.10)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 26,
-                height: 26,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${index + 1}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
+              // ✅ 상단: 번호 + 제목 + (불안→안정) + 타입칩 + 분 뱃지
+              Row(
+                children: [
+                  Container(
+                    width: 26,
+                    height: 26,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${index + 1}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  r.title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
+                  const SizedBox(width: 10),
+
+                  Expanded(
+                    child: Text(
+                      r.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
-                ),
+
+                  const SizedBox(width: 6),
+
+                  _MinuteBadge(minutes: r.minutes),
+                  const SizedBox(width: 6,),
+                  if (r.fromEmotion.isNotEmpty && r.toEmotion.isNotEmpty)
+                    _MiniPill(text: '${r.fromEmotion} → ${r.toEmotion}'),
+                ],
               ),
-              const SizedBox(width: 8),
-              _MinuteBadge(minutes: r.minutes),
+
+              // ✅ why (근거 한 줄)
+              if (r.why.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  r.why,
+                  style: const TextStyle(color: Colors.white70, height: 1.35),
+                ),
+              ],
+
+              const SizedBox(height: 10),
+
+              // steps 미리보기
+              _StepsPreview(steps: r.steps),
+
+              // ✅ CTA (optional)
+              if ((r.ctaLabel ?? '').trim().isNotEmpty) ...[
+                const SizedBox(height: 10),
+                _CtaRow(
+                  label: r.ctaLabel!.trim(),
+                  onTap: () {},
+                ),
+              ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
 
-          const SizedBox(height: 10),
+class _MiniPill extends StatelessWidget {
+  final String text;
+  const _MiniPill({required this.text});
 
-          _StepsPreview(steps: r.steps),
-        ],
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _CtaRow extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _CtaRow({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.12)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.white70, size: 18),
+          ],
+        ),
       ),
     );
   }

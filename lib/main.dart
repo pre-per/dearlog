@@ -1,7 +1,5 @@
 import 'dart:ui';
-
 import 'package:flutter_svg/flutter_svg.dart';
-
 import 'app.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -13,6 +11,7 @@ void main() async {
   await RemoteConfigService().initialize();
   await _requestNotificationPermission();
   await initializeDateFormatting('ko_KR', null);
+  await LocalNotificationService.instance.init();
   runApp(ProviderScope(child: MyApp()));
 }
 
@@ -38,7 +37,7 @@ class MyApp extends StatelessWidget {
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
           backgroundColor: Colors.white,
         ),
-        bottomAppBarTheme: BottomAppBarTheme(color: Colors.grey[50]),
+        bottomAppBarTheme: BottomAppBarThemeData(color: Colors.grey[50]),
         fontFamily: 'GowunBatang',
         brightness: Brightness.dark,
       ),

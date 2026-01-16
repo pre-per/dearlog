@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:dearlog/app.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
@@ -9,7 +11,39 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with TickerProviderStateMixin {
+  late final AnimationController _rippleCtrl;
+  late final AnimationController _pulseCtrl;
+  late final Animation<double> _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _rippleCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3200),
+    )..repeat();
+
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4800), // 더 느리게 = 차분
+    )..repeat(reverse: true);
+
+    _pulse = Tween<double>(begin: 0.99, end: 1.01).animate(
+      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
+    ); // ✅ 약 ±0.8% 정도
+  }
+
+  @override
+  void dispose() {
+    _rippleCtrl.dispose();
+    _pulseCtrl.dispose();
+    super.dispose();
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final userAsync = ref.watch(userProvider);
@@ -72,21 +106,75 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    '오늘의 행성을 채워주세요!',
+                    '당신의 목소리를 들을 준비가 되었어요',
                     style: TextStyle(
                       color: Color(0xdfffffff),
-                      fontSize: 18,
+                      fontSize: 17,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
                 const SizedBox(height: 68),
-                Image.asset(
-                  'asset/image/moon_images/grey_moon.png',
+                SizedBox(
                   width: 232,
                   height: 232,
+                  child: AnimatedBuilder(
+                    animation: _rippleCtrl,
+                    builder: (context, _) {
+                      final t = _rippleCtrl.value; // 0..1
+
+                      return Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // ✅ 파장 4개 (시차 0.00, 0.25, 0.50, 0.75)
+                          _RippleRing(
+                            t: (t + 0.00) % 1.0,
+                            baseSize: 232,
+                            minScale: 1.00,
+                            maxScale: 1.40,   // 더 멀리 퍼지게
+                            maxOpacity: 0.22, // 더 진하게
+                            strokeWidth: 1.8, // 조금 더 두껍게
+                          ),
+                          _RippleRing(
+                            t: (t + 0.25) % 1.0,
+                            baseSize: 232,
+                            minScale: 1.00,
+                            maxScale: 1.40,
+                            maxOpacity: 0.18,
+                            strokeWidth: 1.6,
+                          ),
+                          _RippleRing(
+                            t: (t + 0.50) % 1.0,
+                            baseSize: 232,
+                            minScale: 1.00,
+                            maxScale: 1.40,
+                            maxOpacity: 0.15,
+                            strokeWidth: 1.4,
+                          ),
+                          _RippleRing(
+                            t: (t + 0.75) % 1.0,
+                            baseSize: 232,
+                            minScale: 1.00,
+                            maxScale: 1.40,
+                            maxOpacity: 0.12,
+                            strokeWidth: 1.2,
+                          ),
+
+                          ScaleTransition(
+                            scale: _pulse,
+                            child: Image.asset(
+                              'asset/image/moon_images/grey_moon.png',
+                              width: 232,
+                              height: 232,
+                            ),
+                          ),
+
+                        ],
+                      );
+                    },
+                  ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 40),
                 Container(
                   width: 350,
                   height: 55,
@@ -95,7 +183,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                   child: Text(
-                    '디어로그와 대화하면 행성을 채울 수 있어요',
+                    '디어로그에게 당신의 이야기를 들려주세요',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 15,
@@ -117,3 +205,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 }
+
+class _RippleRing extends StatelessWidget {
+  final double t; // 0..1
+  final double baseSize;
+  final double minScale;
+  final double maxScale;
+  final double maxOpacity;
+  final double strokeWidth;
+
+  const _RippleRing({
+    required this.t,
+    required this.baseSize,
+    required this.minScale,
+    required this.maxScale,
+    required this.maxOpacity,
+    required this.strokeWidth,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final eased = Curves.easeOutCubic.transform(t);
+
+    final scale = lerpDouble(minScale, maxScale, eased)!;
+
+    // ✅ 초반에는 좀 더 보이고, 끝으로 갈수록 자연스럽게 사라지게
+    final opacity = (1.0 - eased) * maxOpacity;
+
+    return IgnorePointer(
+      child: Opacity(
+        opacity: opacity,
+        child: Transform.scale(
+          scale: scale,
+          child: Container(
+            width: baseSize,
+            height: baseSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white,
+                width: strokeWidth,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+

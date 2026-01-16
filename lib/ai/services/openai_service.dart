@@ -157,8 +157,17 @@ extension OpenAIAnalysis on OpenAIService {
     {"quote":"일기에서 근거 문장 일부", "why":"어떤 감정 근거인지"},
     ... (최대 3개)
   ],
-  "recommendations": [
-    {"title":"행동 제안 제목", "minutes":3|10|20|30, "steps":["단계1","단계2"]},
+  "recommendations": [{
+    "title":"행동 제안 제목",
+    "minutes":3|10|20|30,
+    "type":"solo" | "content" | "support",
+    "fromEmotion":"불안",
+    "toEmotion":"안정",
+    "why":"감정/근거와 연결된 한 줄 이유",
+    "steps":["단계1","단계2","단계3(선택)"],
+    "ctaLabel":"(선택) 앱에서 해보기 버튼 라벨",
+    "deeplink":"(선택) 앱 내부 경로"
+    },
     ... (정확히 3개)
   ],
   "riskLevel": "low" | "medium" | "high",
@@ -172,9 +181,16 @@ mainWords 규칙:
 - 주제 단어를 우선: 일정/마감/공부/시험/관계/가족/친구/수면/건강/운동/돈/소비 등
 - 일기 내용을 바탕으로 핵심어를 추출할 것
 
+recommendations 규칙:
+- 정확히 3개.
+- 최소 2개는 type="solo" (혼자 지금 당장 가능, 1~5분 권장)
+- 최소 1개는 type="content" (앱 내에서 할 수 있는 것: 음악/짧은 질문/감정 정리 등)
+- type="support"는 riskLevel이 medium/high일 때만 포함 가능. 포함하더라도 "가능하다면/원한다면" 같은 부담 낮은 표현으로.
+- steps는 2~4개. 각 step은 시간/행동이 구체적이어야 함.
+- why는 emotions/evidence/mainWords 중 최소 1개를 반영한 문장.
+
 주의:
 - 진단/의료 판단처럼 말하지 마.
-- riskLevel이 medium/high면 recommendations 중 하나는 '도움을 요청하기' 관련으로.
 - JSON 외 텍스트 금지.
 '''
       },

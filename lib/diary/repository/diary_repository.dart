@@ -158,4 +158,14 @@ class DiaryRepository {
     });
   }
 
+  Future<DiaryEntry?> fetchLatestDiary(String userId) async {
+    final snap = await _diaryCollection(userId)
+        .orderBy('date', descending: true)
+        .limit(1)
+        .get();
+
+    if (snap.docs.isEmpty) return null;
+    return DiaryEntry.fromJson(snap.docs.first.data());
+  }
+
 }

@@ -86,7 +86,6 @@ class _DistItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 64,
       child: Column(
         children: [
           ClipOval(child: Image.asset(asset, width: 44, height: 44, fit: BoxFit.cover)),

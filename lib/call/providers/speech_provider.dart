@@ -1,5 +1,6 @@
 // speech_provider.dart
 import 'dart:async';
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
@@ -65,6 +66,9 @@ class SpeechNotifier extends StateNotifier<SpeechState> {
       onStatus: (s) async {
         // done / notListening = 세션 종료됨
         if (s == 'done' || s == 'notListening') {
+          // ✅ 오디오 세션 비활성화
+          AudioSession.instance.then((session) => session.setActive(false));
+
           _cancelSilenceTimer();
           _latestText = '';
           state = state.copyWith(isRecording: false, currentText: '');
@@ -80,6 +84,9 @@ class SpeechNotifier extends StateNotifier<SpeechState> {
         }
       },
       onError: (e) async {
+        // ✅ 오디오 세션 비활성화
+        AudioSession.instance.then((session) => session.setActive(false));
+
         _cancelSilenceTimer();
         state = state.copyWith(isRecording: false);
 
@@ -169,6 +176,11 @@ class SpeechNotifier extends StateNotifier<SpeechState> {
     // 이미 듣고 있으면 중복 방지
     if (_speech.isListening || state.isRecording) return;
 
+    // ✅ 오디오 세션 설정 및 활성화
+    final session = await AudioSession.instance;
+    await session.configure(AudioSessionConfiguration.speech());
+    await session.setActive(true);
+
     _lastOnFinal = onFinal;
 
     // 상태 초기화
@@ -225,7 +237,7 @@ class SpeechNotifier extends StateNotifier<SpeechState> {
     state = state.copyWith(isRecording: false, currentText: '');
 
     try {
-      await _speech.stop();
+      await _speech.stop(); // 이 호출이 onStatus -> setActive(false)를 트리거합니다.
     } catch (_) {}
     try {
       await _speech.cancel();

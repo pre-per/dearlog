@@ -79,12 +79,22 @@ export 'home/screens/homescreen.dart';
 export 'home/widgets/call_start_iconbutton.dart';
 export 'home/widgets/IncomingCallBanner.dart';
 
+// notification
+export 'notification/models/diary_reminder_settings.dart';
+export 'notification/models/reminder_scheduler.dart';
+export 'notification/providers/reminder_refresh_provider.dart';
+export 'notification/repository/reminder_settings_repository.dart';
+export 'notification/service/local_notification_service.dart';
+export 'notification/utils/reminder_message_builder.dart';
+
 // settings
 export 'settings/providers/faq_provider.dart';
 export 'settings/screens/sub_screens/app_version_screen.dart';
+export 'settings/screens/sub_screens/contact_support_screen.dart';
 export 'settings/screens/sub_screens/faq_screen.dart';
 export 'settings/screens/sub_screens/notice_screen.dart';
 export 'settings/screens/sub_screens/notification_setting_screen.dart';
+export 'settings/screens/sub_screens/privacy_policy_screen.dart';
 export 'settings/screens/setting_main_screen.dart';
 export 'settings/widgets/bottom_modal_sheet/feedback_modal_sheet.dart';
 export 'settings/widgets/tile/faq_tile.dart';

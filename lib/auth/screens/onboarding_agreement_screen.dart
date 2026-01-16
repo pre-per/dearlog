@@ -75,7 +75,9 @@ class _OnboardingAgreementScreenState extends State<OnboardingAgreementScreen> {
                 setState(() => privacyPolicy = val ?? false);
                 checkIfAllAgreed();
               },
-              onTapDetail: () {},
+              onTapDetail: () {
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => PrivacyPolicyScreen()));
+              },
             ),
             buildAgreementItem(
               title: '(선택) 마케팅 정보 수신동의',

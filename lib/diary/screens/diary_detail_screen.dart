@@ -372,17 +372,3 @@ Widget _imageCards(List<String> imageUrls) {
         }).toList(),
   );
 }
-
-Widget _checkMessages(String callId) {
-  return GestureDetector(
-    onTap: () {},
-    child: Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: Color(0x1dffffff),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-      child: Center(child: Text('대화 확인하기', style: TextStyle(fontSize: 16))),
-    ),
-  );
-}

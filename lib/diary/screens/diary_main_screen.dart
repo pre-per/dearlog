@@ -499,7 +499,7 @@ class _PlanetCard extends StatelessWidget {
     final bool isLeft = index % 2 == 0;
 
     return SizedBox(
-      height: 220,
+      height: 180,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
