@@ -411,7 +411,12 @@ class SettingMainScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    SimpleTitleTile(title: '알림 설정 (Beta)'),
+                    SimpleTitleTile(
+                      title: '알림 설정',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const NotificationSettingScreen()),
+                      ),
+                    ),
                     SimpleTitleTile(
                       title: '알림 테스트하기 (Beta) [10s]',
                       onTap: () async {

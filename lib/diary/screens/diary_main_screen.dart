@@ -86,7 +86,7 @@ class DiaryCalendarView extends StatefulWidget {
 
 class _DiaryCalendarViewState extends State<DiaryCalendarView> {
   DateTime _focusedMonth = DateTime(DateTime.now().year, DateTime.now().month);
-  
+
   static const _weekLabels = ['일', '월', '화', '수', '목', '금', '토'];
   static const double _cellExtent = 70;
   static const double _dayAreaHeight = 16;
@@ -190,6 +190,8 @@ class _DiaryCalendarViewState extends State<DiaryCalendarView> {
 
     final cells = _buildCalendarCells(_focusedMonth);
     final monthTitle = DateFormat('yyyy년 MM월', 'ko_KR').format(_focusedMonth);
+    final now = DateTime.now();
+    final isCurrentMonth = _focusedMonth.year == now.year && _focusedMonth.month == now.month;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 90),
@@ -205,6 +207,23 @@ class _DiaryCalendarViewState extends State<DiaryCalendarView> {
               ),
               Row(
                 children: [
+                  if (!isCurrentMonth) ...[
+                    GestureDetector(
+                      onTap: () => setState(() => _focusedMonth = DateTime(now.year, now.month)),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xFFFFD700), width: 1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          '오늘',
+                          style: TextStyle(color: Color(0xFFFFD700), fontSize: 11, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
                   IconButton(
                     onPressed: () => setState(() => _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month - 1)),
                     icon: const Icon(Icons.chevron_left, color: Colors.white),
@@ -239,6 +258,8 @@ class _DiaryCalendarViewState extends State<DiaryCalendarView> {
               final diary = diaries.isNotEmpty ? diaries.first : null;
               final planetName = diary == null ? 'grey_moon' : (planetBaseNameMap[diary.emotion] ?? 'grey_moon');
               final planetSize = (_cellExtent - _dayAreaHeight).clamp(_planetMin, _planetMax);
+              final now = DateTime.now();
+              final isToday = cell.date.year == now.year && cell.date.month == now.month && cell.date.day == now.day;
 
               return GestureDetector(
                 onTap: () {
@@ -257,15 +278,45 @@ class _DiaryCalendarViewState extends State<DiaryCalendarView> {
                         top: 0, left: 0, right: 0,
                         child: Center(
                           child: SizedBox(
-                            width: planetSize,
-                            height: planetSize,
-                            child: Image.asset('asset/image/moon_images/$planetName.png', fit: BoxFit.cover),
+                            width: planetSize + 8,
+                            height: planetSize + 8,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                SizedBox(
+                                  width: planetSize,
+                                  height: planetSize,
+                                  child: Image.asset('asset/image/moon_images/$planetName.png', fit: BoxFit.cover),
+                                ),
+                                if (isToday)
+                                  Container(
+                                    width: planetSize + 8,
+                                    height: planetSize + 8,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: const Color(0xFFFFD700),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                       Positioned(
                         left: 0, right: 0, bottom: 0, height: _dayAreaHeight,
-                        child: Center(child: Text('${cell.date.day}', style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 12))),
+                        child: Center(
+                          child: Text(
+                            '${cell.date.day}',
+                            style: TextStyle(
+                              color: isToday ? const Color(0xFFFFD700) : Colors.white.withOpacity(0.85),
+                              fontSize: 12,
+                              fontWeight: isToday ? FontWeight.w700 : FontWeight.normal,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),

@@ -16,6 +16,14 @@ class MessageNotifier extends StateNotifier<List<Message>> {
     state = [...state, Message(role: 'user', content: text), Message(role: 'assistant', content: '__loading__')];
   }
 
+  void clear() {
+    state = [Message(role: 'assistant', content: '여보세요? 오늘 하루는 어땠어?')];
+  }
+
+  void restore(List<Message> messages) {
+    state = messages;
+  }
+
   Future<void> getAssistantResponse() async {
     try {
       final service = ref.read(openAIServiceProvider); // ⬅️ di 주입 사용

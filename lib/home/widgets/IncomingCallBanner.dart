@@ -42,7 +42,7 @@ class _IncomingCallBannerState extends State<IncomingCallBanner>
     _controller.forward();
 
     // ✅ 10초 후 자동 종료
-    Future.delayed(const Duration(seconds: 100000), () async {
+    Future.delayed(const Duration(seconds: 10), () async {
       if (!mounted) return;
       await _controller.reverse();
       if (mounted) {
