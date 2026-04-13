@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:dearlog/call/services/conversation_backup_service.dart';
 import 'package:dearlog/call/services/tts_service.dart';
 import 'package:flutter/foundation.dart';
@@ -134,48 +135,130 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
   Future<void> _sendText(String text) async {
     if (!_sessionActive || _sending) return;
-
     final cleaned = text.trim();
     if (cleaned.isEmpty) return;
 
     _sending = true;
     try {
+      // 마이크 중지
       final speech = ref.read(speechNotifierProvider.notifier);
       speech.disableContinuous();
       await speech.stopListening();
 
+      // 유저 메시지 추가 (__loading__ placeholder 포함)
       final notifier = ref.read(messageProvider.notifier);
       notifier.addUserMessage(cleaned);
       _scrollToBottom();
 
-      await notifier.getAssistantResponse();
-      _scrollToBottom();
+      // 스트리밍 파이프라인 준비
+      // pipeline: 문장별 TTS fetch Future를 순서대로 넘기는 채널
+      final pipeline = StreamController<Future<Uint8List>>();
+      Future<void>? playerFuture;
 
-      final messages = ref.read(messageProvider);
-      final lastAssistant = messages.lastWhere(
-        (m) => m.role == 'assistant' && m.content != '__loading__',
-        orElse: () => messages.last,
-      );
-      final reply = lastAssistant.content.trim();
+      final fullResponse = StringBuffer();
+      final sentenceBuffer = StringBuffer();
+      bool pipelineStarted = false;
 
-      if (reply.isNotEmpty && _sessionActive && !_isPaused && !_isTextMode) {
-        setState(() => _isSpeaking = true);
-        try {
-          await _tts.speakAndWait(reply);
-          await Future.delayed(const Duration(milliseconds: 300));
-        } catch (e) {
-          debugPrint("TTS 에러 발생: $e");
-        } finally {
-          setState(() => _isSpeaking = false);
+      try {
+        // GPT 스트리밍 — __loading__ 이전 메시지만 컨텍스트로 사용
+        final messages = ref.read(messageProvider)
+            .where((m) => m.content != '__loading__')
+            .toList();
+
+        await for (final token in OpenAIService().streamChatTokens(messages)) {
+          if (!_sessionActive) break;
+
+          fullResponse.write(token);
+          sentenceBuffer.write(token);
+
+          // UI 실시간 업데이트
+          notifier.updateStreaming(fullResponse.toString());
+          _scrollToBottom();
+
+          // 문장 경계 감지 → 즉시 TTS fetch 시작
+          final buffered = sentenceBuffer.toString();
+          final end = _sentenceEnd(buffered);
+          if (end > 0) {
+            final sentence = buffered.substring(0, end).trim();
+            sentenceBuffer.clear();
+            sentenceBuffer.write(buffered.substring(end));
+
+            if (sentence.isNotEmpty && _sessionActive && !_isPaused && !_isTextMode) {
+              pipeline.add(_tts.fetchAudio(sentence));
+
+              // 첫 문장이 파이프라인에 들어가는 순간 플레이어 루프 시작
+              if (!pipelineStarted) {
+                pipelineStarted = true;
+                playerFuture = _runPlayerPipeline(pipeline.stream);
+              }
+            }
+          }
         }
+
+        // 나머지 텍스트 flush
+        final remaining = sentenceBuffer.toString().trim();
+        if (remaining.isNotEmpty && _sessionActive && !_isPaused && !_isTextMode) {
+          pipeline.add(_tts.fetchAudio(remaining));
+          if (!pipelineStarted) {
+            pipelineStarted = true;
+            playerFuture = _runPlayerPipeline(pipeline.stream);
+          }
+        }
+
+        // 응답이 없는 경우 처리
+        if (fullResponse.isEmpty) {
+          notifier.updateStreaming('죄송해요, 응답하지 못했어요.');
+        }
+
+      } finally {
+        // 항상 파이프라인을 닫아 플레이어 루프가 종료되도록 함
+        if (!pipeline.isClosed) pipeline.close();
       }
 
+      // 모든 TTS 재생 완료 대기
+      if (playerFuture != null) await playerFuture;
+
+    } catch (e) {
+      debugPrint('[SEND_TEXT] 오류: $e');
+      ref.read(messageProvider.notifier).updateStreaming('죄송해요. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      _sending = false;
+      setState(() => _isSpeaking = false);
       if (_sessionActive && !_isPaused && !_isTextMode) {
         await _startListeningSafely();
       }
-    } finally {
-      _sending = false;
     }
+  }
+
+  /// TTS fetch Future 스트림을 순서대로 재생하는 플레이어 루프
+  Future<void> _runPlayerPipeline(Stream<Future<Uint8List>> stream) async {
+    if (mounted) setState(() => _isSpeaking = true);
+
+    await for (final fetchFuture in stream) {
+      if (!_sessionActive || _isPaused || _isTextMode) {
+        await _tts.stop();
+        break;
+      }
+      try {
+        final bytes = await fetchFuture;
+        if (!_sessionActive || _isPaused || _isTextMode) break;
+        await _tts.playAudio(bytes);
+      } catch (e) {
+        debugPrint('[PLAYER_PIPELINE] $e');
+      }
+    }
+
+    if (mounted) setState(() => _isSpeaking = false);
+  }
+
+  /// 문장 종결 위치 반환 (없으면 -1)
+  int _sentenceEnd(String text) {
+    if (text.length < 2) return -1;
+    final match = RegExp(r'[.!?。？！]\s*').firstMatch(text);
+    if (match != null && match.start >= 1) return match.end;
+    final nlIdx = text.indexOf('\n');
+    if (nlIdx > 1) return nlIdx + 1;
+    return -1;
   }
 
   Future<void> _onPauseToggle() async {

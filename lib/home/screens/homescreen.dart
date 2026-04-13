@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:dearlog/app.dart';
 import 'package:dearlog/call/screens/call_loading_screen.dart';
 import 'package:dearlog/call/services/conversation_backup_service.dart';
+import 'package:dearlog/call/services/tts_service.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:dearlog/call/providers/voice_provider.dart';
@@ -422,45 +423,26 @@ class _RippleRing extends StatelessWidget {
 class _VoiceSelectButton extends ConsumerWidget {
   const _VoiceSelectButton();
 
-  static const List<String> voices = [
-    'alloy',
-    'ash',
-    'ballad',
-    'cedar',
-    'coral',
-    'echo',
-    'fable',
-    'marin',
-    'nova',
-    'onyx',
-    'sage',
-    'shimmer',
-    'verse',
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedVoice = ref.watch(selectedVoiceProvider);
 
     return GestureDetector(
-      onTap: () => _showVoicePicker(context, ref),
+      onTap: () => showDialog(
+        context: context,
+        builder: (_) => _VoicePickerDialog(ref: ref),
+      ),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.08),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.18),
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.18)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.graphic_eq_rounded,
-              color: Colors.white,
-              size: 18,
-            ),
+            const Icon(Icons.graphic_eq_rounded, color: Colors.white, size: 18),
             const SizedBox(width: 6),
             Text(
               selectedVoice ?? '목소리 선택',
@@ -471,102 +453,202 @@ class _VoiceSelectButton extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 4),
-            const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: Colors.white,
-              size: 18,
-            ),
+            const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 18),
           ],
         ),
       ),
     );
   }
+}
 
-  void _showVoicePicker(BuildContext context, WidgetRef ref) {
-    final selectedVoice = ref.read(selectedVoiceProvider);
+class _VoicePickerDialog extends StatefulWidget {
+  final WidgetRef ref;
+  const _VoicePickerDialog({required this.ref});
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: const Color(0xFF1E1E1E),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'AI 목소리 선택',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 320,
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: voices.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final voice = voices[index];
-                      final isSelected = selectedVoice == voice;
+  @override
+  State<_VoicePickerDialog> createState() => _VoicePickerDialogState();
+}
 
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () {
-                          ref.read(selectedVoiceProvider.notifier).state = voice;
-                          Navigator.pop(context);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 14,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? Colors.white.withOpacity(0.18)
-                                : Colors.white.withOpacity(0.06),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: isSelected
-                                  ? Colors.orangeAccent
-                                  : Colors.white.withOpacity(0.08),
+class _VoicePickerDialogState extends State<_VoicePickerDialog> {
+  static const _voices = [
+    'alloy', 'ash', 'ballad', 'cedar', 'coral', 'echo',
+    'fable', 'marin', 'nova', 'onyx', 'sage', 'shimmer', 'verse',
+  ];
+
+  late final TtsService _tts;
+  String? _activeVoice;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tts = TtsService(apiKey: RemoteConfigService().openAIApiKey);
+    _tts.init();
+  }
+
+  @override
+  void dispose() {
+    _tts.dispose();
+    super.dispose();
+  }
+
+  Future<void> _preview(String voice) async {
+    if (_activeVoice == voice && !_isLoading) {
+      await _tts.stop();
+      if (mounted) setState(() { _activeVoice = null; });
+      return;
+    }
+    if (_activeVoice != null) await _tts.stop();
+    if (!mounted) return;
+    setState(() { _activeVoice = voice; _isLoading = true; });
+    try {
+      _tts.voice = voice;
+      await _tts.speakAndWait(
+        '안녕, 반가워',
+        onPlaybackStart: () {
+          if (mounted) setState(() => _isLoading = false);
+        },
+      );
+    } catch (e) {
+      debugPrint('[PREVIEW] $e');
+    } finally {
+      if (mounted) setState(() { _activeVoice = null; _isLoading = false; });
+    }
+  }
+
+  String _capitalize(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedVoice = widget.ref.watch(selectedVoiceProvider);
+
+    return Dialog(
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'AI 목소리 선택',
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 360,
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: _voices.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final voice = _voices[index];
+                  final isSelected = selectedVoice == voice;
+                  final isActive = _activeVoice == voice;
+                  final isLoadingThis = isActive && _isLoading;
+                  final isPlayingThis = isActive && !_isLoading;
+
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.white.withOpacity(0.15)
+                          : Colors.white.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFFFFD700).withOpacity(0.7)
+                            : Colors.white.withOpacity(0.08),
+                        width: isSelected ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        // 선택 영역
+                        Expanded(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              widget.ref.read(selectedVoiceProvider.notifier).state = voice;
+                              _tts.stop();
+                              Navigator.pop(context);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                              child: Row(
+                                children: [
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isSelected
+                                          ? const Color(0xFFFFD700)
+                                          : Colors.white.withOpacity(0.2),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    _capitalize(voice),
+                                    style: TextStyle(
+                                      color: isSelected ? Colors.white : Colors.white.withOpacity(0.7),
+                                      fontSize: 15,
+                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  voice,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                  ),
+                        ),
+                        // 미리듣기 버튼
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _preview(voice),
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isPlayingThis
+                                    ? const Color(0xFFFFD700).withOpacity(0.15)
+                                    : Colors.white.withOpacity(0.07),
+                                border: Border.all(
+                                  color: isPlayingThis
+                                      ? const Color(0xFFFFD700).withOpacity(0.5)
+                                      : Colors.white.withOpacity(0.12),
                                 ),
                               ),
-                              if (isSelected)
-                                const Icon(
-                                  Icons.check_circle,
-                                  color: Colors.orangeAccent,
-                                ),
-                            ],
+                              child: isLoadingThis
+                                  ? Padding(
+                                      padding: const EdgeInsets.all(9),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 1.5,
+                                        color: Colors.white.withOpacity(0.6),
+                                      ),
+                                    )
+                                  : Icon(
+                                      isPlayingThis ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                                      size: 18,
+                                      color: isPlayingThis
+                                          ? const Color(0xFFFFD700)
+                                          : Colors.white.withOpacity(0.5),
+                                    ),
+                            ),
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
-              ],
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 }

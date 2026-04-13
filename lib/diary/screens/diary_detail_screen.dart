@@ -102,16 +102,7 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
             const SizedBox(height: 24),
             
             // 4. AI의 한 마디
-            const Text("AI의 한 마디", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.08), borderRadius: BorderRadius.circular(16)),
-              child: Text(
-                _diary.aiComment ?? "AI가 글을 쓰다가 잠들어버렸어요..\n다음 일기에서 따뜻한 한 마디로 보답할게요!", 
-                style: const TextStyle(color: Colors.white, fontStyle: FontStyle.italic)
-              ),
-            ),
+            _AiCommentCard(comment: _diary.aiComment),
 
             const SizedBox(height: 24),
 
@@ -237,6 +228,77 @@ class _LetterBottomSheetState extends State<_LetterBottomSheet> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _AiCommentCard extends StatelessWidget {
+  final String? comment;
+  const _AiCommentCard({required this.comment});
+
+  static const _gradient = LinearGradient(
+    colors: [Color(0xFFA78BFA), Color(0xFF60A5FA)],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0x33A78BFA), Color(0x2260A5FA)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFA78BFA).withOpacity(0.3), width: 1),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 헤더: 아이콘 + 타이틀 (그라데이션)
+          Row(
+            children: [
+              ShaderMask(
+                shaderCallback: (b) => _gradient.createShader(b),
+                blendMode: BlendMode.srcIn,
+                child: const Icon(Icons.auto_awesome, size: 16, color: Colors.white),
+              ),
+              const SizedBox(width: 6),
+              ShaderMask(
+                shaderCallback: (b) => _gradient.createShader(b),
+                blendMode: BlendMode.srcIn,
+                child: const Text(
+                  'AI의 한 마디',
+                  style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.3),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // 그라데이션 구분선
+          Container(
+            height: 1,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0x88A78BFA), Color(0x8860A5FA), Color(0x00000000)],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // 본문
+          Text(
+            comment ?? "AI가 글을 쓰다가 잠들어버렸어요..\n다음 일기에서 따뜻한 한 마디로 보답할게요!",
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 14.5,
+              height: 1.7,
+            ),
+          ),
+        ],
       ),
     );
   }

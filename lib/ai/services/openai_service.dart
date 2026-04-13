@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -49,6 +50,71 @@ class OpenAIService {
       );
     } else {
       throw Exception('OpenAI 응답 실패: ${response.body}');
+    }
+  }
+
+  /// GPT 응답을 token 단위로 스트리밍한다.
+  /// 각 yield는 GPT가 생성한 텍스트 조각이다.
+  Stream<String> streamChatTokens(List<Message> messages) async* {
+    const url = 'https://api.openai.com/v1/chat/completions';
+
+    final allMessages = [
+      {
+        "role": "system",
+        "content": "너는 사용자의 하루를 따뜻하게 들어주는 친구야. 1~2줄 정도로 너가 진짜 사람인 것처럼 자연스럽게 대화를 이어나가줘."
+      },
+      ...messages
+          .where((m) => m.content != '__loading__')
+          .map((m) => {"role": m.role, "content": m.content}),
+    ];
+
+    final request = http.Request('POST', Uri.parse(url));
+    request.headers.addAll({
+      'Authorization': 'Bearer $_apiKey',
+      'Content-Type': 'application/json',
+    });
+    request.body = jsonEncode({
+      "model": "gpt-5.4-nano",
+      "messages": allMessages,
+      "max_completion_tokens": 400,
+      "temperature": 0.7,
+      "stream": true,
+    });
+
+    final client = http.Client();
+    try {
+      final streamedResponse = await client.send(request);
+      if (streamedResponse.statusCode != 200) {
+        final body = await streamedResponse.stream.bytesToString();
+        throw Exception('OpenAI 스트리밍 실패(${streamedResponse.statusCode}): $body');
+      }
+
+      // SSE 라인 버퍼 (청크가 라인 경계와 다를 수 있음)
+      final lineBuffer = StringBuffer();
+
+      await for (final chunk in streamedResponse.stream.transform(utf8.decoder)) {
+        lineBuffer.write(chunk);
+        final raw = lineBuffer.toString();
+        lineBuffer.clear();
+
+        final lines = raw.split('\n');
+        // 마지막 줄은 불완전할 수 있으므로 버퍼에 유지
+        for (int i = 0; i < lines.length - 1; i++) {
+          final line = lines[i].trim();
+          if (!line.startsWith('data: ')) continue;
+          final jsonStr = line.substring(6).trim();
+          if (jsonStr == '[DONE]') return;
+          if (jsonStr.isEmpty) continue;
+          try {
+            final json = jsonDecode(jsonStr);
+            final content = json['choices']?[0]?['delta']?['content'] as String?;
+            if (content != null && content.isNotEmpty) yield content;
+          } catch (_) {}
+        }
+        if (lines.last.isNotEmpty) lineBuffer.write(lines.last);
+      }
+    } finally {
+      client.close();
     }
   }
 

@@ -1,4 +1,5 @@
 import 'package:dearlog/app.dart';
+import 'package:dearlog/notification/service/local_notification_service.dart';
 
 
 final reminderSettingsRepoProvider = Provider((ref) {
@@ -6,9 +7,7 @@ final reminderSettingsRepoProvider = Provider((ref) {
 });
 
 final localNotiServiceProvider = Provider((ref) {
-  // FlutterLocalNotificationsPlugin 인스턴스는 전역 싱글톤으로 관리 권장
-  // (프로젝트에 이미 있으면 그걸 주입)
-  throw UnimplementedError("localNoti plugin provider 연결 필요");
+  return LocalNotificationService.instance;
 });
 
 final reminderSchedulerProvider = Provider((ref) {

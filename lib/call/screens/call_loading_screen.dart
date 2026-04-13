@@ -209,7 +209,7 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen>
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               children: [
-                const Spacer(flex: 2),
+                const SizedBox(height: 24),
 
                 // ── Moon + Arc ──────────────────────────────────────────────
                 AnimatedBuilder(

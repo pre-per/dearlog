@@ -38,43 +38,68 @@ class TtsService {
     await _player.stop();
   }
 
-  /// 딜레이 최소화를 위해 파일 저장 없이 메모리 스트림으로 재생
-  Future<void> speakAndWait(String text) async {
+  /// HTTP 요청만 수행 — 오디오 바이트 반환 (재생 안 함)
+  /// 파이프라인에서 미리 패치할 때 사용
+  Future<Uint8List> fetchAudio(String text) async {
     final cleaned = text.trim();
-    if (cleaned.isEmpty) return;
+    if (cleaned.isEmpty) return Uint8List(0);
     if (!_initialized) await init();
 
-    await _player.stop();
-
-    final uri = Uri.parse('https://api.openai.com/v1/audio/speech');
     final response = await http.post(
-      uri,
+      Uri.parse('https://api.openai.com/v1/audio/speech'),
       headers: {
-        "Authorization": "Bearer $apiKey",
-        "Content-Type": "application/json",
+        'Authorization': 'Bearer $apiKey',
+        'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        "model": model,
-        "voice": voice,
-        "input": cleaned,
-        "response_format": responseFormat,
-        "speed": speed,
+        'model': model,
+        'voice': voice,
+        'input': cleaned,
+        'response_format': responseFormat,
+        'speed': speed,
       }),
     );
 
     if (response.statusCode != 200) {
-      throw Exception('OpenAI TTS 실패(${response.statusCode}): ${response.body}');
+      throw Exception('TTS fetch 실패(${response.statusCode}): ${response.body}');
     }
+    return response.bodyBytes;
+  }
 
-    // 메모리에서 바로 재생
-    await _player.setAudioSource(MyCustomSource(response.bodyBytes));
+  /// 바이트를 받아 재생 완료까지 대기
+  /// 파이프라인 플레이어 루프에서 사용
+  Future<void> playAudio(Uint8List bytes) async {
+    if (bytes.isEmpty) return;
+
+    await _player.stop();
+    await _player.setAudioSource(MyCustomSource(bytes));
+
+    // setAudioSource 이후에 구독해야 Android ExoPlayer의 idle→loading 전환이
+    // completionFuture를 조기 완료시키지 않는다.
+    final completionFuture = _player.processingStateStream
+        .firstWhere((s) => s == ProcessingState.completed)
+        .timeout(const Duration(seconds: 60), onTimeout: () => ProcessingState.idle);
+
     await _player.play();
+    await completionFuture;
+  }
 
-    // 포지션이 끝에 도달하는 즉시 정지 (지연 시간 없음)
-    await _player.positionStream.firstWhere(
-      (position) => _player.duration != null && position >= _player.duration!,
-      orElse: () => Duration.zero,
-    );
+  /// 미리보기용 — fetch + play를 한 번에 수행
+  /// [onPlaybackStart]: 오디오 다운로드 완료 후 재생 시작 직전에 호출됨
+  Future<void> speakAndWait(String text, {void Function()? onPlaybackStart}) async {
+    final bytes = await fetchAudio(text);
+    if (bytes.isEmpty) return;
+
+    await _player.stop();
+    await _player.setAudioSource(MyCustomSource(bytes));
+
+    final completionFuture = _player.processingStateStream
+        .firstWhere((s) => s == ProcessingState.completed)
+        .timeout(const Duration(seconds: 60), onTimeout: () => ProcessingState.idle);
+
+    onPlaybackStart?.call();
+    await _player.play();
+    await completionFuture;
     await _player.stop();
   }
 }

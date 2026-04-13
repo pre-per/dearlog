@@ -16,6 +16,15 @@ class MessageNotifier extends StateNotifier<List<Message>> {
     state = [...state, Message(role: 'user', content: text), Message(role: 'assistant', content: '__loading__')];
   }
 
+  /// 스트리밍 중 마지막 assistant 메시지 내용을 실시간 업데이트
+  void updateStreaming(String fullContent) {
+    final idx = state.lastIndexWhere((m) => m.role == 'assistant');
+    if (idx == -1) return;
+    final updated = List<Message>.from(state);
+    updated[idx] = Message(role: 'assistant', content: fullContent);
+    state = updated;
+  }
+
   void clear() {
     state = [Message(role: 'assistant', content: '여보세요? 오늘 하루는 어땠어?')];
   }
