@@ -1,6 +1,8 @@
 import 'dart:ui';
 
 import 'package:dearlog/app.dart';
+import 'package:dearlog/call/screens/call_loading_screen.dart';
+import 'package:dearlog/call/services/conversation_backup_service.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:dearlog/call/providers/voice_provider.dart';
@@ -18,6 +20,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulse;
 
+  bool _hasBackup = false;
+  DateTime? _backupTime;
+
   @override
   void initState() {
     super.initState();
@@ -29,12 +34,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     _pulseCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 4800), // 더 느리게 = 차분
+      duration: const Duration(milliseconds: 4800),
     )..repeat(reverse: true);
 
     _pulse = Tween<double>(begin: 0.99, end: 1.01).animate(
       CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    ); // ✅ 약 ±0.8% 정도
+    );
+
+    _checkBackup();
+  }
+
+  Future<void> _checkBackup() async {
+    final has = await ConversationBackupService.hasBackup();
+    final ts = await ConversationBackupService.getTimestamp();
+    if (mounted) setState(() { _hasBackup = has; _backupTime = ts; });
+  }
+
+  Future<void> _restoreAndGoLoading() async {
+    final messages = await ConversationBackupService.load();
+    if (messages == null || !mounted) return;
+    ref.read(messageProvider.notifier).restore(messages);
+    setState(() => _hasBackup = false);
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const CallLoadingScreen(elapsed: Duration.zero)),
+    );
+  }
+
+  Future<void> _restoreAndResume() async {
+    final messages = await ConversationBackupService.load();
+    if (messages == null || !mounted) return;
+    ref.read(messageProvider.notifier).restore(messages);
+    setState(() => _hasBackup = false);
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AiChatScreen()),
+    );
+  }
+
+  Future<void> _dismissBackup() async {
+    await ConversationBackupService.clear();
+    if (mounted) setState(() => _hasBackup = false);
   }
 
   @override
@@ -86,12 +124,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         data: (user) {
           if (user == null) return AuthErrorScreen();
 
-          return Padding(
+          return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 24),
+                if (_hasBackup)
+                  _RecoveryBanner(
+                    timestamp: _backupTime,
+                    onDiary: _restoreAndGoLoading,
+                    onResume: _restoreAndResume,
+                    onDismiss: _dismissBackup,
+                  ),
+                if (_hasBackup) const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
@@ -200,12 +247,125 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
                 const SizedBox(height: 19),
                 CallStartIconbutton(),
+                const SizedBox(height: 40),
               ],
             ),
           );
         },
         error: (err, _) => Center(child: Text('유저 데이터를 불러오지 못했습니다.\n오류:$err')),
         loading: () => const Center(child: CircularProgressIndicator()),
+      ),
+    );
+  }
+}
+
+class _RecoveryBanner extends StatelessWidget {
+  final DateTime? timestamp;
+  final VoidCallback onDiary;
+  final VoidCallback onResume;
+  final VoidCallback onDismiss;
+
+  const _RecoveryBanner({
+    required this.timestamp,
+    required this.onDiary,
+    required this.onResume,
+    required this.onDismiss,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final timeLabel = timestamp != null
+        ? DateFormat('MM월 dd일 HH:mm', 'ko_KR').format(timestamp!)
+        : '';
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.4)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.history_rounded, color: Color(0xFFFFD700), size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '이전 대화 기록을 복구할까요?',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: onDismiss,
+                    child: Icon(Icons.close_rounded, color: Colors.white.withOpacity(0.5), size: 18),
+                  ),
+                ],
+              ),
+              if (timeLabel.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  timeLabel,
+                  style: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 12),
+                ),
+              ],
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: onDiary,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 9),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFD700).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.5)),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            '일기 생성하기',
+                            style: TextStyle(color: Color(0xFFFFD700), fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: onResume,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 9),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            '대화 이어하기',
+                            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:dearlog/call/services/conversation_backup_service.dart';
 import 'package:dearlog/call/services/tts_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:dearlog/app.dart';
 import 'package:dearlog/call/providers/voice_provider.dart';
@@ -213,6 +215,26 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     }
   }
 
+  /// [DEBUG ONLY] 일기 생성 실패 상황을 시뮬레이션
+  Future<void> _debugForceFailure() async {
+    _sessionActive = false;
+    _timer?.cancel();
+    _timer = null;
+    await ref.read(speechNotifierProvider.notifier).shutdown();
+    await _tts.stop();
+
+    final messages = ref.read(messageProvider);
+    await ConversationBackupService.save(messages);
+
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => MainScreen(snackMessage: '[DEBUG] 강제 실패 — 복구 배너를 확인하세요.'),
+      ),
+      (route) => false,
+    );
+  }
+
   Future<void> _onCallEnd() async {
     _sessionActive = false;
     _timer?.cancel();
@@ -267,6 +289,25 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
         ),
         centerTitle: true,
         automaticallyImplyLeading: false,
+        actions: [
+          if (kDebugMode)
+            GestureDetector(
+              onTap: _debugForceFailure,
+              child: Container(
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.withOpacity(0.6)),
+                ),
+                child: const Text(
+                  'FAIL',
+                  style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+        ],
       ),
       body: Column(
         children: [

@@ -44,6 +44,7 @@ export 'call/providers/call_provider.dart';
 export 'call/providers/message_provider.dart';
 export 'call/providers/speech_provider.dart';
 export 'call/repository/call_repository.dart';
+export 'call/services/conversation_backup_service.dart';
 export 'call/screens/ai_chat_screen.dart';
 export 'call/screens/call_done_screen.dart';
 export 'call/screens/call_loading_screen.dart';

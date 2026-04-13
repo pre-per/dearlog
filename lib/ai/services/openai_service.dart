@@ -1,6 +1,14 @@
 import 'dart:convert';
+import 'dart:typed_data';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:dearlog/app.dart';
+
+String _stripCodeFence(String content) {
+  final s = content.trim();
+  final match = RegExp(r'^```(?:json)?\s*([\s\S]*?)\s*```$').firstMatch(s);
+  return match != null ? match.group(1)!.trim() : s;
+}
 
 class OpenAIService {
   final _apiKey = RemoteConfigService().openAIApiKey;
@@ -23,9 +31,9 @@ class OpenAIService {
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        "model": "gpt-4o-mini",
+        "model": "gpt-5.4-nano",
         "messages": allMessages,
-        "max_tokens": 400,
+        "max_completion_tokens": 400,
         "temperature": 0.7,
       }),
     );
@@ -44,8 +52,9 @@ class OpenAIService {
     }
   }
 
-  Future<DiaryEntry> generateDiaryFromMessages(List<Message> messages, {String? callId}) async {
+  Future<DiaryEntry> generateDiaryFromMessages(List<Message> messages, {String? callId, void Function(int step)? onStep}) async {
     // 1단계: 일기 요약 및 AI 위로 한마디 생성 요청
+    onStep?.call(1);
     final promptMessages = [
       {
         "role": "system",
@@ -72,10 +81,11 @@ JSON 외의 말은 하지 마.
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        "model": "gpt-4o-mini",
+        "model": "gpt-5.4-mini",
         "messages": promptMessages,
-        "max_tokens": 600,
+        "max_completion_tokens": 600,
         "temperature": 0.7,
+        "response_format": {"type": "json_object"},
       }),
     );
 
@@ -84,19 +94,47 @@ JSON 외의 말은 하지 마.
     }
 
     final diaryContent = jsonDecode(diaryResponse.body)['choices'][0]['message']['content'];
-    final diaryJson = jsonDecode(diaryContent);
+    final diaryJson = jsonDecode(_stripCodeFence(diaryContent));
 
-    // 2단계: 그림 이미지 생성 요청 (내용 기반)
-    final imagePrompt =
-    '''
-    다음 내용을 바탕으로 파스텔톤 색감의 그림 일기 스타일 일러스트를 한 장면으로 그려줘.
-    가운데에는 동그란 형태의 귀엽고 단순한 캐릭터 하나만 등장하게 하고, 주변 배경은 잔잔하고 따뜻한 분위기로 구성해줘.
-    장면은 하나의 통일된 공간(예: 방, 공원, 거리 등) 안에서 이루어져야 하며, 여러 장면을 분할하거나 나누지 말고 하나의 전체 그림으로 그려줘.
-    전체적으로 손으로 그린 듯한 느낌을 주고, 만화처럼 선이 부드럽고 질감이 연하게 표현되었으면 좋겠어.
-    캐릭터의 표정과 행동은 글의 분위기와 감정을 반영하도록 해줘.
-    다음은 참고할 내용이야: ${diaryJson['content']}
-    ''';
+    // 2단계: 감정 분석 생성 (mainWords를 이미지 프롬프트에 활용하기 위해 먼저 수행)
+    onStep?.call(2);
+    final title = diaryJson['title'] as String? ?? '';
+    final content = diaryJson['content'] as String? ?? '';
+    final emotion = diaryJson['emotion'] as String? ?? '';
 
+    final diaryForAnalysis = DiaryEntry(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      date: DateTime.now(),
+      title: title,
+      content: content,
+      emotion: emotion,
+      aiComment: diaryJson['aiComment'] as String? ?? '',
+      imageUrls: [],
+      callId: callId,
+    );
+    final analysis = await generateAnalysisFromDiary(diaryForAnalysis);
+
+    // 3단계: 그림 이미지 생성 (mainWords 포함)
+    onStep?.call(3);
+    final mainWordsStr = analysis.mainWords.join(', ');
+
+    final imagePrompt = '''
+You are illustrating a single-scene pastel-style diary illustration for a Korean user's daily journal entry.
+
+[DIARY INFO]
+- Title: $title
+- Emotion: $emotion
+- Key themes: $mainWordsStr
+- Content: $content
+
+[ILLUSTRATION RULES]
+1. Scene: Choose ONE specific location or moment from the content (e.g., a cozy room, a café, a park bench, a bed at night). The scene must directly reflect a concrete detail mentioned in the content — not a generic setting.
+2. Character: One small, round, simple cartoon character at the center. The character's pose, action, and facial expression must reflect the emotion ("$emotion") and what they are doing in the story.
+3. Key objects: Identify 3–5 concrete nouns or actions from the content (e.g., a book, a phone call, music notes, food, a friend, rain, a TV) and include them visually in the scene as props or background details. Prioritize objects related to the key themes: $mainWordsStr.
+4. Storytelling details: Scatter small visual storytelling elements throughout — things like: items on a desk, what's outside the window, objects on the floor, or subtle symbols that hint at what happened that day.
+5. Style: Soft pastel color palette, hand-drawn feel, smooth rounded lines, light texture. Warm and gentle mood. No text or letters in the image.
+6. Composition: Single unified scene, no split panels. The illustration should feel like one complete, lived-in moment — not a generic or symbolic image.
+''';
 
     final imageResponse = await http.post(
       Uri.parse('https://api.openai.com/v1/images/generations'),
@@ -105,7 +143,7 @@ JSON 외의 말은 하지 마.
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        "model": "dall-e-3",
+        "model": "gpt-image-1.5",
         "prompt": imagePrompt,
         "n": 1,
         "size": "1024x1024",
@@ -116,23 +154,26 @@ JSON 외의 말은 하지 마.
       throw Exception('그림 생성 실패: ${imageResponse.body}');
     }
 
-    final imageUrl = jsonDecode(imageResponse.body)['data'][0]['url'];
+    final b64 = jsonDecode(imageResponse.body)['data'][0]['b64_json'] as String;
+    final imageBytes = base64Decode(b64);
+    final storageRef = FirebaseStorage.instance
+        .ref()
+        .child('diary_images/${DateTime.now().millisecondsSinceEpoch}.png');
+    await storageRef.putData(imageBytes, SettableMetadata(contentType: 'image/png'));
+    final imageUrl = await storageRef.getDownloadURL();
 
     // 최종 DiaryEntry 반환
-    final diary = DiaryEntry(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      date: DateTime.now(),
-      title: diaryJson['title'],
-      content: diaryJson['content'],
-      emotion: diaryJson['emotion'],
-      aiComment: diaryJson['aiComment'], // ✅ 저장
+    return DiaryEntry(
+      id: diaryForAnalysis.id,
+      date: diaryForAnalysis.date,
+      title: title,
+      content: content,
+      emotion: emotion,
+      aiComment: diaryForAnalysis.aiComment,
       imageUrls: [imageUrl],
       callId: callId,
+      analysis: analysis,
     );
-
-    final analysis = await generateAnalysisFromDiary(diary);
-
-    return diary.copyWith(analysis: analysis);
   }
 }
 
@@ -209,10 +250,11 @@ recommendations 규칙:
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        "model": "gpt-4o-mini",
+        "model": "gpt-5.4-mini",
         "messages": promptMessages,
-        "max_tokens": 10000,
+        "max_completion_tokens": 10000,
         "temperature": 0.4,
+        "response_format": {"type": "json_object"},
       }),
     );
 
@@ -221,7 +263,7 @@ recommendations 규칙:
     }
 
     final content = jsonDecode(res.body)['choices'][0]['message']['content'];
-    final jsonMap = jsonDecode(content);
+    final jsonMap = jsonDecode(_stripCodeFence(content));
     return DiaryAnalysis.fromJson(Map<String, dynamic>.from(jsonMap));
   }
 }

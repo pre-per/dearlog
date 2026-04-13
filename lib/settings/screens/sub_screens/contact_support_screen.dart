@@ -8,7 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 class ContactSupportScreen extends StatelessWidget {
   const ContactSupportScreen({super.key});
 
-  static const String supportEmail = 'dearlogofficial@gmail.com'; // TODO: 너 메일로 변경
+  static const String supportEmail = 'dearlogofficial@gmail.com';
   static const String emailSubject = '[디어로그 문의]';
 
   Future<Map<String, String>> _getAppMeta() async {
