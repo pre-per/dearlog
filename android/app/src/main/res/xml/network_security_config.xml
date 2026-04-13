@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- just_audio StreamAudioSource uses a local HTTP proxy server on Android.
+         Android 9+ blocks cleartext traffic by default, so localhost must be explicitly allowed. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>

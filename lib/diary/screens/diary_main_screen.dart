@@ -124,14 +124,15 @@ class _DiaryCalendarViewState extends State<DiaryCalendarView> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    ListView.separated(
+                    Flexible(
+                      child: ListView.separated(
                       shrinkWrap: true,
                       itemCount: diaries.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final diary = diaries[index];
                         final planetName = planetBaseNameMap[diary.emotion] ?? 'grey_moon';
-                        
+
                         return InkWell(
                           onTap: () {
                             Navigator.pop(context);
@@ -167,6 +168,7 @@ class _DiaryCalendarViewState extends State<DiaryCalendarView> {
                           ),
                         );
                       },
+                    ),
                     ),
                   ],
                 ),

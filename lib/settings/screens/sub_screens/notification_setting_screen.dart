@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:dearlog/app.dart';
 import 'package:dearlog/notification/service/local_notification_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const _kReminderEnabled = 'reminder_enabled';
@@ -16,25 +19,60 @@ class NotificationSettingScreen extends StatefulWidget {
   State<NotificationSettingScreen> createState() => _NotificationSettingScreenState();
 }
 
-class _NotificationSettingScreenState extends State<NotificationSettingScreen> {
+class _NotificationSettingScreenState extends State<NotificationSettingScreen>
+    with WidgetsBindingObserver {
   bool _enabled = false;
   int _hour = 21;
   int _minute = 0;
   bool _loading = true;
   bool _saving = false;
+  bool _permissionDenied = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadPrefs();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// 설정 앱에서 돌아왔을 때 권한 상태 재확인
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkNotificationPermission();
+    }
+  }
+
+  Future<void> _checkNotificationPermission() async {
+    final denied = await _isNotificationPermissionDenied();
+    if (mounted) setState(() => _permissionDenied = denied);
+  }
+
+  /// iOS는 permission_handler가 notDetermined를 denied로 잘못 반환하는 문제가 있어
+  /// FirebaseMessaging.getNotificationSettings()로 정확한 상태를 확인
+  Future<bool> _isNotificationPermissionDenied() async {
+    if (Platform.isIOS) {
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      return settings.authorizationStatus == AuthorizationStatus.denied;
+    }
+    final status = await Permission.notification.status;
+    return status.isDenied || status.isPermanentlyDenied;
   }
 
   Future<void> _loadPrefs() async {
     final prefs = await SharedPreferences.getInstance();
+    final denied = await _isNotificationPermissionDenied();
     setState(() {
       _enabled = prefs.getBool(_kReminderEnabled) ?? false;
       _hour = prefs.getInt(_kReminderHour) ?? 21;
       _minute = prefs.getInt(_kReminderMinute) ?? 0;
+      _permissionDenied = denied;
       _loading = false;
     });
   }
@@ -173,6 +211,14 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen> {
                   '매일 정해진 시간에 오늘 하루를 기록하도록 알려드려요.',
                   style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14, height: 1.5),
                 ),
+                if (_permissionDenied) ...[
+                  const SizedBox(height: 20),
+                  _PermissionBanner(
+                    onTap: () async {
+                      await openAppSettings();
+                    },
+                  ),
+                ],
                 const SizedBox(height: 24),
                 _SettingCard(
                   child: Row(
@@ -213,6 +259,50 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen> {
                 ],
               ],
             ),
+    );
+  }
+}
+
+class _PermissionBanner extends StatelessWidget {
+  final VoidCallback onTap;
+  const _PermissionBanner({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFD700).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.4)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.notifications_off_outlined, color: Color(0xFFFFD700), size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              '알림 권한이 꺼져 있어요.\n리마인더를 받으려면 권한을 허용해 주세요.',
+              style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 13, height: 1.5),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFD700),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text(
+                '설정 열기',
+                style: TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
