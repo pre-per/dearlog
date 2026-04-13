@@ -1,43 +1,26 @@
 import 'package:dearlog/app.dart';
 
-class TodaySummaryCard extends ConsumerWidget {
-  const TodaySummaryCard({super.key});
+class TodaySummaryCard extends StatelessWidget {
+  final DiaryEntry diary;
+  const TodaySummaryCard({super.key, required this.diary});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final diary = ref.watch(latestDiaryProvider);
+  Widget build(BuildContext context) {
+    final analysis = diary.analysis;
 
-    if (diary == null || diary.analysis == null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          GlassCard(
-            child: Column(
-              children: [
-                Text(
-                  '오늘의 감정 상태 요약',
-                  style: TextStyle(color: Colors.white60),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  '아직 분석할 일기가 없어요.\n오늘의 기록을 남겨보세요.',
-                  style: TextStyle(color: Colors.white70, height: 1.35),
-                ),
-              ],
-            ),
-          ),
-        ],
+    if (analysis == null) {
+      return const GlassCard(
+        child: Text(
+          '아직 분석할 일기가 없어요.\n오늘의 기록을 남겨보세요.',
+          style: TextStyle(color: Colors.white70, height: 1.35),
+        ),
       );
     }
 
-    final analysis = diary.analysis!;
     final topEmotion = analysis.emotions.isNotEmpty ? analysis.emotions.first : null;
     final quote = analysis.evidence.isNotEmpty ? analysis.evidence.first : null;
-
     final mood = analysis.moodScore;
-    final moodLabel = mood >= 70
-        ? '비교적 안정'
-        : (mood >= 45 ? '약간 힘듦' : '많이 힘듦');
+    final moodLabel = mood >= 70 ? '비교적 안정' : (mood >= 45 ? '약간 힘듦' : '많이 힘듦');
 
     return GlassCard(
       child: Column(
@@ -45,14 +28,13 @@ class TodaySummaryCard extends ConsumerWidget {
         children: [
           Text(
             "오늘의 감정 상태 요약",
-            style: const TextStyle(
-              color: Colors.white60,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.6),
               fontWeight: FontWeight.w800,
               height: 1.35,
             ),
           ),
           const SizedBox(height: 10),
-          // 한 줄 요약(공감 톤)
           Text(
             analysis.summary,
             style: const TextStyle(
@@ -63,21 +45,27 @@ class TodaySummaryCard extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
 
-          // 오늘 상태 요약
+          // 감정 요약
           Row(
             children: [
               _SmallChip(text: '기분 점수 $mood점 · $moodLabel'),
-              const SizedBox(width: 8),
-              if (topEmotion != null)
+              if (topEmotion != null) ...[
+                const SizedBox(width: 8),
                 _SmallChip(text: '주요 감정: ${topEmotion.name} (${topEmotion.score})'),
+              ],
             ],
           ),
 
+          // 근거 (이전 내용 복구)
           if (quote != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
             Text(
               '근거',
-              style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.75),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
@@ -87,7 +75,11 @@ class TodaySummaryCard extends ConsumerWidget {
             const SizedBox(height: 6),
             Text(
               quote.why,
-              style: const TextStyle(color: Colors.white60, height: 1.35, fontSize: 12),
+              style: const TextStyle(
+                color: Colors.white60,
+                height: 1.35,
+                fontSize: 12,
+              ),
             ),
           ],
         ],
@@ -95,7 +87,6 @@ class TodaySummaryCard extends ConsumerWidget {
     );
   }
 }
-
 
 class _SmallChip extends StatelessWidget {
   final String text;

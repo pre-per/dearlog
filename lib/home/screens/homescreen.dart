@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:dearlog/app.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
+import 'package:dearlog/call/providers/voice_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -91,16 +92,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 24),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    DateFormat('MM월 dd일(E)', 'ko_KR').format(DateTime.now()),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        DateFormat('MM월 dd일(E)', 'ko_KR').format(DateTime.now()),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
-                  ),
+                    _VoiceSelectButton(),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 Align(
@@ -254,3 +259,154 @@ class _RippleRing extends StatelessWidget {
   }
 }
 
+class _VoiceSelectButton extends ConsumerWidget {
+  const _VoiceSelectButton();
+
+  static const List<String> voices = [
+    'alloy',
+    'ash',
+    'ballad',
+    'cedar',
+    'coral',
+    'echo',
+    'fable',
+    'marin',
+    'nova',
+    'onyx',
+    'sage',
+    'shimmer',
+    'verse',
+  ];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedVoice = ref.watch(selectedVoiceProvider);
+
+    return GestureDetector(
+      onTap: () => _showVoicePicker(context, ref),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.18),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.graphic_eq_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              selectedVoice ?? '목소리 선택',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showVoicePicker(BuildContext context, WidgetRef ref) {
+    final selectedVoice = ref.read(selectedVoiceProvider);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: const Color(0xFF1E1E1E),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'AI 목소리 선택',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 320,
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: voices.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final voice = voices[index];
+                      final isSelected = selectedVoice == voice;
+
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () {
+                          ref.read(selectedVoiceProvider.notifier).state = voice;
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Colors.white.withOpacity(0.18)
+                                : Colors.white.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isSelected
+                                  ? Colors.orangeAccent
+                                  : Colors.white.withOpacity(0.08),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  voice,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                              if (isSelected)
+                                const Icon(
+                                  Icons.check_circle,
+                                  color: Colors.orangeAccent,
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
