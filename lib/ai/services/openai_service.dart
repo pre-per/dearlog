@@ -11,7 +11,7 @@ class OpenAIService {
     final allMessages = [
       {
         "role": "system",
-        "content": "너는 사용자의 하루를 따뜻하게 들어주는 친구야. 1~2줄로 짧고 공감 있게 대답하고, 통화 중이라는 상황을 인지하고 항상 자연스럽게 대화를 이어가줘."
+        "content": "너는 사용자의 하루를 따뜻하게 들어주는 친구야. 1~2줄 정도로 너가 진짜 사람인 것처럼 자연스럽게 대화를 이어나가줘."
       },
       ...messages.map((msg) => {"role": msg.role, "content": msg.content})
     ];
@@ -23,7 +23,7 @@ class OpenAIService {
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        "model": "gpt-4.1-mini",
+        "model": "gpt-4o-mini",
         "messages": allMessages,
         "max_tokens": 400,
         "temperature": 0.7,
@@ -45,7 +45,7 @@ class OpenAIService {
   }
 
   Future<DiaryEntry> generateDiaryFromMessages(List<Message> messages, {String? callId}) async {
-    // 1단계: 일기 요약 요청
+    // 1단계: 일기 요약 및 AI 위로 한마디 생성 요청
     final promptMessages = [
       {
         "role": "system",
@@ -55,7 +55,8 @@ class OpenAIService {
 {
   "title": "일기 제목",
   "emotion": "슬픔, 외로움, 우울, 평온, 안정, 차분, 분노, 짜증, 답답함, 기쁨, 설렘, 즐거움, 행복, 만족, 감사 중 하나", 
-  "content": "일기 내용은 사용자가 직접 쓴 것처럼 5~7문장으로."
+  "content": "일기 내용은 사용자가 직접 쓴 것처럼 5~7문장으로.",
+  "aiComment": "사용자의 하루를 응원하거나 위로해 주는 따뜻한 한 마디 (1~2문장)"
 }
 
 JSON 외의 말은 하지 마.
@@ -71,9 +72,9 @@ JSON 외의 말은 하지 마.
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        "model": "gpt-4.1-mini",
+        "model": "gpt-4o-mini",
         "messages": promptMessages,
-        "max_tokens": 400,
+        "max_tokens": 600,
         "temperature": 0.7,
       }),
     );
@@ -124,6 +125,7 @@ JSON 외의 말은 하지 마.
       title: diaryJson['title'],
       content: diaryJson['content'],
       emotion: diaryJson['emotion'],
+      aiComment: diaryJson['aiComment'], // ✅ 저장
       imageUrls: [imageUrl],
       callId: callId,
     );
@@ -207,7 +209,7 @@ recommendations 규칙:
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        "model": "gpt-4.1-mini",
+        "model": "gpt-4o-mini",
         "messages": promptMessages,
         "max_tokens": 10000,
         "temperature": 0.4,

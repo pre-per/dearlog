@@ -8,8 +8,10 @@ class DiaryEntry {
   final String emotion;
   final List<String> imageUrls;
   final String? callId;
+  final String? myLetter; // ✅ 추가
+  final String? aiComment; // ✅ 추가
 
-  final DiaryAnalysis? analysis; // ✅ 추가
+  final DiaryAnalysis? analysis;
 
   DiaryEntry({
     required this.id,
@@ -19,7 +21,9 @@ class DiaryEntry {
     required this.emotion,
     required this.imageUrls,
     this.callId,
-    this.analysis, // ✅
+    this.myLetter,
+    this.aiComment,
+    this.analysis,
   });
 
   DiaryEntry copyWith({
@@ -30,7 +34,9 @@ class DiaryEntry {
     String? emotion,
     List<String>? imageUrls,
     String? callId,
-    DiaryAnalysis? analysis, // ✅
+    String? myLetter,
+    String? aiComment,
+    DiaryAnalysis? analysis,
   }) {
     return DiaryEntry(
       id: id ?? this.id,
@@ -40,6 +46,8 @@ class DiaryEntry {
       emotion: emotion ?? this.emotion,
       imageUrls: imageUrls ?? List<String>.from(this.imageUrls),
       callId: callId ?? this.callId,
+      myLetter: myLetter ?? this.myLetter,
+      aiComment: aiComment ?? this.aiComment,
       analysis: analysis ?? this.analysis,
     );
   }
@@ -53,6 +61,8 @@ class DiaryEntry {
       emotion: json['emotion'],
       imageUrls: List<String>.from(json['imageUrls']),
       callId: json['callId'],
+      myLetter: json['myLetter'],
+      aiComment: json['aiComment'],
       analysis: json['analysis'] != null
           ? DiaryAnalysis.fromJson(Map<String, dynamic>.from(json['analysis']))
           : null,
@@ -68,7 +78,9 @@ class DiaryEntry {
       'emotion': emotion,
       'imageUrls': imageUrls,
       if (callId != null) 'callId': callId,
-      if (analysis != null) 'analysis': analysis!.toJson(), // ✅
+      if (myLetter != null) 'myLetter': myLetter,
+      if (aiComment != null) 'aiComment': aiComment,
+      if (analysis != null) 'analysis': analysis!.toJson(),
     };
   }
 }
