@@ -12,25 +12,29 @@ class LocalNotificationService {
 
   static final LocalNotificationService instance = LocalNotificationService._();
 
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin =
+  FlutterLocalNotificationsPlugin();
 
   Future<void> init() async {
-    // 기기의 로컬 timezone을 정확히 설정 (미설정 시 UTC로 동작해 알림 시간 오차 발생)
+    // 기기의 로컬 timezone을 정확히 설정
     tz.initializeTimeZones();
+
     try {
-      final String localTimezone = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(localTimezone));
+      final localTimezone = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(localTimezone.identifier));
+
+      debugPrint(
+        '[Timezone] identifier: ${localTimezone.identifier}, '
+            'localizedName: ${localTimezone.localizedName}',
+      );
     } catch (e) {
-      // 네이티브 플러그인 미빌드 환경(hot restart 등)에서 발생하는 MissingPluginException 방어
-      // 전체 빌드(flutter run) 후 정상 동작
       debugPrint('[Timezone] flutter_timezone 미적용, 시스템 기본값 사용: $e');
     }
 
     if (Platform.isAndroid) {
-      // 일반 알림 권한 요청 (Android 13+)
       await _plugin
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin>()
           ?.requestNotificationsPermission();
     }
 
@@ -41,7 +45,10 @@ class LocalNotificationService {
       requestSoundPermission: true,
     );
 
-    const settings = InitializationSettings(android: android, iOS: ios);
+    const settings = InitializationSettings(
+      android: android,
+      iOS: ios,
+    );
 
     await _plugin.initialize(settings);
   }
@@ -69,12 +76,21 @@ class LocalNotificationService {
     required String body,
     required String payload,
   }) async {
-    // exact alarm 권한 확인 — 없으면 inexact로 대체 (권한 거부 시 아예 미등록되던 문제 수정)
     final hasExactAlarm = await _handleExactAlarmPermission();
 
     final now = tz.TZDateTime.now(tz.local);
-    var next = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-    if (next.isBefore(now)) next = next.add(const Duration(days: 1));
+    var next = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
+
+    if (next.isBefore(now)) {
+      next = next.add(const Duration(days: 1));
+    }
 
     const details = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -101,11 +117,14 @@ class LocalNotificationService {
             ? AndroidScheduleMode.exactAllowWhileIdle
             : AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
+        UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time,
         payload: payload,
       );
-      debugPrint('[알림] 예약 완료: $hour:$minute (${hasExactAlarm ? 'exact' : 'inexact'})');
+
+      debugPrint(
+        '[알림] 예약 완료: $hour:$minute (${hasExactAlarm ? 'exact' : 'inexact'})',
+      );
     } catch (e) {
       debugPrint('[알림] 예약 실패: $e');
     }
@@ -113,7 +132,7 @@ class LocalNotificationService {
 
   Future<void> showTestNow() async {
     debugPrint('showTestNow start');
-    // ... (기존 코드와 동일)
+    // 기존 코드
   }
 
   Future<void> scheduleTestIn10Seconds() async {
@@ -130,7 +149,10 @@ class LocalNotificationService {
         presentSound: true,
         presentBadge: true,
       ),
-      android: AndroidNotificationDetails('dearlog_test', 'Test'),
+      android: AndroidNotificationDetails(
+        'dearlog_test',
+        'Test',
+      ),
     );
 
     try {
@@ -144,9 +166,10 @@ class LocalNotificationService {
             ? AndroidScheduleMode.exactAllowWhileIdle
             : AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
+        UILocalNotificationDateInterpretation.absoluteTime,
         payload: 'test_10s',
       );
+
       debugPrint('showTest10 end');
     } catch (e) {
       debugPrint('[알림] 10초 예약 실패: $e');
