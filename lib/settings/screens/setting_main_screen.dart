@@ -1,14 +1,24 @@
 import 'dart:ui';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dearlog/app.dart';
+import 'package:dearlog/call/providers/voice_provider.dart';
+import 'package:dearlog/community/repository/community_repository.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingMainScreen extends ConsumerWidget {
-  const SettingMainScreen({super.key});
+  // ConsumerWidget 이지만 const 가 아닌 인스턴스 변수로 컨트롤러를 관리하면
+  // build 마다 새 컨트롤러가 만들어져 입력 중인 텍스트가 사라지는 문제를 막을 수 있다.
+  // (main.dart 의 `_screens` 가 한 번만 인스턴스화하므로 lifetime 동안 한 컨트롤러만 산다)
+  // 더 엄격하게는 ConsumerStatefulWidget 으로 dispose 까지 관리하는 게 정석.
+  // ignore: prefer_const_constructors_in_immutables
+  SettingMainScreen({super.key});
+
+  final TextEditingController _feedbackController = TextEditingController();
 
   Future<void> _reauthenticateWithGoogle() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -66,29 +76,139 @@ class SettingMainScreen extends ConsumerWidget {
     }
   }
 
-  /// ✅ 유저의 Firestore + Storage 전체 데이터 삭제
+  /// 본인 uid 로 묶인 외부 컬렉션 (community_posts, community_reports, feedbacks) 정리.
+  /// 회원탈퇴 시 호출 — 탈퇴 후에도 닉네임/신고/피드백 기록이 남지 않게.
+  Future<void> _deleteUserOwnedExternalDocs(String uid) async {
+    // 1) 본인이 게시한 공개 게시물 모두 내림 (댓글/좋아요/스토리지 이미지까지 정리)
+    try {
+      final myPosts = await FirebaseFirestore.instance
+          .collection('community_posts')
+          .where('authorUid', isEqualTo: uid)
+          .get();
+      final repo = CommunityRepository();
+      for (final doc in myPosts.docs) {
+        try {
+          await repo.takeDownPost(doc.id);
+        } catch (_) {/* 부분 실패 허용 — 다음 문서로 진행 */}
+      }
+    } catch (e) {
+      debugPrint('[withdraw] community_posts cleanup failed: $e');
+    }
+
+    // 2) 본인 신고 기록 삭제 (firestore.rules 에서 self-delete 허용 필요)
+    try {
+      while (true) {
+        final snap = await FirebaseFirestore.instance
+            .collection('community_reports')
+            .where('reporterUid', isEqualTo: uid)
+            .limit(200)
+            .get();
+        if (snap.docs.isEmpty) break;
+        final batch = FirebaseFirestore.instance.batch();
+        for (final doc in snap.docs) {
+          batch.delete(doc.reference);
+        }
+        await batch.commit();
+      }
+    } catch (e) {
+      debugPrint('[withdraw] community_reports cleanup failed: $e');
+    }
+
+    // 3) 본인이 보낸 피드백 삭제
+    try {
+      while (true) {
+        final snap = await FirebaseFirestore.instance
+            .collection('feedbacks')
+            .where('uid', isEqualTo: uid)
+            .limit(200)
+            .get();
+        if (snap.docs.isEmpty) break;
+        final batch = FirebaseFirestore.instance.batch();
+        for (final doc in snap.docs) {
+          batch.delete(doc.reference);
+        }
+        await batch.commit();
+      }
+    } catch (e) {
+      debugPrint('[withdraw] feedbacks cleanup failed: $e');
+    }
+  }
+
+  /// ✅ 유저의 Firestore + Storage 전체 데이터 삭제 (회원탈퇴 시).
+  ///
+  /// 정리 순서:
+  ///   1) 외부 컬렉션 (community_posts/reports, feedbacks) — 본인 uid 로 묶인 것
+  ///   2) 사용자 서브컬렉션 (diary/call/notifications/insights)
+  ///   3) Storage 의 users/{uid} 폴더 (그림일기 + 댓글 이미지 등)
+  ///   4) FCM 토큰 무효화 (이 기기에 더 이상 push 가 오지 않게)
+  ///   5) 마지막에 user 문서 자체 삭제
   Future<void> _deleteAllUserData(String uid) async {
-    // 1) Firestore 서브컬렉션 삭제 (call, diary)
+    await _deleteUserOwnedExternalDocs(uid);
+
+    // 사용자 서브컬렉션 (rules 의 wildcard 매치로 본인이 read/write 가능)
     await _deleteSubcollection(uid: uid, subcollectionName: 'diary');
     await _deleteSubcollection(uid: uid, subcollectionName: 'call');
+    await _deleteSubcollection(uid: uid, subcollectionName: 'notifications');
+    await _deleteSubcollection(uid: uid, subcollectionName: 'insights');
 
-    // (선택) 외부 컬렉션도 uid로 묶여 있으면 삭제 가능
-    // 예: feedbacks
-    // final fb = await FirebaseFirestore.instance
-    //     .collection('feedbacks')
-    //     .where('uid', isEqualTo: uid)
-    //     .get();
-    // final batch = FirebaseFirestore.instance.batch();
-    // for (final d in fb.docs) {
-    //   batch.delete(d.reference);
-    // }
-    // await batch.commit();
+    // Storage: users/{uid} 통째로 (diaries, illustration, 그 외)
+    try {
+      await _deleteStorageFolder('users/$uid');
+    } catch (e) {
+      debugPrint('[withdraw] storage cleanup failed: $e');
+    }
 
-    // 2) Storage 삭제: users/{uid}/diaries 아래 전부
-    await _deleteStorageFolder('users/$uid/diaries');
+    // FCM 토큰 무효화 — auth 자체가 사라질 거라 user doc 의 fcmToken 필드는
+    // 다음 단계 user doc 삭제로 같이 사라진다. 기기 측 토큰은 명시적으로 폐기.
+    try {
+      await FirebaseMessaging.instance.deleteToken();
+    } catch (_) {}
 
-    // 3) 마지막에 user 문서 삭제
+    // 마지막에 user 문서 삭제
     await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+  }
+
+  /// 로그아웃/탈퇴 시 모든 사용자 의존 state 를 비운다.
+  /// 같은 기기에서 다른 계정으로 로그인했을 때 이전 사용자의 메시지/설정/draft
+  /// /통화 백업 등이 보이지 않게 하는 게 목적.
+  Future<void> _clearLocalUserState(WidgetRef ref) async {
+    // 인증/식별
+    ref.read(userIdProvider.notifier).state = null;
+    ref.invalidate(userProvider);
+
+    // 네비게이션 인덱스
+    ref.read(MainIndexProvider.notifier).state = 0;
+
+    // 통화 관련
+    ref.invalidate(messageProvider);
+    ref.invalidate(selectedVoiceProvider);
+    ref.invalidate(illustrationEnabledProvider);
+
+    // 일기 / 검색
+    ref.invalidate(searchQueryProvider);
+
+    // 온보딩 draft
+    ref.invalidate(onboardingDraftProvider);
+
+    // 진행 중이던 통화 백업이 다음 사용자에게 복구 배너로 노출되지 않게.
+    try {
+      await ConversationBackupService.clear();
+    } catch (_) {}
+  }
+
+  /// 현재 기기의 FCM 토큰을 무효화하고 user doc 의 fcmToken 필드를 지운다.
+  /// 로그아웃 시 다른 사용자의 푸시가 이 기기에 오지 않게 하는 용도.
+  Future<void> _clearFcmTokenForLogout(String? uid) async {
+    if (uid != null) {
+      try {
+        await FirebaseFirestore.instance
+            .doc('users/$uid')
+            .update({'fcmToken': FieldValue.delete()});
+      } catch (_) {}
+    }
+    try {
+      await FirebaseMessaging.instance.deleteToken();
+    } catch (_) {}
   }
 
   Future<void> handleWithdraw(BuildContext context, WidgetRef ref) async {
@@ -201,21 +321,33 @@ class SettingMainScreen extends ConsumerWidget {
     final confirm = await showWithdrawConfirmDialog(context);
     if (confirm != true) return;
 
+    // 진행 중 다이얼로그 — 회원탈퇴는 Firestore 다중 컬렉션 정리 + Storage + auth
+    // 까지 시간이 걸려서 사용자에게 "처리 중" 피드백을 명시적으로 줘야 한다.
+    final dismiss = showGlassProgressDialog(
+      context: context,
+      message: '회원탈퇴 처리 중...',
+    );
+
     try {
       final uid = user.uid;
 
-      // 1️⃣ Firestore 사용자 데이터 삭제
-      // ✅ Firestore + Storage 전부 삭제
+      // 1) Firestore + Storage 전부 삭제 (community/inbox/insights/feedbacks 포함)
       await _deleteAllUserData(uid);
 
-      // 2️⃣ Firebase Auth 계정 삭제
+      // 2) Firebase Auth 계정 삭제
       await user.delete();
 
-      // 3️⃣ Riverpod 상태 초기화
-      ref.read(userIdProvider.notifier).state = null;
-      ref.invalidate(userProvider);
+      // 3) Google 자동 재로그인 방지
+      try {
+        await GoogleSignIn().signOut();
+      } catch (_) {}
 
-      // 4️⃣ 로그인 화면으로 이동
+      // 4) 로컬 state 정리 + 통화 백업 정리
+      await _clearLocalUserState(ref);
+
+      dismiss();
+
+      // 5) 로그인 화면으로 이동
       if (context.mounted) {
         Navigator.pushAndRemoveUntil(
           context,
@@ -224,44 +356,69 @@ class SettingMainScreen extends ConsumerWidget {
         );
       }
     } on FirebaseAuthException catch (e) {
+      // 재인증 흐름은 진행 다이얼로그를 닫고 안내 → 픽커 → 다시 진행 다이얼로그.
+      dismiss();
       if (e.code == 'requires-recent-login') {
-        _showReauthRequired(context);
-        // 1) 재인증 시도
-        await _reauthenticateWithGoogle();
-        // 2) 재시도
-        await user.delete();
-        if (context.mounted) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (_) => false,
-          );
+        if (!context.mounted) return;
+        await _showReauthRequiredAwait(context);
+        try {
+          await _reauthenticateWithGoogle();
+        } catch (_) {
+          if (context.mounted) {
+            _showError(context, '재인증이 취소되어 탈퇴를 중단했어요');
+          }
+          return;
+        }
+        // 재인증 성공 — 데이터 정리부터 다시. 진행 다이얼로그 다시 띄움.
+        if (!context.mounted) return;
+        final dismiss2 = showGlassProgressDialog(
+          context: context,
+          message: '회원탈퇴 처리 중...',
+        );
+        try {
+          await _deleteAllUserData(user.uid);
+          await user.delete();
+          try {
+            await GoogleSignIn().signOut();
+          } catch (_) {}
+          await _clearLocalUserState(ref);
+          dismiss2();
+          if (context.mounted) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (_) => false,
+            );
+          }
+        } catch (e) {
+          dismiss2();
+          if (context.mounted) _showError(context, '$e');
         }
       } else {
         _showError(context, e.message);
       }
     } catch (e) {
+      dismiss();
       _showError(context, e.toString());
     }
   }
 
-  void _showReauthRequired(BuildContext context) {
-    showDialog(
+  /// 글래스 톤 재인증 안내 다이얼로그. dialog 가 닫힐 때까지 await 한다 — 그 후에
+  /// Google 픽커를 띄워야 두 UI 가 race 하지 않는다.
+  ///
+  /// 재인증은 Firebase 의 보안 정책 (`requires-recent-login`) 상 회피 불가능 —
+  /// 마지막 로그인이 너무 오래된 사용자가 `user.delete()` 를 호출하면 무조건
+  /// 이 에러가 나온다. 다이얼로그 자체는 머티리얼 `AlertDialog` 를 쓰지 않고
+  /// 앱 톤의 글래스로 통일.
+  Future<void> _showReauthRequiredAwait(BuildContext context) async {
+    await showGlassDialog<void>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('다시 로그인 필요'),
-          content: const Text(
-            '보안을 위해 회원탈퇴를 진행하려면\n다시 로그인해 주세요.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('확인'),
-            ),
-          ],
-        );
-      },
+      title: '다시 로그인이 필요해요',
+      message: '보안을 위해 회원탈퇴를 진행하려면\n다시 로그인해 주세요.',
+      barrierDismissible: false,
+      actions: const [
+        GlassDialogAction<void>(label: '확인', value: null, isPrimary: true),
+      ],
     );
   }
 
@@ -271,22 +428,45 @@ class SettingMainScreen extends ConsumerWidget {
     );
   }
 
-  void handleLogout(BuildContext context, WidgetRef ref) async {
-    try {
-      await FirebaseAuth.instance.signOut(); // Firebase 로그아웃
-      ref.read(userIdProvider.notifier).state = null; // 상태 초기화
-      ref.invalidate(userProvider); // 사용자 정보 캐시 제거
+  Future<void> handleLogout(BuildContext context, WidgetRef ref) async {
+    final dismiss = showGlassProgressDialog(
+      context: context,
+      message: '로그아웃 처리 중...',
+    );
 
-      // 로그인 화면으로 이동
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
-      );
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+
+      // 1) FCM 토큰 무효화 — 로그아웃 후 다른 사용자가 같은 기기에 로그인 시
+      //    이전 계정의 push 가 오지 않게.
+      await _clearFcmTokenForLogout(uid);
+
+      // 2) Firebase + Google 로그아웃
+      await FirebaseAuth.instance.signOut();
+      try {
+        await GoogleSignIn().signOut();
+      } catch (_) {}
+
+      // 3) 로컬 state + 통화 백업 정리
+      await _clearLocalUserState(ref);
+
+      dismiss();
+
+      // 4) 로그인 화면으로
+      if (context.mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("로그아웃 실패: $e")));
+      dismiss();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("로그아웃 실패: $e")),
+        );
+      }
     }
   }
 
@@ -320,7 +500,6 @@ class SettingMainScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userAsync = ref.watch(userProvider);
-    final _feedbackController = TextEditingController();
 
     return Scaffold(
       appBar: AppBar(
@@ -348,12 +527,29 @@ class SettingMainScreen extends ConsumerWidget {
                       ),
                       backgroundColor: deep_grey_blue_color,
                       builder:
-                          (context) => FeedbackBottomSheet(
+                          (sheetContext) => FeedbackBottomSheet(
                             controller: _feedbackController,
-                            onSubmit: () {
-                              final feedback = _feedbackController.text;
-                              _submitFeedback(feedback: feedback, ref: ref);
-                              Navigator.of(context).pop();
+                            onSubmit: () async {
+                              final feedback = _feedbackController.text.trim();
+                              if (feedback.isEmpty) return;
+                              Navigator.of(sheetContext).pop();
+                              try {
+                                await _submitFeedback(
+                                    feedback: feedback, ref: ref);
+                                _feedbackController.clear();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text('소중한 의견을 보내주셔서 감사해요')),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('전송에 실패했어요: $e')),
+                                  );
+                                }
+                              }
                             },
                           ),
                     );
@@ -430,16 +626,6 @@ class SettingMainScreen extends ConsumerWidget {
                         // ✅ 즉시 알림 — _plugin.show() 가 정상 동작하는지 확인용.
                         //    실패 시 로그에 "[NOTI] ❌ 즉시 표시 실패: ..." 가 찍힘.
                         await LocalNotificationService.instance.showTestNow();
-                      },
-                    ),
-                    SimpleTitleTile(
-                      title: '10초 뒤 알림 예약 테스트',
-                      onTap: () async {
-                        // ✅ AlarmManager 경유 예약 알림 — 백그라운드 BroadcastReceiver
-                        //    가 살아있는지 확인용. 10초 뒤 알림이 안 뜨면
-                        //    Doze/배터리 최적화/Receiver stripping 의심.
-                        await LocalNotificationService.instance
-                            .scheduleTestIn10Seconds();
                       },
                     ),
                   ],

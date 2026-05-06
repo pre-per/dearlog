@@ -200,6 +200,11 @@ class _DiaryCalendarViewState extends State<DiaryCalendarView> {
       physics: const BouncingScrollPhysics(),
       child: Column(
         children: [
+          // 첫 사용자에게 회색 행성만 보이지 않게 안내 카드 + CTA.
+          if (widget.diaries.isEmpty) ...[
+            const _EmptyDiaryHint(),
+            const SizedBox(height: 20),
+          ],
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -351,6 +356,70 @@ class _DiaryCalendarViewState extends State<DiaryCalendarView> {
       cells.add(_CalendarCell(date: DateTime(nextMonth.year, nextMonth.month, day), inCurrentMonth: false));
     }
     return cells;
+  }
+}
+
+/// 일기가 한 건도 없을 때 캘린더 상단에 띄우는 친절 안내 + 통화 시작 CTA.
+class _EmptyDiaryHint extends ConsumerWidget {
+  const _EmptyDiaryHint();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '아직 일기가 없어요',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'GowunBatang',
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '홈에서 통화로 오늘 하루를 이야기하면\n일기와 그림이 자동으로 만들어져요',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.6),
+              fontSize: 12.5,
+              height: 1.6,
+              fontFamily: 'GowunBatang',
+            ),
+          ),
+          const SizedBox(height: 14),
+          GestureDetector(
+            onTap: () => ref.read(MainIndexProvider.notifier).state = 0,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFD700).withOpacity(0.18),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                    color: const Color(0xFFFFD700).withOpacity(0.6)),
+              ),
+              child: const Text(
+                '홈으로 가서 시작하기',
+                style: TextStyle(
+                  color: Color(0xFFFFD700),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'GowunBatang',
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

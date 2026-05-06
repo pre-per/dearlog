@@ -46,3 +46,9 @@ app.*.map.json
 
 # Claude
 .claude/
+
+# Firebase Functions
+functions/node_modules/
+
+# Xcode workspace build artifacts
+ios/Runner.xcworkspace/build/

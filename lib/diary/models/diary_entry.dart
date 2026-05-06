@@ -1,5 +1,6 @@
 import 'package:dearlog/app.dart';
 import 'package:dearlog/diary/models/letter.dart';
+import 'package:dearlog/diary/models/music_recommendation.dart';
 import 'package:dearlog/diary/models/nlp_insight.dart';
 
 class DiaryEntry {
@@ -18,6 +19,9 @@ class DiaryEntry {
   /// NLP 심리 인사이트 — 첫 진입 시 사용자가 "지금 분석하기"를 탭하면 lazy 생성.
   final NLPInsight? nlpInsight;
 
+  /// 일기 내용에 어울리는 음악 추천 — 신규 일기는 자동 생성, 기존 일기는 사용자가 "추천 받기" 누르면 생성.
+  final MusicRecommendation? music;
+
   DiaryEntry({
     required this.id,
     required this.date,
@@ -30,6 +34,7 @@ class DiaryEntry {
     this.aiComment,
     this.analysis,
     this.nlpInsight,
+    this.music,
   }) : letters = letters ?? const [];
 
   DiaryEntry copyWith({
@@ -44,6 +49,7 @@ class DiaryEntry {
     String? aiComment,
     DiaryAnalysis? analysis,
     NLPInsight? nlpInsight,
+    MusicRecommendation? music,
   }) {
     return DiaryEntry(
       id: id ?? this.id,
@@ -57,6 +63,7 @@ class DiaryEntry {
       aiComment: aiComment ?? this.aiComment,
       analysis: analysis ?? this.analysis,
       nlpInsight: nlpInsight ?? this.nlpInsight,
+      music: music ?? this.music,
     );
   }
 
@@ -100,6 +107,10 @@ class DiaryEntry {
           ? NLPInsight.fromJson(
               Map<String, dynamic>.from(json['nlpInsight']))
           : null,
+      music: json['music'] != null
+          ? MusicRecommendation.fromJson(
+              Map<String, dynamic>.from(json['music']))
+          : null,
     );
   }
 
@@ -117,6 +128,7 @@ class DiaryEntry {
       if (aiComment != null) 'aiComment': aiComment,
       if (analysis != null) 'analysis': analysis!.toJson(),
       if (nlpInsight != null) 'nlpInsight': nlpInsight!.toJson(),
+      if (music != null) 'music': music!.toJson(),
     };
   }
 }

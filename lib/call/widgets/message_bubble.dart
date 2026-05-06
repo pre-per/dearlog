@@ -1,10 +1,16 @@
 import 'package:dearlog/app.dart';
-import 'package:flutter/material.dart';
-import '../models/conversation/message.dart';
 
 class MessageBubble extends StatelessWidget {
   final Message message;
-  const MessageBubble({super.key, required this.message});
+
+  /// 유저 말풍선 길게 누름 — STT 오인식 수정 진입용. assistant 말풍선에는 무시된다.
+  final VoidCallback? onLongPress;
+
+  const MessageBubble({
+    super.key,
+    required this.message,
+    this.onLongPress,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +35,7 @@ class MessageBubble extends StatelessWidget {
       );
     }
 
-    return Align(
+    final bubble = Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 6),
@@ -48,5 +54,14 @@ class MessageBubble extends StatelessWidget {
         ),
       ),
     );
+
+    if (isUser && onLongPress != null) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onLongPress: onLongPress,
+        child: bubble,
+      );
+    }
+    return bubble;
   }
 }

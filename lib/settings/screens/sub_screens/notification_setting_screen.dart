@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dearlog/app.dart';
 import 'package:dearlog/notification/service/local_notification_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -10,6 +12,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 const _kReminderEnabled = 'reminder_enabled';
 const _kReminderHour = 'reminder_hour';
 const _kReminderMinute = 'reminder_minute';
+const _kLetterNotifEnabled = 'letter_notif_enabled';
+const _kCommentNotifEnabled = 'comment_notif_enabled';
 const _notificationId = 1001;
 
 class NotificationSettingScreen extends StatefulWidget {
@@ -24,6 +28,8 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
   bool _enabled = false;
   int _hour = 21;
   int _minute = 0;
+  bool _letterEnabled = true;
+  bool _commentEnabled = true;
   bool _loading = true;
   bool _saving = false;
   bool _permissionDenied = false;
@@ -72,12 +78,17 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
       _enabled = prefs.getBool(_kReminderEnabled) ?? false;
       _hour = prefs.getInt(_kReminderHour) ?? 21;
       _minute = prefs.getInt(_kReminderMinute) ?? 0;
+      // 편지/커뮤니티 알림 기본값은 ON. (기존 사용자가 새 prefs key 를 만나면 켠 상태로 간주)
+      _letterEnabled = prefs.getBool(_kLetterNotifEnabled) ?? true;
+      _commentEnabled = prefs.getBool(_kCommentNotifEnabled) ?? true;
       _permissionDenied = denied;
       _loading = false;
     });
   }
 
-  Future<void> _save({bool? enabled, int? hour, int? minute}) async {
+  // ───── 일일 리마인더 ─────
+
+  Future<void> _saveReminder({bool? enabled, int? hour, int? minute}) async {
     setState(() => _saving = true);
 
     final newEnabled = enabled ?? _enabled;
@@ -110,21 +121,69 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
     });
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            newEnabled
-                ? '매일 ${_formatTime(newHour, newMinute)}에 알림을 드릴게요.'
-                : '일일 리마인더가 꺼졌어요.',
-            style: const TextStyle(color: Colors.white),
-          ),
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFF1E1E2E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
+      _toast(
+        newEnabled
+            ? '매일 ${_formatTime(newHour, newMinute)}에 알림을 드릴게요.'
+            : '일일 리마인더가 꺼졌어요.',
       );
     }
+  }
+
+  // ───── 편지 도착 알림 ─────
+
+  Future<void> _saveLetter(bool v) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kLetterNotifEnabled, v);
+    setState(() => _letterEnabled = v);
+    if (mounted) {
+      _toast(v
+          ? '편지 도착 알림을 켰어요.'
+          : '편지 도착 알림을 껐어요. 새로 보내는 편지부터 알림이 가지 않아요.');
+    }
+  }
+
+  // ───── 커뮤니티 댓글 알림 ─────
+  //
+  // 클라이언트 prefs 외에 서버측에서도 즉시 차단되도록 Firestore user doc 의
+  // `commentNotifEnabled` 필드를 미러링한다. Cloud Functions 의
+  // notifyOnNewComment 가 이 필드를 읽어 false 면 푸시를 보내지 않는다.
+  Future<void> _saveCommunity(bool v) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kCommentNotifEnabled, v);
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      try {
+        await FirebaseFirestore.instance
+            .doc('users/$uid')
+            .set({'commentNotifEnabled': v}, SetOptions(merge: true));
+      } catch (e) {
+        // 네트워크 실패 등은 prefs 만 저장하고 다음 기회에 재시도 — 하지만
+        // 사용자에게는 실패한 사실을 알려준다.
+        if (mounted) _toast('서버 동기화에 실패했어요: $e');
+        return;
+      }
+    }
+
+    setState(() => _commentEnabled = v);
+    if (mounted) {
+      _toast(v ? '커뮤니티 댓글 알림을 켰어요.' : '커뮤니티 댓글 알림을 껐어요.');
+    }
+  }
+
+  void _toast(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white),
+        ),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF1E1E2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   void _pickTime() {
@@ -150,7 +209,7 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
                   CupertinoButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      _save(hour: tempHour, minute: tempMinute);
+                      _saveReminder(hour: tempHour, minute: tempMinute);
                     },
                     child: const Text('완료', style: TextStyle(color: Color(0xFFFFD700))),
                   ),
@@ -201,39 +260,24 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
           : ListView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               children: [
-                const SizedBox(height: 8),
-                const Text(
-                  '일일 리마인더',
-                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '매일 정해진 시간에 오늘 하루를 기록하도록 알려드려요.',
-                  style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14, height: 1.5),
-                ),
                 if (_permissionDenied) ...[
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 8),
                   _PermissionBanner(
                     onTap: () async {
                       await openAppSettings();
                     },
                   ),
-                ],
-                const SizedBox(height: 24),
-                _SettingCard(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('리마인더 켜기', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-                      _saving
-                          ? const SizedBox(width: 40, height: 24, child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
-                          : CupertinoSwitch(
-                              value: _enabled,
-                              activeColor: const Color(0xFFFFD700),
-                              onChanged: (v) => _save(enabled: v),
-                            ),
-                    ],
-                  ),
+                  const SizedBox(height: 20),
+                ] else
+                  const SizedBox(height: 8),
+
+                // ── 일일 리마인더 ──
+                _ToggleCard(
+                  title: '일일 리마인더',
+                  subtitle: '매일 정해진 시간에 일기 작성을 알려드려요',
+                  value: _enabled,
+                  saving: _saving,
+                  onChanged: (v) => _saveReminder(enabled: v),
                 ),
                 if (_enabled) ...[
                   const SizedBox(height: 12),
@@ -242,7 +286,10 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('알림 시간', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                        const Text(
+                          '알림 시간',
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
                         Row(
                           children: [
                             Text(
@@ -257,8 +304,92 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
                     ),
                   ),
                 ],
+
+                const SizedBox(height: 12),
+
+                // ── 편지 도착 알림 ──
+                _ToggleCard(
+                  title: '편지 도착 알림',
+                  subtitle: '내가 보낸 편지가 도착하면 알려드려요',
+                  value: _letterEnabled,
+                  onChanged: _saveLetter,
+                ),
+
+                const SizedBox(height: 12),
+
+                // ── 커뮤니티 댓글 알림 ──
+                _ToggleCard(
+                  title: '커뮤니티 댓글 알림',
+                  subtitle: '내 공개 게시물에 댓글이 달리면 알려드려요',
+                  value: _commentEnabled,
+                  onChanged: _saveCommunity,
+                ),
               ],
             ),
+    );
+  }
+}
+
+/// 좌측 제목+부제목 / 우측 CupertinoSwitch 한 줄 토글 카드.
+class _ToggleCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final bool value;
+  final bool saving;
+  final ValueChanged<bool> onChanged;
+
+  const _ToggleCard({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+    this.saving = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.55),
+                    fontSize: 12.5,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          saving
+              ? const SizedBox(
+                  width: 40,
+                  height: 24,
+                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                )
+              : CupertinoSwitch(
+                  value: value,
+                  activeColor: const Color(0xFFFFD700),
+                  onChanged: onChanged,
+                ),
+        ],
+      ),
     );
   }
 }
@@ -282,7 +413,7 @@ class _PermissionBanner extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              '알림 권한이 꺼져 있어요.\n리마인더를 받으려면 권한을 허용해 주세요.',
+              '알림 권한이 꺼져 있어요.\n알림을 받으려면 권한을 허용해 주세요.',
               style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 13, height: 1.5),
             ),
           ),

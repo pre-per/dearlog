@@ -33,18 +33,28 @@ class _DiaryEditScreenState extends ConsumerState<DiaryEditScreen> {
     final userId = ref.read(userIdProvider);
     if (userId == null) return;
 
-    final updatedDiary = DiaryEntry(
-      id: widget.diary.id,
-      date: widget.diary.date,
-      title: _titleController.text.trim(),
-      content: _contentController.text.trim(),
-      emotion: widget.diary.emotion,
-      imageUrls: widget.diary.imageUrls,
-      callId: widget.diary.callId,
+    final newTitle = _titleController.text.trim();
+    final newContent = _contentController.text.trim();
+
+    if (newTitle.isEmpty || newContent.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('제목과 내용을 모두 입력해 주세요.'),
+          backgroundColor: Color(0xFF1E1E2E),
+        ),
+      );
+      return;
+    }
+
+    // copyWith 로 분석/NLP 인사이트/음악 추천/편지/AI 댓글 보존.
+    // (예전엔 DiaryEntry() 직접 생성 → 부가 데이터가 모두 null 로 덮여 사라짐)
+    final updatedDiary = widget.diary.copyWith(
+      title: newTitle,
+      content: newContent,
     );
 
     await DiaryRepository().saveDiary(userId, updatedDiary);
-    ref.invalidate(userProvider); // 사용자 데이터 갱신
+    ref.invalidate(latestDiaryProvider);
     if (mounted) Navigator.pop(context, updatedDiary);
   }
 

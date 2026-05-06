@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:dearlog/app.dart';
+import 'package:dearlog/community/widgets/community_share_section.dart';
 import 'package:flutter/material.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:dearlog/analysis/widget/today_summary_card.dart';
 
@@ -109,24 +111,12 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
         ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
+        // 우측 상단: "커뮤니티 게시" 글래스 텍스트 버튼 — 미공개/공개 상태에 따라
+        // 라벨과 도트가 바뀐다. 그림 생성 중에는 비활성 (정합성 방지).
         actions: [
-          IconButton(
-            tooltip: '삭제',
-            // 생성 중엔 삭제도 비활성 (편지/분석 함께 사라지면 혼란)
-            onPressed: (_deleting || _generatingIllustration)
-                ? null
-                : _confirmDelete,
-            icon: _deleting
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.delete_outline,
-                    color: Colors.white, size: 22),
+          CommunityShareSection(
+            diary: _diary,
+            disabled: _generatingIllustration,
           ),
         ],
       ),
@@ -156,6 +146,13 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
             TodaySummaryCard(diary: _diary),
             const SizedBox(height: 20),
 
+            // 4.5. 오늘의 음악 추천 — 신규 일기는 자동 생성, 기존 일기는 사용자가 추천 받기 버튼.
+            MusicRecommendationSection(
+              diary: _diary,
+              onUpdate: _updateDiary,
+            ),
+            const SizedBox(height: 20),
+
             // 5. 내게 보내는 편지 섹션
             LetterSection(diary: _diary, onUpdate: _updateDiary),
             const SizedBox(height: 12),
@@ -172,6 +169,15 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
                   );
                 },
               ),
+
+            // 7. 일기 삭제 — 빨간 파스텔 글래스 톤. 그림 생성 중에는 비활성
+            //    (편지/분석이 함께 사라지면 사용자가 혼란).
+            const SizedBox(height: 20),
+            _DeleteDiaryButton(
+              deleting: _deleting,
+              disabled: _generatingIllustration,
+              onTap: _confirmDelete,
+            ),
 
             const SizedBox(height: 40),
           ],
@@ -220,8 +226,14 @@ class _DiaryImageState extends ConsumerState<_DiaryImage> {
     setState(() => _error = null);
     _setGenerating(true);
     try {
-      final imageUrl =
-          await OpenAIService().generateIllustrationForDiary(widget.diary);
+      final userId = ref.read(userIdProvider);
+      if (userId == null) {
+        throw Exception('로그인 정보가 없어 그림을 만들 수 없어요');
+      }
+      final imageUrl = await OpenAIService().generateIllustrationForDiary(
+        diary: widget.diary,
+        userId: userId,
+      );
       // 위젯이 dispose된 뒤(사용자가 나가기 선택 후)에는 결과 폐기.
       if (!mounted) return;
       final updated = widget.diary.copyWith(imageUrls: [imageUrl]);
@@ -521,6 +533,80 @@ class _DiaryImageState extends ConsumerState<_DiaryImage> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// 일기 본문 맨 아래에 위치하는 "삭제하기" 빨간 파스텔 글래스 버튼.
+/// - [deleting] 중엔 본문 자리에 작은 스피너.
+/// - [disabled] (예: 그림 생성 중) 일 땐 옅게 비활성.
+class _DeleteDiaryButton extends StatelessWidget {
+  final bool deleting;
+  final bool disabled;
+  final VoidCallback onTap;
+
+  const _DeleteDiaryButton({
+    required this.deleting,
+    required this.disabled,
+    required this.onTap,
+  });
+
+  static const _pastelRed = Color(0xFFE57373);
+
+  @override
+  Widget build(BuildContext context) {
+    final isDisabled = disabled || deleting;
+    return Opacity(
+      opacity: isDisabled ? 0.5 : 1,
+      child: GestureDetector(
+        onTap: isDisabled ? null : onTap,
+        behavior: HitTestBehavior.opaque,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: _pastelRed.withOpacity(0.10),
+                border: Border.all(color: _pastelRed.withOpacity(0.42)),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (deleting)
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(_pastelRed),
+                      ),
+                    )
+                  else
+                    const Icon(
+                      IconsaxPlusLinear.trash,
+                      color: _pastelRed,
+                      size: 18,
+                    ),
+                  const SizedBox(width: 8),
+                  Text(
+                    deleting ? '삭제하는 중' : '삭제하기',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: _pastelRed,
+                      fontFamily: 'GowunBatang',
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

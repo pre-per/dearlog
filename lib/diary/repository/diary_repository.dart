@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:dearlog/diary/models/diary_entry.dart';
@@ -100,7 +101,7 @@ class DiaryRepository {
       } catch (e) {
         // OpenAI 임시 링크 만료 등은 일상적이므로 silent.
         // ignore: avoid_print
-        print('[saveDiary] 외부 이미지 업로드 실패 — 원본 URL 보존: $e');
+        debugPrint('[saveDiary] 외부 이미지 업로드 실패 — 원본 URL 보존: $e');
         convertedUrls.add(url);
       }
     }

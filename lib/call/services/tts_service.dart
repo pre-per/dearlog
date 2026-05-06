@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -163,7 +164,7 @@ class TtsService {
         // Fall through to OpenAI on any Supertonic failure (load error,
         // inference exception, etc.). This is the entire reason we keep
         // the OpenAI path alive.
-        print('[TTS] ⚠️ Supertonic failed, falling back to OpenAI: $e');
+        debugPrint('[TTS] ⚠️ Supertonic failed, falling back to OpenAI: $e');
         debugPrint('$st');
         return await _fetchOpenAi(cleaned, _kOpenAiFallbackVoice[voice] ?? 'onyx');
       }
@@ -175,27 +176,60 @@ class TtsService {
 
   Future<Uint8List> _fetchOpenAi(String text, String voiceName) async {
     if (apiKey.isEmpty) {
-      print('[TTS] ❌ apiKey 가 비어 있습니다 — RemoteConfig fetch 가 실패한 상태일 가능성이 높습니다.');
+      debugPrint('[TTS] ❌ apiKey 가 비어 있습니다 — RemoteConfig fetch 가 실패한 상태일 가능성이 높습니다.');
       throw Exception('TTS apiKey 비어 있음 (RemoteConfig fetch 실패 추정)');
     }
-    final response = await http.post(
-      Uri.parse('https://api.openai.com/v1/audio/speech'),
-      headers: {
-        'Authorization': 'Bearer $apiKey',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'model': openAiModel,
-        'voice': voiceName,
-        'input': text,
-        'response_format': openAiResponseFormat,
-        'speed': openAiSpeed,
-      }),
-    );
+    // 타임아웃 + 5xx/429 1회 재시도. 텍스트 한 문장이라 30초로 충분.
+    http.Response? response;
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final r = await http.post(
+          Uri.parse('https://api.openai.com/v1/audio/speech'),
+          headers: {
+            'Authorization': 'Bearer $apiKey',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            'model': openAiModel,
+            'voice': voiceName,
+            'input': text,
+            'response_format': openAiResponseFormat,
+            'speed': openAiSpeed,
+          }),
+        ).timeout(const Duration(seconds: 30));
+        if ((r.statusCode >= 500 || r.statusCode == 429) && attempt == 0) {
+          await Future.delayed(const Duration(milliseconds: 1500));
+          continue;
+        }
+        response = r;
+        break;
+      } on TimeoutException {
+        if (attempt == 0) {
+          await Future.delayed(const Duration(milliseconds: 1500));
+          continue;
+        }
+        throw Exception('TTS 요청 시간 초과');
+      } on SocketException {
+        if (attempt == 0) {
+          await Future.delayed(const Duration(milliseconds: 1500));
+          continue;
+        }
+        throw Exception('TTS 네트워크 오류');
+      } on http.ClientException {
+        if (attempt == 0) {
+          await Future.delayed(const Duration(milliseconds: 1500));
+          continue;
+        }
+        throw Exception('TTS 통신 오류');
+      }
+    }
+    if (response == null) {
+      throw Exception('TTS 응답 없음');
+    }
     if (response.statusCode != 200) {
-      print('[TTS] ❌ OpenAI ${response.statusCode}: '
+      debugPrint('[TTS] ❌ OpenAI ${response.statusCode}: '
           '${response.body.length > 200 ? response.body.substring(0, 200) : response.body}');
-      throw Exception('TTS fetch 실패(${response.statusCode}): ${response.body}');
+      throw Exception('TTS fetch 실패(${response.statusCode})');
     }
     return response.bodyBytes;
   }
@@ -226,8 +260,8 @@ class TtsService {
       await _player.play();
       await completionFuture;
     } catch (e, st) {
-      print('[TTS] ❌ playAudio 예외: $e');
-      print('[TTS] stack: $st');
+      debugPrint('[TTS] ❌ playAudio 예외: $e');
+      debugPrint('[TTS] stack: $st');
       rethrow;
     } finally {
       _deleteSilently(file);
@@ -269,8 +303,8 @@ class TtsService {
       await completionFuture;
       await _player.stop();
     } catch (e, st) {
-      print('[TTS] ❌ play 단계 예외: $e');
-      print('[TTS] stack: $st');
+      debugPrint('[TTS] ❌ play 단계 예외: $e');
+      debugPrint('[TTS] stack: $st');
       rethrow;
     } finally {
       _deleteSilently(file);

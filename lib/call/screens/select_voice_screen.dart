@@ -136,7 +136,7 @@ class _SelectVoiceScreenState extends ConsumerState<SelectVoiceScreen> {
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () {
-                            ref.read(selectedVoiceProvider.notifier).state = voice.id;
+                            ref.read(selectedVoiceProvider.notifier).setVoice(voice.id);
                           },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(

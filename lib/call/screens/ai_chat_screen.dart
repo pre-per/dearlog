@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:ui';
 import 'package:dearlog/call/services/conversation_backup_service.dart';
 import 'package:dearlog/call/services/tts_service.dart';
 import 'package:flutter/foundation.dart';
@@ -34,6 +35,17 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   bool _isPaused = false;
   bool _isTextMode = false;
 
+  /// STT 오인식 수정 모드 — null 이 아니면 현재 그 인덱스의 유저 말풍선을 편집 중.
+  int? _editingIndex;
+  final TextEditingController _editingTextController = TextEditingController();
+  final FocusNode _editingFocusNode = FocusNode();
+
+  bool get _isEditing => _editingIndex != null;
+
+  /// 통화 중 강제 종료 대비 자동 백업의 throttle. 너무 잦은 저장을 막기 위함.
+  DateTime? _lastBackupSavedAt;
+  int _lastBackedUpMessageCount = 0;
+
   Duration get _currentElapsed {
     if (_runningSince == null) return _elapsedAccum;
     return _elapsedAccum + DateTime.now().difference(_runningSince!);
@@ -63,6 +75,28 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     _ensureSpeechAndStart();
   }
 
+  /// 메시지 변화 시 호출 — 새 메시지가 추가됐고 마지막 저장 후 5초 이상 흘렀으면
+  /// 백업을 저장한다. (메시지 수 증가가 없으면 노op — streaming 업데이트 등은 무시)
+  void _maybeSaveBackup(List<Message> messages) {
+    final realCount =
+        messages.where((m) => m.content != '__loading__').length;
+    if (realCount <= 1) return; // 첫 인사만 있으면 저장 가치 없음
+    if (realCount <= _lastBackedUpMessageCount) return;
+
+    final now = DateTime.now();
+    if (_lastBackupSavedAt != null &&
+        now.difference(_lastBackupSavedAt!).inSeconds < 5) {
+      return;
+    }
+    _lastBackupSavedAt = now;
+    _lastBackedUpMessageCount = realCount;
+
+    final withIllustration = ref.read(illustrationEnabledProvider);
+    // fire-and-forget — 백업 실패는 무시 (UX 영향 X)
+    ConversationBackupService.save(messages, withIllustration: withIllustration)
+        .catchError((_) {});
+  }
+
   Future<void> _ensureSpeechAndStart() async {
     debugPrint('[CALL] _ensureSpeechAndStart: 시작');
     final speech = ref.read(speechNotifierProvider.notifier);
@@ -81,17 +115,19 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   void dispose() {
     _sessionActive = false;
     _inputFocus.dispose();
+    _editingFocusNode.dispose();
     _timer?.cancel();
     _timer = null;
     _scrollController.dispose();
     _textController.dispose();
+    _editingTextController.dispose();
     _tts.dispose();
     super.dispose();
   }
 
   Future<void> _startListeningSafely() async {
-    debugPrint('[CALL] _startListeningSafely: 진입 (sessionActive=$_sessionActive, paused=$_isPaused, textMode=$_isTextMode, starting=$_startingListening)');
-    if (!_sessionActive || _isPaused || _isTextMode) {
+    debugPrint('[CALL] _startListeningSafely: 진입 (sessionActive=$_sessionActive, paused=$_isPaused, textMode=$_isTextMode, editing=$_isEditing, starting=$_startingListening)');
+    if (!_sessionActive || _isPaused || _isTextMode || _isEditing) {
       debugPrint('[CALL] _startListeningSafely: ⚠️ 세션/모드 조건 불충족 → 반환');
       return;
     }
@@ -221,7 +257,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             sentenceBuffer.clear();
             sentenceBuffer.write(buffered.substring(end));
 
-            if (sentence.isNotEmpty && _sessionActive && !_isPaused && !_isTextMode) {
+            if (sentence.isNotEmpty && _sessionActive && !_isPaused && !_isTextMode && !_isEditing) {
               pipeline.add(_tts.fetchAudio(sentence));
 
               // 첫 문장이 파이프라인에 들어가는 순간 플레이어 루프 시작
@@ -235,7 +271,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
         // 나머지 텍스트 flush
         final remaining = sentenceBuffer.toString().trim();
-        if (remaining.isNotEmpty && _sessionActive && !_isPaused && !_isTextMode) {
+        if (remaining.isNotEmpty && _sessionActive && !_isPaused && !_isTextMode && !_isEditing) {
           pipeline.add(_tts.fetchAudio(remaining));
           if (!pipelineStarted) {
             pipelineStarted = true;
@@ -275,18 +311,18 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     bool shownErrorSnack = false;
 
     await for (final fetchFuture in stream) {
-      if (!_sessionActive || _isPaused || _isTextMode) {
+      if (!_sessionActive || _isPaused || _isTextMode || _isEditing) {
         await _tts.stop();
         break;
       }
       try {
         final bytes = await fetchFuture;
-        if (!_sessionActive || _isPaused || _isTextMode) break;
+        if (!_sessionActive || _isPaused || _isTextMode || _isEditing) break;
         await _tts.playAudio(bytes);
       } catch (e) {
-        // ✅ 릴리즈 빌드에서도 보이도록 print() 사용.
+        // ✅ 릴리즈 빌드에서도 보이도록 debugPrint() 사용.
         //    debugPrint 는 릴리즈에서 no-op 이라 그동안 사용자에게 "오류 없는 무음"으로 보였음.
-        print('[PLAYER_PIPELINE] ❌ $e');
+        debugPrint('[PLAYER_PIPELINE] ❌ $e');
         // ✅ 첫 에러 한 번만 사용자에게 가시 피드백.
         if (!shownErrorSnack && mounted) {
           shownErrorSnack = true;
@@ -350,6 +386,76 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     }
   }
 
+  /// 유저 말풍선 길게 누름 → STT 오인식 수정 모드 진입.
+  /// 통화는 일시정지(STT/TTS/타이머 모두 멈춤). AI 재응답은 일으키지 않는다.
+  Future<void> _enterEditMode(int index) async {
+    if (!_sessionActive) return;
+    if (_isEditing) return;
+
+    final messages = ref.read(messageProvider);
+    if (index < 0 || index >= messages.length) return;
+    if (messages[index].role != 'user') return;
+
+    // AI 음성 즉시 중단 + STT 종료 + 타이머 멈춤
+    await _tts.stop();
+    await ref.read(speechNotifierProvider.notifier).shutdown();
+
+    if (_runningSince != null) {
+      _elapsedAccum += DateTime.now().difference(_runningSince!);
+      _runningSince = null;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isSpeaking = false;
+      _editingIndex = index;
+      _editingTextController.text = messages[index].content;
+      _editingTextController.selection = TextSelection.collapsed(
+        offset: _editingTextController.text.length,
+      );
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _editingFocusNode.requestFocus();
+    });
+  }
+
+  Future<void> _commitEdit() async {
+    final newText = _editingTextController.text.trim();
+    if (newText.isEmpty) return; // 완료 버튼이 비활성화돼 있어 도달 안 함, 방어용
+    final index = _editingIndex;
+    if (index == null) return;
+
+    ref.read(messageProvider.notifier).updateUserMessage(index, newText);
+    await _exitEditMode();
+  }
+
+  Future<void> _cancelEdit() async {
+    if (!_isEditing) return;
+    await _exitEditMode();
+  }
+
+  /// 편집 종료 — 통화는 자동으로 재개(편집 진입 전 paused/textMode 였다면 그 상태 유지).
+  Future<void> _exitEditMode() async {
+    if (!_isEditing) return;
+
+    if (mounted) FocusScope.of(context).unfocus();
+
+    setState(() {
+      _editingIndex = null;
+      _editingTextController.clear();
+    });
+
+    // 편집은 일시적 pause — _isPaused 자체는 안 건드렸으니 그 값을 신뢰.
+    if (!_isPaused) {
+      _runningSince = DateTime.now();
+      if (!_isTextMode && _sessionActive) {
+        await _startListeningSafely();
+      }
+    }
+    if (mounted) setState(() {});
+  }
+
   /// [DEBUG ONLY] 일기 생성 실패 상황을 시뮬레이션
   Future<void> _debugForceFailure() async {
     _sessionActive = false;
@@ -402,7 +508,15 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     final messages = ref.watch(messageProvider);
     final speechState = ref.watch(speechNotifierProvider);
 
-    return BaseScaffold(
+    // 통화 중 메시지가 늘어날 때마다 (throttle 5초) 백업 저장 →
+    // 사용자가 통화 도중 앱을 강제 종료해도 다음 진입에서 복구 배너로 복원 가능.
+    ref.listen<List<Message>>(messageProvider, (prev, next) {
+      _maybeSaveBackup(next);
+    });
+
+    return Stack(
+      children: [
+        BaseScaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -457,13 +571,23 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               controller: _scrollController,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)..copyWith(bottom: _bottomAreaHeight(context)),
               itemCount: messages.length,
-              itemBuilder: (context, index) => MessageBubble(message: messages[index]),
+              itemBuilder: (context, index) {
+                final m = messages[index];
+                return MessageBubble(
+                  message: m,
+                  onLongPress: (m.role == 'user' && !_isEditing)
+                      ? () => _enterEditMode(index)
+                      : null,
+                );
+              },
             ),
           ),
           SizedBox(height: _bottomAreaHeight(context) + MediaQuery.of(context).viewInsets.bottom),
         ],
       ),
-      bottomNavigationBar: AnimatedPadding(
+      bottomNavigationBar: _isEditing
+          ? null
+          : AnimatedPadding(
         duration: const Duration(milliseconds: 150),
         curve: Curves.easeOut,
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -507,6 +631,149 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               ),
               const SizedBox(height: 12),
             ],
+          ),
+        ),
+      ),
+        ),
+        if (_isEditing) Positioned.fill(child: _buildEditOverlay()),
+      ],
+    );
+  }
+
+  Widget _buildEditOverlay() {
+    final mq = MediaQuery.of(context);
+    final keyboardHeight = mq.viewInsets.bottom;
+    final canCommit = _editingTextController.text.trim().isNotEmpty;
+
+    // Material ancestor 가 없으면 TextField/Text 가 깨지므로 transparency Material 로 감싼다.
+    return Material(
+      type: MaterialType.transparency,
+      child: Stack(
+        children: [
+          // 블러 + 어두운 오버레이 — 탭하면 취소
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _cancelEdit,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                child: ColoredBox(color: Colors.black.withOpacity(0.45)),
+              ),
+            ),
+          ),
+        // 플로팅 편집 말풍선 + 액션 버튼 — 키보드 위쪽
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+          left: 24,
+          right: 24,
+          bottom: keyboardHeight + mq.padding.bottom + 24,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {}, // 블러 onTap 으로 전파되지 않게 흡수
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: mq.size.width * 0.82,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.35),
+                          blurRadius: 22,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _editingTextController,
+                      focusNode: _editingFocusNode,
+                      autofocus: true,
+                      maxLines: null,
+                      minLines: 1,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      cursorColor: Colors.black87,
+                      style: const TextStyle(
+                        color: Colors.black87,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'GowunBatang',
+                        height: 1.35,
+                      ),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        isCollapsed: true,
+                        hintText: '내용을 수정해 주세요',
+                        hintStyle: TextStyle(
+                          color: Color(0xFF9E9E9E),
+                          fontFamily: 'GowunBatang',
+                        ),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _editAction('취소', onTap: _cancelEdit, secondary: true),
+                    const SizedBox(width: 10),
+                    _editAction('완료', onTap: canCommit ? _commitEdit : null),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _editAction(String label,
+      {VoidCallback? onTap, bool secondary = false}) {
+    final disabled = onTap == null;
+    final fg = secondary
+        ? Colors.white.withOpacity(0.9)
+        : (disabled
+            ? Colors.white.withOpacity(0.45)
+            : const Color(0xFFFFD964));
+    final bg = secondary
+        ? Colors.white.withOpacity(0.10)
+        : (disabled
+            ? Colors.white.withOpacity(0.05)
+            : const Color(0xFFFFD964).withOpacity(0.18));
+    final border = secondary
+        ? Colors.white.withOpacity(0.18)
+        : (disabled
+            ? Colors.white.withOpacity(0.10)
+            : const Color(0xFFFFD964).withOpacity(0.42));
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: border),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: fg,
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            fontFamily: 'GowunBatang',
+            letterSpacing: 0.2,
           ),
         ),
       ),

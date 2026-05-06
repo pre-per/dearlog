@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class GoogleAuthService {
@@ -26,7 +27,7 @@ class GoogleAuthService {
       // 4. Firebase 로그인 처리
       return await _firebaseAuth.signInWithCredential(credential);
     } catch (e) {
-      print('Google 로그인 실패: $e');
+      debugPrint('Google 로그인 실패: $e');
       return null;
     }
   }

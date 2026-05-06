@@ -31,6 +31,15 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen>
   DiaryEntry? _diary;
   int _currentStep = 0;
 
+  // 일기 생성이 비정상적으로 오래 걸릴 때 사용자에게 빠져나갈 길을 열어준다.
+  // - 90초가 지나면 "그만두기" 버튼 노출.
+  // - 글로벌 4분 타임아웃 — 그 이상은 강제로 메인 복귀.
+  bool _showAbortHint = false;
+  bool _aborted = false;
+  Timer? _abortHintTimer;
+  static const Duration _kAbortHintAfter = Duration(seconds: 90);
+  static const Duration _kGlobalTimeout = Duration(minutes: 4);
+
   // 그림일기 유무에 따라 단계 구성이 바뀜.
   // - 켜짐: 4단계 (저장 → 작성 → 분석 → 그림)
   // - 꺼짐: 3단계 (저장 → 작성 → 분석)
@@ -85,11 +94,18 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen>
     );
     _arcAnim = Tween<double>(begin: 0.0, end: 0.0).animate(_arcCtrl);
 
+    _abortHintTimer = Timer(_kAbortHintAfter, () {
+      if (!mounted) return;
+      if (_phase != _Phase.loading) return;
+      setState(() => _showAbortHint = true);
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) => _run());
   }
 
   @override
   void dispose() {
+    _abortHintTimer?.cancel();
     _creepTimer?.cancel();
     _glowCtrl.dispose();
     _sparkleCtrl.dispose();
@@ -149,76 +165,121 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen>
     void log(String msg) => debugPrint('[CALL_LOADING] $msg');
 
     try {
-      final openaiService = OpenAIService();
-      final userId = ref.read(userIdProvider);
-      final callId = const Uuid().v4();
-      final messages = ref.read(messageProvider);
-
-      log('userId=$userId callId=$callId messages=${messages.length}');
-
-      _advanceStep(0);
-
-      if (userId != null) {
-        log('saving call...');
-        await ref.read(callRepositoryProvider).saveCall(
-          userId,
-          Call(
-            callId: callId,
-            timestamp: DateTime.now(),
-            duration: widget.elapsed,
-            messages: messages,
-          ),
-        );
-        log('call saved');
-      }
-
-      await ConversationBackupService.save(messages);
-
-      log('generating diary...');
-      final existingKeywords = ref.read(currentMonthExistingKeywordsProvider);
-      log('existing keywords (${existingKeywords.length}): ${existingKeywords.join(", ")}');
-      final diary = await openaiService.generateDiaryFromMessages(
-        messages,
-        callId: callId,
-        onStep: _advanceStep,
-        existingKeywords: existingKeywords,
-        generateIllustration: widget.withIllustration,
+      // 글로벌 타임아웃: 내부 호출들에 각자 타임아웃이 있어도, 합산이
+      // 비정상적으로 길어질 때를 대비해 외곽에서 한 번 더 막는다.
+      // 백업은 이미 _runFlow 초입에서 저장되므로 사용자가 다시 들어와도
+      // ConversationBackupService 로 복구 가능.
+      await _runFlow(log).timeout(_kGlobalTimeout);
+    } on TimeoutException {
+      debugPrint('[CALL_LOADING][ERROR] global timeout');
+      if (!mounted) return;
+      _exitToMainWithMessage(
+        '일기 생성이 너무 오래 걸려서 잠시 멈췄어요. 대화는 안전하게 보관됐으니 잠시 후 다시 시도해 주세요.',
       );
-      log('diary generated id=${diary.id} emotions=${diary.analysis?.emotions.map((e) => e.name).join(",")}');
-
-      log('saving diary...');
-      await ref.read(diaryRepositoryProvider).saveDiary(userId!, diary);
-      log('diary saved');
-
-      ref.invalidate(latestDiaryProvider);
-      await ConversationBackupService.clear();
-      ref.read(messageProvider.notifier).clear();
-
-      if (!mounted) return;
-
-      // ── Complete arc → wait → reveal done content ──
-      _creepTimer?.cancel();
-      _animateArcTo(1.0, duration: const Duration(milliseconds: 700));
-      await Future.delayed(const Duration(milliseconds: 900));
-
-      if (!mounted) return;
-      setState(() {
-        _diary = diary;
-        _phase = _Phase.done;
-      });
-
     } catch (e, st) {
+      // 사용자가 직접 그만두기 누른 경우는 별도 처리 후 재throw.
+      if (_aborted) return;
       debugPrint('[CALL_LOADING][ERROR] $e\n$st');
       if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => MainScreen(
-            snackMessage: '일기 생성에 실패했어요. 잠시 후 다시 시도해 주세요.',
-          ),
-        ),
-        (route) => false,
-      );
+      final msg = e is OpenAIServiceException
+          ? e.userMessage
+          : '일기 생성에 실패했어요. 잠시 후 다시 시도해 주세요.';
+      _exitToMainWithMessage(msg);
     }
+  }
+
+  Future<void> _runFlow(void Function(String) log) async {
+    final openaiService = OpenAIService();
+    final userId = ref.read(userIdProvider);
+    final callId = const Uuid().v4();
+    final messages = ref.read(messageProvider);
+
+    log('userId=$userId callId=$callId messages=${messages.length}');
+
+    _advanceStep(0);
+
+    if (userId != null) {
+      log('saving call...');
+      await ref.read(callRepositoryProvider).saveCall(
+        userId,
+        Call(
+          callId: callId,
+          timestamp: DateTime.now(),
+          duration: widget.elapsed,
+          messages: messages,
+        ),
+      );
+      log('call saved');
+    }
+
+    // 복구 시에도 같은 illustration 토글로 일기 생성하도록 같이 저장.
+    await ConversationBackupService.save(
+      messages,
+      withIllustration: widget.withIllustration,
+    );
+
+    log('generating diary...');
+    final existingKeywords = ref.read(currentMonthExistingKeywordsProvider);
+    log('existing keywords (${existingKeywords.length}): ${existingKeywords.join(", ")}');
+    final diary = await openaiService.generateDiaryFromMessages(
+      messages,
+      userId: userId!,
+      callId: callId,
+      onStep: _advanceStep,
+      existingKeywords: existingKeywords,
+      generateIllustration: widget.withIllustration,
+    );
+    log('diary generated id=${diary.id} emotions=${diary.analysis?.emotions.map((e) => e.name).join(",")}');
+
+    if (_aborted || !mounted) return;
+
+    log('saving diary...');
+    await ref.read(diaryRepositoryProvider).saveDiary(userId, diary);
+    log('diary saved');
+
+    ref.invalidate(latestDiaryProvider);
+    await ConversationBackupService.clear();
+    ref.read(messageProvider.notifier).clear();
+
+    if (!mounted) return;
+
+    // ── Complete arc → wait → reveal done content ──
+    _creepTimer?.cancel();
+    _animateArcTo(1.0, duration: const Duration(milliseconds: 700));
+    await Future.delayed(const Duration(milliseconds: 900));
+
+    if (!mounted) return;
+    setState(() {
+      _diary = diary;
+      _phase = _Phase.done;
+    });
+  }
+
+  /// 사용자가 "그만두기" 누름 — 백업은 그대로 두고 메인으로 빠짐.
+  /// (다음 통화 진입 시 ConversationBackupService 가 복구를 제안)
+  Future<void> _onAbortPressed() async {
+    final ok = await showGlassDialog<bool>(
+      context: context,
+      title: '일기 생성을 그만둘까요?',
+      message: '대화 내용은 안전하게 보관돼요.\n잠시 후 다시 시도하면 이어서 일기를 만들 수 있어요.',
+      actions: const [
+        GlassDialogAction(label: '계속 기다리기', value: false),
+        GlassDialogAction(label: '그만두기', value: true, isDestructive: true),
+      ],
+    );
+    if (ok != true) return;
+    if (!mounted) return;
+    _aborted = true;
+    _exitToMainWithMessage('일기 생성을 멈췄어요. 대화는 안전하게 보관됐으니 잠시 후 다시 시도해 주세요.');
+  }
+
+  void _exitToMainWithMessage(String msg) {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => MainScreen(snackMessage: msg),
+      ),
+      (route) => false,
+    );
   }
 
   // ─── Build ────────────────────────────────────────────────────────────────
@@ -316,6 +377,33 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen>
                     style: TextStyle(color: Colors.red.withOpacity(0.65), fontSize: 12),
                     textAlign: TextAlign.center,
                   ),
+
+                // 90초 이상 경과 시 노출되는 "그만두기" 버튼.
+                // 너무 일찍 보여주면 사용자가 정상 흐름에서도 불안하게 누를 수 있어 늦게 띄움.
+                if (_phase == _Phase.loading && _showAbortHint) ...[
+                  const SizedBox(height: 14),
+                  GestureDetector(
+                    onTap: _onAbortPressed,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 18, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(999),
+                        border:
+                            Border.all(color: Colors.white.withOpacity(0.18)),
+                      ),
+                      child: Text(
+                        '그만두고 메인으로 돌아가기',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 24),
               ],
             ),
