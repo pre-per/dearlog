@@ -25,7 +25,7 @@ class RemoteConfigService {
       ));
     } catch (e) {
       // 설정 실패는 치명적이지 않음 — 기본값으로 진행
-      print('[RemoteConfig] setConfigSettings 실패: $e');
+      debugPrint('[RemoteConfig] setConfigSettings 실패: $e');
     }
 
     await _remoteConfig.setDefaults({'openai_api_key': ''});
@@ -33,14 +33,14 @@ class RemoteConfigService {
     // ✅ fetchAndActivate 는 실패해도 예외를 던지지 않고 false 만 반환할 수 있음.
     //    릴리즈 빌드에서 첫 fetch 가 타임아웃되면 키가 빈 문자열로 남아
     //    이후 OpenAI 호출이 401로 silent 실패하므로 결과를 명시적으로 로그해 둠.
-    //    print() 는 debugPrint 와 달리 릴리즈 모드에서도 logcat 에 출력됨.
+    //    debugPrint() 는 debugPrint 와 달리 릴리즈 모드에서도 logcat 에 출력됨.
     try {
       _activated = await _remoteConfig.fetchAndActivate();
       final keyLen = _remoteConfig.getString('openai_api_key').length;
-      print('[RemoteConfig] fetchAndActivate=$_activated, '
+      debugPrint('[RemoteConfig] fetchAndActivate=$_activated, '
           'openai_api_key.length=$keyLen');
     } catch (e) {
-      print('[RemoteConfig] ❌ fetchAndActivate 예외: $e');
+      debugPrint('[RemoteConfig] ❌ fetchAndActivate 예외: $e');
       _activated = false;
     }
 
@@ -50,10 +50,10 @@ class RemoteConfigService {
         await Future.delayed(const Duration(milliseconds: 800));
         _activated = await _remoteConfig.fetchAndActivate();
         final keyLen = _remoteConfig.getString('openai_api_key').length;
-        print('[RemoteConfig] retry fetchAndActivate=$_activated, '
+        debugPrint('[RemoteConfig] retry fetchAndActivate=$_activated, '
             'openai_api_key.length=$keyLen');
       } catch (e) {
-        print('[RemoteConfig] ❌ retry 예외: $e');
+        debugPrint('[RemoteConfig] ❌ retry 예외: $e');
       }
     }
   }

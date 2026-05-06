@@ -65,52 +65,11 @@ class _OnboardingInterestsScreenState
   }
 
   Future<void> _addCustom() async {
-    final controller = TextEditingController();
-    final result = await showDialog<String>(
+    final result = await showGlassInputDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E2E),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('관심사 직접 추가',
-            style: TextStyle(color: Colors.white, fontSize: 17)),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 8,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: '예: 보드게임',
-            hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
-            counterStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-            enabledBorder: UnderlineInputBorder(
-              borderSide:
-                  BorderSide(color: Colors.white.withOpacity(0.2)),
-            ),
-            focusedBorder: const UnderlineInputBorder(
-              borderSide: BorderSide(color: Color(0xFFFFD700)),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('취소',
-                style: TextStyle(color: Colors.white.withOpacity(0.7))),
-          ),
-          TextButton(
-            onPressed: () {
-              final text = controller.text.trim();
-              if (text.isEmpty) return;
-              Navigator.pop(context, text);
-            },
-            child: const Text('추가',
-                style: TextStyle(
-                    color: Color(0xFFFFD700),
-                    fontWeight: FontWeight.w800)),
-          ),
-        ],
-      ),
+      title: '관심사 직접 추가',
+      hintText: '예: 보드게임',
+      maxLength: 8,
     );
     if (result == null) return;
     if (_options.any((o) => o.label == result)) {

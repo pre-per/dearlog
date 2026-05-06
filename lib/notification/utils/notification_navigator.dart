@@ -30,16 +30,25 @@ class NotificationCenter {
 /// 페이로드 포맷 약속:
 /// - "daily_reminder"          : 일일 리마인더 → 일기 작성 유도
 /// - "letter:{diaryId}"        : 편지 잠금 해제 → 해당 일기 detail
+/// - "comment:{postId}"        : 내 공개 게시물에 댓글 달림 → 게시물 상세
 /// - "test_*"                  : 테스트
 class NotificationPayload {
   static const String dailyReminder = 'daily_reminder';
   static const String letterPrefix = 'letter:';
+  static const String commentPrefix = 'comment:';
 
   static String letter(String diaryId) => '$letterPrefix$diaryId';
+  static String comment(String postId) => '$commentPrefix$postId';
 
   static String? extractDiaryId(String payload) {
     if (!payload.startsWith(letterPrefix)) return null;
     final id = payload.substring(letterPrefix.length).trim();
+    return id.isEmpty ? null : id;
+  }
+
+  static String? extractCommentPostId(String payload) {
+    if (!payload.startsWith(commentPrefix)) return null;
+    final id = payload.substring(commentPrefix.length).trim();
     return id.isEmpty ? null : id;
   }
 }

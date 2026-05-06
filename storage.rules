@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isUser(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ===== 기존: 사용자 본인 파일 =====
+    // 일기 이미지 등 users/{uid}/... 아래는 본인만 read/write.
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if isUser(userId);
+    }
+
+    // ===== 커뮤니티 이미지 =====
+    // 로그인한 누구나 읽기 가능 (공개 게시물 이미지).
+    // 쓰기는 로그인 + 이미지 타입 + 10MB 이하.
+    //
+    // 보안 한계: Storage 규칙에서 Firestore 의 게시물 작성자 검증을 할 수 없어,
+    // 어떤 로그인 사용자라도 community_posts/{postId} 경로에 파일을 올릴 수 있다.
+    // Firestore 의 게시물 문서가 authorUid 검증을 통과해야만 의미 있는 게시가
+    // 되므로 실제 악용 가능성은 낮지만, v2 에서 Cloud Functions 로 업로드를
+    // 중계하면 더 엄격하게 막을 수 있다.
+    match /community_posts/{postId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn()
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

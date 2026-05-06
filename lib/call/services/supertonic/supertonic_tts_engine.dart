@@ -75,7 +75,7 @@ class SupertonicTtsEngine {
       _loadError = e;
       // Print survives release builds — these errors are critical to diagnose
       // when bundle assets fail to extract on a real device.
-      print('[Supertonic] ❌ load failed: $e\n$st');
+      debugPrint('[Supertonic] ❌ load failed: $e\n$st');
       completer.completeError(e, st);
     } finally {
       _loadCompleter = null;

@@ -1,4 +1,19 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dearlog/app.dart';
+
+/// `users/{uid}.agreedTermsAt` 필드 존재 여부로 약관 단계 통과 여부를 판단.
+/// 네트워크 실패 시 보수적으로 true (이미 동의한 사용자가 약관을 다시 보지 않게).
+/// splash_screen 의 동일 로직과 의도적으로 중복 — 두 진입점에서 같은 분기 필요.
+Future<bool> _hasAgreedTerms(String userId) async {
+  try {
+    final snap =
+        await FirebaseFirestore.instance.doc('users/$userId').get();
+    if (!snap.exists) return false;
+    return snap.data()?['agreedTermsAt'] != null;
+  } catch (_) {
+    return true;
+  }
+}
 
 class LoginScreen extends ConsumerWidget {
   const LoginScreen({super.key});
@@ -34,13 +49,17 @@ class LoginScreen extends ConsumerWidget {
           email: email,
         );
 
-        Navigator.push(
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const OnboardingAgreementScreen()),
+          (route) => false,
         );
       } else if (!existingUser.profile.isComplete) {
         // 기존 유저인데 프로필 정보 일부가 비어있으면 마저 입력하게 한다.
-        // 이전에 입력한 일부 값은 draft에 미리 채워서 이어 진행 가능.
+        // 단, 약관 동의를 아직 안 한 사용자(약관 화면에서 뒤로가기로 빠져나온 케이스)는
+        // 약관 단계부터 다시 시작해야 한다.
+        final agreed = await _hasAgreedTerms(userId);
+        if (!context.mounted) return;
         ref.read(onboardingDraftProvider.notifier).state = OnboardingDraft(
           nickname: existingUser.profile.nickname,
           gender: existingUser.profile.gender,
@@ -49,7 +68,11 @@ class LoginScreen extends ConsumerWidget {
         );
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) => const OnboardingNameScreen()),
+          MaterialPageRoute(
+            builder: (_) => agreed
+                ? const OnboardingNameScreen()
+                : const OnboardingAgreementScreen(),
+          ),
           (route) => false,
         );
       } else {

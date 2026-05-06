@@ -30,21 +30,27 @@ class LocalNotificationService {
   static const String testChannelName = '테스트 알림';
   static const String testChannelDesc = '동작 확인용';
 
+  // 커뮤니티 댓글 등 원격 푸시(FCM) 알림용 채널.
+  // Cloud Functions(`functions/index.js`) 의 `notification.android.channelId` 와 동일해야 함.
+  static const String communityChannelId = 'dearlog_community';
+  static const String communityChannelName = '커뮤니티 활동';
+  static const String communityChannelDesc = '내 공개 게시물에 댓글이 달리면 알려드려요';
+
   Future<void> init() async {
     // ✅ 모든 알림 진단 로그는 [NOTI] 일관된 prefix 로 통일.
     //    release 빌드에서도 logcat 'flutter' 태그로 확인 가능하도록
-    //    중요한 분기/결과는 print() 사용 (debugPrint 는 throttling 으로
+    //    중요한 분기/결과는 debugPrint() 사용 (debugPrint 는 throttling 으로
     //    드물게 누락되는 경우가 있음).
-    print('[NOTI] init: 시작');
+    debugPrint('[NOTI] init: 시작');
 
     // 1) 타임존
     tz.initializeTimeZones();
     try {
       final localTimezone = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(localTimezone.identifier));
-      print('[NOTI] timezone identifier=${localTimezone.identifier}');
+      debugPrint('[NOTI] timezone identifier=${localTimezone.identifier}');
     } catch (e) {
-      print('[NOTI] ❌ flutter_timezone 실패, 시스템 기본값 사용: $e');
+      debugPrint('[NOTI] ❌ flutter_timezone 실패, 시스템 기본값 사용: $e');
     }
 
     // 2) Android POST_NOTIFICATIONS (13+) 권한 요청 + 결과 로그
@@ -53,10 +59,10 @@ class LocalNotificationService {
           .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>()
           ?.requestNotificationsPermission();
-      print('[NOTI] Android POST_NOTIFICATIONS 허용: $granted');
+      debugPrint('[NOTI] Android POST_NOTIFICATIONS 허용: $granted');
       if (granted != true) {
         // false 또는 null 이면 사용자에게 알림이 절대 안 옴 — 가장 흔한 함정.
-        print('[NOTI] ⚠️ POST_NOTIFICATIONS 미허용 — 알림이 표시되지 않습니다.');
+        debugPrint('[NOTI] ⚠️ POST_NOTIFICATIONS 미허용 — 알림이 표시되지 않습니다.');
       }
     }
 
@@ -73,11 +79,11 @@ class LocalNotificationService {
     final initialized = await _plugin.initialize(
       settings,
       onDidReceiveNotificationResponse: (response) {
-        print('[NOTI] 탭 수신: payload=${response.payload}');
+        debugPrint('[NOTI] 탭 수신: payload=${response.payload}');
         NotificationCenter.post(response.payload);
       },
     );
-    print('[NOTI] plugin.initialize 결과: $initialized');
+    debugPrint('[NOTI] plugin.initialize 결과: $initialized');
 
     // 4) Android 채널 명시 생성 (Android 8+)
     //    plugin이 자동 생성하긴 하지만, importance/desc/sound 보장 위해 직접 생성.
@@ -108,18 +114,26 @@ class LocalNotificationService {
           importance: Importance.high,
         ),
       );
-      print('[NOTI] Android 채널 3개 생성 완료 '
-          '($dailyChannelId, $letterChannelId, $testChannelId)');
+      await android?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          communityChannelId,
+          communityChannelName,
+          description: communityChannelDesc,
+          importance: Importance.high,
+        ),
+      );
+      debugPrint('[NOTI] Android 채널 4개 생성 완료 '
+          '($dailyChannelId, $letterChannelId, $testChannelId, $communityChannelId)');
     }
 
     // 5) 콜드 스타트 — 알림 탭으로 앱이 켜졌는지 확인 후 페이로드 큐잉
     final launchDetails = await _plugin.getNotificationAppLaunchDetails();
     if (launchDetails?.didNotificationLaunchApp == true) {
       final payload = launchDetails?.notificationResponse?.payload;
-      print('[NOTI] 콜드 스타트 진입 payload=$payload');
+      debugPrint('[NOTI] 콜드 스타트 진입 payload=$payload');
       NotificationCenter.post(payload);
     }
-    print('[NOTI] init: 완료');
+    debugPrint('[NOTI] init: 완료');
   }
 
   Future<void> cancel(int id) => _plugin.cancel(id);
@@ -192,13 +206,13 @@ class LocalNotificationService {
         matchDateTimeComponents: DateTimeComponents.time,
         payload: payload,
       );
-      print(
+      debugPrint(
         '[NOTI] 일일 예약 OK: $hour:$minute id=$id '
         '(${hasExactAlarm ? "exact" : "inexact"}, next=$next)',
       );
     } catch (e, st) {
-      print('[NOTI] ❌ 일일 예약 실패: $e');
-      print('[NOTI] stack: $st');
+      debugPrint('[NOTI] ❌ 일일 예약 실패: $e');
+      debugPrint('[NOTI] stack: $st');
     }
   }
 
@@ -219,7 +233,7 @@ class LocalNotificationService {
     final scheduled = tz.TZDateTime.from(at, tz.local);
     final now = tz.TZDateTime.now(tz.local);
     if (scheduled.isBefore(now)) {
-      print('[NOTI] ⚠️ 1회성 예약 취소: 과거 시간 $at');
+      debugPrint('[NOTI] ⚠️ 1회성 예약 취소: 과거 시간 $at');
       return;
     }
 
@@ -253,13 +267,13 @@ class LocalNotificationService {
         // matchDateTimeComponents 미지정 = 1회성
         payload: payload,
       );
-      print(
+      debugPrint(
         '[NOTI] 1회성 예약 OK: $scheduled id=$id '
         '(${hasExactAlarm ? "exact" : "inexact"})',
       );
     } catch (e, st) {
-      print('[NOTI] ❌ 1회성 예약 실패: $e');
-      print('[NOTI] stack: $st');
+      debugPrint('[NOTI] ❌ 1회성 예약 실패: $e');
+      debugPrint('[NOTI] stack: $st');
     }
   }
 
@@ -286,10 +300,10 @@ class LocalNotificationService {
         details,
         payload: 'test_now',
       );
-      print('[NOTI] 즉시 표시 OK (id=999, channel=$testChannelId)');
+      debugPrint('[NOTI] 즉시 표시 OK (id=999, channel=$testChannelId)');
     } catch (e, st) {
-      print('[NOTI] ❌ 즉시 표시 실패: $e');
-      print('[NOTI] stack: $st');
+      debugPrint('[NOTI] ❌ 즉시 표시 실패: $e');
+      debugPrint('[NOTI] stack: $st');
     }
   }
 
@@ -327,11 +341,11 @@ class LocalNotificationService {
             UILocalNotificationDateInterpretation.absoluteTime,
         payload: 'test_10s',
       );
-      print('[NOTI] 10초 예약 OK '
+      debugPrint('[NOTI] 10초 예약 OK '
           '(${hasExactAlarm ? "exact" : "inexact"}, fire=$next)');
     } catch (e, st) {
-      print('[NOTI] ❌ 10초 예약 실패: $e');
-      print('[NOTI] stack: $st');
+      debugPrint('[NOTI] ❌ 10초 예약 실패: $e');
+      debugPrint('[NOTI] stack: $st');
     }
   }
 }

@@ -4,6 +4,7 @@ import 'package:dearlog/app.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -13,79 +14,218 @@ class SplashScreen extends ConsumerStatefulWidget {
 }
 
 class _SplashScreenState extends ConsumerState<SplashScreen> {
+  /// 0.0 ~ 1.0 진행률. 단계별로 step up.
+  double _progress = 0.0;
+
   @override
   void initState() {
     super.initState();
-    _checkUser();
+    _bootstrap();
   }
 
-  Future<void> _checkUser() async {
-    await Future.delayed(const Duration(seconds: 1)); // 스플래시 딜레이
+  Future<void> _bootstrap() async {
+    await _step(0.10, () async {
+      // RemoteConfig — OpenAI API 키 fetch. 실패해도 retry 가 살아 있어 진행은 OK.
+      await RemoteConfigService().initialize();
+    });
 
-    final currentUser = FirebaseAuth.instance.currentUser;
+    await _step(0.30, () async {
+      // 알림 권한 (iOS 첫 실행 시 prompt — 그동안 진행률 멈춤은 자연스럽다)
+      await _requestFcmPermission();
+    });
 
-    if (currentUser != null) {
-      // 1. userIdProvider에 유저 UID 저장
-      ref.read(userIdProvider.notifier).state = currentUser.uid;
+    await _step(0.50, () async {
+      // 로컬 알림 채널/타임존 init.
+      await LocalNotificationService.instance.init();
+    });
 
-      // 2. userProvider 강제 fetch
-      final user = await ref.read(userProvider.future);
+    await _step(0.70, () async {
+      // 인증 + 사용자 fetch + 분기 결정 직전까지.
+    });
 
-      // 3. user가 존재하면 프로필 완성도 체크 → 미완성이면 온보딩 마저 진행.
-      if (user != null) {
-        saveUserPushToken(user.id);
+    await _routeAfterAuth();
+  }
 
-        if (!user.profile.isComplete) {
-          // 닉네임/성별/나잇대/관심사 중 하나라도 비어있으면 강제 입력.
-          // 기존 draft에 일부 정보가 남아 있으면 거기서 이어가도록 미리 채워놓음.
-          ref.read(onboardingDraftProvider.notifier).state = OnboardingDraft(
-            nickname: user.profile.nickname,
-            gender: user.profile.gender,
-            ageGroup: user.profile.ageGroup,
-            interests: user.profile.interests,
-          );
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const OnboardingNameScreen()),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const MainScreen()),
-          );
-        }
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-        );
-      }
-    } else {
-      // 로그인 안 되어 있으면 LoginScreen으로
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+  /// 다음 단계 진행률로 부드럽게 올린 뒤 작업 실행.
+  Future<void> _step(double target, Future<void> Function() work) async {
+    if (!mounted) return;
+    setState(() => _progress = target);
+    await work();
+  }
+
+  Future<void> _requestFcmPermission() async {
+    final messaging = FirebaseMessaging.instance;
+    try {
+      final settings = await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
       );
+      debugPrint('[NOTI] FCM 권한 상태: ${settings.authorizationStatus}');
+      if (kDebugMode) {
+        final token = await messaging.getToken();
+        debugPrint(
+            '[NOTI] FCM token=${token == null ? "null" : "${token.substring(0, 16)}..."}');
+      }
+    } catch (e, st) {
+      debugPrint('[NOTI] ❌ FCM 권한 요청 실패: $e');
+      debugPrint('[NOTI] stack: $st');
     }
+  }
+
+  Future<void> _routeAfterAuth() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      await _finishProgressAndGo(const LoginScreen());
+      return;
+    }
+
+    ref.read(userIdProvider.notifier).state = currentUser.uid;
+
+    final user = await ref.read(userProvider.future);
+    if (user == null) {
+      await _finishProgressAndGo(const LoginScreen());
+      return;
+    }
+
+    saveUserPushToken(user.id);
+
+    if (!user.profile.isComplete) {
+      final agreed = await _hasAgreedTerms(user.id);
+      if (!mounted) return;
+      ref.read(onboardingDraftProvider.notifier).state = OnboardingDraft(
+        nickname: user.profile.nickname,
+        gender: user.profile.gender,
+        ageGroup: user.profile.ageGroup,
+        interests: user.profile.interests,
+      );
+      await _finishProgressAndGo(
+        agreed
+            ? const OnboardingNameScreen()
+            : const OnboardingAgreementScreen(),
+      );
+    } else {
+      await _finishProgressAndGo(const MainScreen());
+    }
+  }
+
+  Future<void> _finishProgressAndGo(Widget destination) async {
+    if (!mounted) return;
+    setState(() => _progress = 1.0);
+    // 진행 바가 100% 까지 부드럽게 차오르는 모습을 잠깐 보여준 뒤 전환.
+    await Future.delayed(const Duration(milliseconds: 320));
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => destination),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return BaseScaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      body: SafeArea(
+        child: Stack(
           children: [
-            Image.asset('asset/image/logo_white.png', width: 300, height: 300),
-            SizedBox(height: 50),
-            CircularProgressIndicator(color: Colors.blueAccent),
-            SizedBox(height: 50),
-            Text("앱을 시작하는 중입니다...", style: TextStyle(fontSize: 16, color: Colors.white)),
+            Center(
+              child: Image.asset(
+                'asset/image/logo_white.png',
+                width: 300,
+                height: 300,
+              ),
+            ),
+            Positioned(
+              left: 32,
+              right: 32,
+              bottom: 64,
+              child: Column(
+                children: [
+                  _GoldProgressBar(progress: _progress),
+                  const SizedBox(height: 14),
+                  Text(
+                    '앱을 시작하는 중입니다...',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      fontFamily: 'GowunBatang',
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+}
+
+/// 화면 하단에 깔리는 골드 진행 바. 머티리얼 LinearProgressIndicator 대신
+/// Container 기반으로 직접 그림 — 글래스 톤과 어울리게 그라데이션 + glow.
+class _GoldProgressBar extends StatelessWidget {
+  final double progress;
+  const _GoldProgressBar({required this.progress});
+
+  static const _gold = Color(0xFFFFD700);
+  static const _goldDeep = Color(0xFFFFB347);
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = progress.clamp(0.0, 1.0);
+    return Container(
+      height: 5,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withOpacity(0.10), width: 0.5),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: clamped),
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, _) {
+            return FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: value,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [_goldDeep, _gold],
+                  ),
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _gold.withOpacity(0.55),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// user doc 의 `agreedTermsAt` 필드 존재 여부로 약관 동의 통과 여부 판정.
+/// 네트워크 실패 시 보수적으로 true 반환 (이미 동의한 사용자가 재차 동의화면을
+/// 보지 않게 — 미동의 상태를 잘못 통과시키는 것보다 동의 후 재진입을 막는 게 덜 위험).
+Future<bool> _hasAgreedTerms(String userId) async {
+  try {
+    final snap =
+        await FirebaseFirestore.instance.doc('users/$userId').get();
+    if (!snap.exists) return false;
+    return snap.data()?['agreedTermsAt'] != null;
+  } catch (_) {
+    return true;
   }
 }
 

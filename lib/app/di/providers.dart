@@ -8,6 +8,7 @@ import '../../ai/services/openai_service.dart';
 import '../../user/repository/user_repository.dart';
 import '../../diary/repository/diary_repository.dart';
 import '../../call/repository/call_repository.dart';
+import '../../community/repository/community_repository.dart';
 
 /// ===== Firebase singletons =====
 final firebaseAuthProvider   = Provider<FirebaseAuth>((_) => FirebaseAuth.instance);
@@ -33,4 +34,9 @@ final diaryRepositoryProvider = Provider<DiaryRepository>((ref) {
 final callRepositoryProvider  = Provider<CallRepository>((ref) {
   final db = ref.watch(firestoreProvider);
   return CallRepository(firestore: db);
+});
+
+final communityRepositoryProvider = Provider<CommunityRepository>((ref) {
+  final db = ref.watch(firestoreProvider);
+  return CommunityRepository(firestore: db);
 });

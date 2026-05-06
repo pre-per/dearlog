@@ -85,6 +85,7 @@ export 'diary/models/diary_entry.dart';
 export 'diary/models/diary_analysis.dart';
 export 'diary/models/letter.dart';
 export 'diary/models/monthly_insight.dart';
+export 'diary/models/music_recommendation.dart';
 export 'diary/models/nlp_insight.dart';
 export 'diary/providers/diary_providers.dart';
 export 'diary/repository/diary_repository.dart';
@@ -97,6 +98,7 @@ export 'diary/sections/index.dart';
 export 'diary/sections/storybook_section_diary.dart';
 export 'diary/services/letter_scheduler.dart';
 export 'diary/widgets/letter_section.dart';
+export 'diary/widgets/music_recommendation_section.dart';
 
 // home
 export 'home/screens/homescreen.dart';
@@ -141,6 +143,7 @@ export 'shared_ui/widgets/elevated_card_container.dart';
 export 'shared_ui/widgets/searchbar_ui.dart';
 export 'shared_ui/widgets/storybook_widget.dart';
 export 'shared_ui/widgets/glass_card.dart';
+export 'shared_ui/widgets/glass_bottom_nav.dart';
 
 // user
 export 'user/models/user.dart';

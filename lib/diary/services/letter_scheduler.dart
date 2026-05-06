@@ -3,6 +3,10 @@ import 'dart:math';
 import 'package:dearlog/diary/models/letter.dart';
 import 'package:dearlog/notification/service/local_notification_service.dart';
 import 'package:dearlog/notification/utils/notification_navigator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// 편지 도착 알림 토글 prefs key. notification_setting_screen 과 동일해야 함.
+const _kLetterNotifEnabled = 'letter_notif_enabled';
 
 /// 편지 잠금/알림 스케줄링 헬퍼.
 ///
@@ -48,11 +52,19 @@ class LetterScheduler {
   }
 
   /// 봉인된 편지에 대해 알림 예약만.
+  ///
+  /// 사용자가 알림 설정에서 "편지 도착 알림"을 꺼 두었으면 schedule 자체를 스킵.
+  /// (이미 예약된 옛 편지 알림은 그대로 발사됨 — 토글은 *새* 예약에만 영향)
   Future<void> schedule({
     required Letter sealed,
     required String diaryId,
   }) async {
     if (sealed.sentAt == null || sealed.unlockAt == null) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool(_kLetterNotifEnabled) ?? true;
+    if (!enabled) return;
+
     final daysAgo = sealed.unlockAt!.difference(sealed.sentAt!).inDays;
     await _noti.scheduleOneTimeAt(
       id: sealed.notificationId,

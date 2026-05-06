@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
@@ -9,6 +10,92 @@ String _stripCodeFence(String content) {
   final s = content.trim();
   final match = RegExp(r'^```(?:json)?\s*([\s\S]*?)\s*```$').firstMatch(s);
   return match != null ? match.group(1)!.trim() : s;
+}
+
+/// OpenAI 호출 공통 timeout 값.
+/// - 텍스트류는 30~60초, 이미지 생성은 길게 잡는다.
+const Duration _kChatTimeout = Duration(seconds: 30);
+const Duration _kDiaryTimeout = Duration(seconds: 45);
+const Duration _kAnalysisTimeout = Duration(seconds: 45);
+const Duration _kMonthlyInsightTimeout = Duration(seconds: 60);
+const Duration _kNLPTimeout = Duration(seconds: 45);
+const Duration _kMusicTimeout = Duration(seconds: 30);
+const Duration _kImageTimeout = Duration(seconds: 90);
+const Duration _kStreamConnectTimeout = Duration(seconds: 30);
+
+/// 사용자에게 보여지는 에러 메시지로 변환되는 예외.
+/// (응답 body 같은 raw 정보는 절대 message 에 포함하지 않는다.)
+class OpenAIServiceException implements Exception {
+  final String userMessage;
+  OpenAIServiceException(this.userMessage);
+  @override
+  String toString() => userMessage;
+}
+
+/// http.post 를 timeout + 5xx/429 한정 1회 재시도로 감싼 헬퍼.
+/// - 4xx(400/401/403/404 등)는 재시도해도 같은 응답이므로 즉시 반환.
+/// - TimeoutException / SocketException / ClientException 은 1회 재시도.
+/// - 두 번 모두 실패 시 [OpenAIServiceException] 으로 사용자 친화 메시지 throw.
+Future<http.Response> _postWithRetry(
+  Uri url, {
+  required Map<String, String> headers,
+  required Object body,
+  required Duration timeout,
+  required String label,
+}) async {
+  for (int attempt = 0; attempt < 2; attempt++) {
+    try {
+      final res = await http
+          .post(url, headers: headers, body: body)
+          .timeout(timeout);
+      // 5xx / 429 만 재시도. 그 외는 호출자가 처리.
+      if ((res.statusCode >= 500 || res.statusCode == 429) && attempt == 0) {
+        await Future.delayed(const Duration(milliseconds: 1500));
+        continue;
+      }
+      return res;
+    } on TimeoutException {
+      if (attempt == 0) {
+        await Future.delayed(const Duration(milliseconds: 1500));
+        continue;
+      }
+      throw OpenAIServiceException(
+          '$label 요청 시간이 초과됐어요. 네트워크 상태를 확인하고 다시 시도해 주세요.');
+    } on SocketException {
+      if (attempt == 0) {
+        await Future.delayed(const Duration(milliseconds: 1500));
+        continue;
+      }
+      throw OpenAIServiceException(
+          '$label 네트워크 연결이 불안정해요. 잠시 후 다시 시도해 주세요.');
+    } on http.ClientException {
+      if (attempt == 0) {
+        await Future.delayed(const Duration(milliseconds: 1500));
+        continue;
+      }
+      throw OpenAIServiceException(
+          '$label 통신 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요.');
+    }
+  }
+  // 위 루프에서 항상 return / throw 되므로 도달하지 않음.
+  throw OpenAIServiceException('$label 요청 실패');
+}
+
+/// 응답이 200이 아닐 때 사용자 메시지를 만든다.
+/// (raw body 는 디버그 로그로만 흘리고, 사용자에게 노출하지 않는다.)
+Never _throwOpenAiError(String label, http.Response res) {
+  debugPrint('[OPENAI][$label] HTTP ${res.statusCode}: '
+      '${res.body.length > 300 ? res.body.substring(0, 300) : res.body}');
+  if (res.statusCode == 401 || res.statusCode == 403) {
+    throw OpenAIServiceException('$label 권한 오류가 발생했어요. 잠시 후 다시 시도해 주세요.');
+  }
+  if (res.statusCode == 429) {
+    throw OpenAIServiceException('$label 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.');
+  }
+  if (res.statusCode >= 500) {
+    throw OpenAIServiceException('$label 서버에 일시적인 문제가 있어요. 잠시 후 다시 시도해 주세요.');
+  }
+  throw OpenAIServiceException('$label에 실패했어요. 잠시 후 다시 시도해 주세요.');
 }
 
 /// 통화 시 AI 친구의 기본 시스템 프롬프트(베이스).
@@ -99,7 +186,9 @@ String _buildCallSystemPrompt({
 }
 
 class OpenAIService {
-  final _apiKey = RemoteConfigService().openAIApiKey;
+  // RemoteConfig 의 첫 fetch 가 실패 후 retry 로 채워지는 경우가 있어, 인스턴스 생성
+  // 시점에 캐시하지 않고 호출 시점마다 lazy 로 읽는다.
+  String get _apiKey => RemoteConfigService().openAIApiKey;
 
   Future<ChatResponse> getChatResponse(
     List<Message> messages, {
@@ -121,7 +210,7 @@ class OpenAIService {
       ...messages.map((msg) => {"role": msg.role, "content": msg.content})
     ];
 
-    final response = await http.post(
+    final response = await _postWithRetry(
       Uri.parse(url),
       headers: {
         'Authorization': 'Bearer $_apiKey',
@@ -133,20 +222,21 @@ class OpenAIService {
         "max_completion_tokens": 400,
         "temperature": 0.7,
       }),
+      timeout: _kChatTimeout,
+      label: 'AI 응답',
     );
 
-    if (response.statusCode == 200) {
-      final json = jsonDecode(response.body);
-      final reply = json['choices'][0]['message']['content'];
-      final tokenCount = json['usage']['total_tokens'] ?? 0;
-
-      return ChatResponse(
-        message: Message(role: 'assistant', content: reply.trim()),
-        totalTokens: tokenCount,
-      );
-    } else {
-      throw Exception('OpenAI 응답 실패: ${response.body}');
+    if (response.statusCode != 200) {
+      _throwOpenAiError('AI 응답', response);
     }
+    final json = jsonDecode(response.body);
+    final reply = json['choices'][0]['message']['content'];
+    final tokenCount = json['usage']['total_tokens'] ?? 0;
+
+    return ChatResponse(
+      message: Message(role: 'assistant', content: reply.trim()),
+      totalTokens: tokenCount,
+    );
   }
 
   /// GPT 응답을 token 단위로 스트리밍한다.
@@ -188,10 +278,32 @@ class OpenAIService {
 
     final client = http.Client();
     try {
-      final streamedResponse = await client.send(request);
+      final http.StreamedResponse streamedResponse;
+      try {
+        streamedResponse =
+            await client.send(request).timeout(_kStreamConnectTimeout);
+      } on TimeoutException {
+        throw OpenAIServiceException(
+            'AI 응답 요청 시간이 초과됐어요. 네트워크 상태를 확인하고 다시 시도해 주세요.');
+      } on SocketException {
+        throw OpenAIServiceException(
+            'AI 응답 네트워크 연결이 불안정해요. 잠시 후 다시 시도해 주세요.');
+      } on http.ClientException {
+        throw OpenAIServiceException(
+            'AI 응답 통신 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요.');
+      }
       if (streamedResponse.statusCode != 200) {
         final body = await streamedResponse.stream.bytesToString();
-        throw Exception('OpenAI 스트리밍 실패(${streamedResponse.statusCode}): $body');
+        debugPrint('[OPENAI][AI 응답 스트리밍] HTTP '
+            '${streamedResponse.statusCode}: '
+            '${body.length > 300 ? body.substring(0, 300) : body}');
+        if (streamedResponse.statusCode == 429) {
+          throw OpenAIServiceException('AI 응답 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.');
+        }
+        if (streamedResponse.statusCode >= 500) {
+          throw OpenAIServiceException('AI 응답 서버에 일시적인 문제가 있어요. 잠시 후 다시 시도해 주세요.');
+        }
+        throw OpenAIServiceException('AI 응답에 실패했어요. 잠시 후 다시 시도해 주세요.');
       }
 
       // SSE 라인 버퍼 (청크가 라인 경계와 다를 수 있음)
@@ -225,6 +337,7 @@ class OpenAIService {
 
   Future<DiaryEntry> generateDiaryFromMessages(
     List<Message> messages, {
+    required String userId,
     String? callId,
     void Function(int step)? onStep,
     List<String> existingKeywords = const [],
@@ -251,7 +364,7 @@ JSON 외의 말은 하지 마.
       ...messages.map((msg) => {"role": msg.role, "content": msg.content}),
     ];
 
-    final diaryResponse = await http.post(
+    final diaryResponse = await _postWithRetry(
       Uri.parse('https://api.openai.com/v1/chat/completions'),
       headers: {
         'Authorization': 'Bearer $_apiKey',
@@ -264,10 +377,12 @@ JSON 외의 말은 하지 마.
         "temperature": 0.7,
         "response_format": {"type": "json_object"},
       }),
+      timeout: _kDiaryTimeout,
+      label: '일기 생성',
     );
 
     if (diaryResponse.statusCode != 200) {
-      throw Exception('일기 생성 실패: ${diaryResponse.body}');
+      _throwOpenAiError('일기 생성', diaryResponse);
     }
 
     final diaryContent = jsonDecode(diaryResponse.body)['choices'][0]['message']['content'];
@@ -294,6 +409,15 @@ JSON 외의 말은 하지 마.
       existingKeywords: existingKeywords,
     );
 
+    // 2.5단계: 음악 추천 — 실패해도 일기 생성은 진행. 사용자는 detail 화면에서 "추천 받기" 버튼으로 재시도 가능.
+    MusicRecommendation? music;
+    try {
+      final diaryForMusic = diaryForAnalysis.copyWith(analysis: analysis);
+      music = await generateMusicRecommendation(diaryForMusic);
+    } catch (_) {
+      music = null;
+    }
+
     // 3단계: 그림 이미지 생성 — 사용자가 토글로 끄면 스킵.
     // (스킵된 경우 일기 detail에서 나중에 생성 가능. generateIllustrationForDiary 사용.)
     String? imageUrl;
@@ -310,7 +434,10 @@ JSON 외의 말은 하지 마.
         callId: callId,
         analysis: analysis,
       );
-      imageUrl = await generateIllustrationForDiary(diaryWithAnalysis);
+      imageUrl = await generateIllustrationForDiary(
+        diary: diaryWithAnalysis,
+        userId: userId,
+      );
     }
 
     // 최종 DiaryEntry 반환
@@ -324,6 +451,7 @@ JSON 외의 말은 하지 마.
       imageUrls: imageUrl != null ? [imageUrl] : const [],
       callId: callId,
       analysis: analysis,
+      music: music,
     );
   }
 
@@ -407,7 +535,7 @@ JSON 외 텍스트 금지.
       }
     ];
 
-    final response = await http.post(
+    final response = await _postWithRetry(
       Uri.parse('https://api.openai.com/v1/chat/completions'),
       headers: {
         'Authorization': 'Bearer $_apiKey',
@@ -420,10 +548,12 @@ JSON 외 텍스트 금지.
         "temperature": 0.6,
         "response_format": {"type": "json_object"},
       }),
+      timeout: _kMonthlyInsightTimeout,
+      label: '월간 인사이트 생성',
     );
 
     if (response.statusCode != 200) {
-      throw Exception('월간 인사이트 생성 실패: ${response.body}');
+      _throwOpenAiError('월간 인사이트 생성', response);
     }
 
     final raw = jsonDecode(response.body)['choices'][0]['message']['content'];
@@ -546,7 +676,7 @@ keywords: $keywordsLine
       }
     ];
 
-    final response = await http.post(
+    final response = await _postWithRetry(
       Uri.parse('https://api.openai.com/v1/chat/completions'),
       headers: {
         'Authorization': 'Bearer $_apiKey',
@@ -559,10 +689,12 @@ keywords: $keywordsLine
         "temperature": 0.5,
         "response_format": {"type": "json_object"},
       }),
+      timeout: _kNLPTimeout,
+      label: 'NLP 인사이트 생성',
     );
 
     if (response.statusCode != 200) {
-      throw Exception('NLP 인사이트 생성 실패: ${response.body}');
+      _throwOpenAiError('NLP 인사이트 생성', response);
     }
 
     final raw = jsonDecode(response.body)['choices'][0]['message']['content'];
@@ -582,7 +714,15 @@ keywords: $keywordsLine
 
   /// 기존 일기에 대해 그림만 생성 + Storage 업로드 후 다운로드 URL 반환.
   /// 통화 중 그림 생성을 OFF했던 일기를 나중에 그림 추가할 때 사용.
-  Future<String> generateIllustrationForDiary(DiaryEntry diary) async {
+  /// 일기에 대한 그림 생성 + Firebase Storage 업로드 + downloadURL 반환.
+  ///
+  /// 업로드 위치는 `users/{userId}/diaries/{diary.id}/illustration.png` —
+  /// user-scoped 경로라 storage.rules 의 `users/{uid}/{allPaths=**}` 규칙으로
+  /// 자동 보호되고, 일기 삭제 시 [DiaryRepository.deleteDiary] 가 함께 정리한다.
+  Future<String> generateIllustrationForDiary({
+    required DiaryEntry diary,
+    required String userId,
+  }) async {
     final mainWordsStr = (diary.analysis?.keywords ?? const <KeywordEntry>[])
         .where((k) => k.category == KeywordCategory.noun)
         .map((k) => k.word)
@@ -606,7 +746,7 @@ You are illustrating a single-scene pastel-style diary illustration for a Korean
 6. Composition: Single unified scene, no split panels. The illustration should feel like one complete, lived-in moment — not a generic or symbolic image.
 ''';
 
-    final imageResponse = await http.post(
+    final imageResponse = await _postWithRetry(
       Uri.parse('https://api.openai.com/v1/images/generations'),
       headers: {
         'Authorization': 'Bearer $_apiKey',
@@ -618,10 +758,12 @@ You are illustrating a single-scene pastel-style diary illustration for a Korean
         "n": 1,
         "size": "1024x1024",
       }),
+      timeout: _kImageTimeout,
+      label: '그림 생성',
     );
 
     if (imageResponse.statusCode != 200) {
-      throw Exception('그림 생성 실패: ${imageResponse.body}');
+      _throwOpenAiError('그림 생성', imageResponse);
     }
 
     final b64 =
@@ -629,7 +771,7 @@ You are illustrating a single-scene pastel-style diary illustration for a Korean
     final imageBytes = base64Decode(b64);
     final storageRef = FirebaseStorage.instance
         .ref()
-        .child('diary_images/${DateTime.now().millisecondsSinceEpoch}.png');
+        .child('users/$userId/diaries/${diary.id}/illustration.png');
     await storageRef.putData(
         imageBytes, SettableMetadata(contentType: 'image/png'));
     return await storageRef.getDownloadURL();
@@ -720,7 +862,7 @@ evidence 규칙:
       }
     ];
 
-    final res = await http.post(
+    final res = await _postWithRetry(
       Uri.parse('https://api.openai.com/v1/chat/completions'),
       headers: {
         'Authorization': 'Bearer $_apiKey',
@@ -733,14 +875,94 @@ evidence 규칙:
         "temperature": 0.4,
         "response_format": {"type": "json_object"},
       }),
+      timeout: _kAnalysisTimeout,
+      label: '감정 분석 생성',
     );
 
     if (res.statusCode != 200) {
-      throw Exception('분석 생성 실패: ${res.body}');
+      _throwOpenAiError('감정 분석 생성', res);
     }
 
     final content = jsonDecode(res.body)['choices'][0]['message']['content'];
     final jsonMap = jsonDecode(_stripCodeFence(content));
     return DiaryAnalysis.fromJson(Map<String, dynamic>.from(jsonMap));
+  }
+
+  /// 일기 분위기/주제에 어울리는 한국 노래 1곡을 추천한다.
+  /// 결과는 곡 제목 + 아티스트 — UI 에서 클릭 시 유튜브 검색으로 연결.
+  Future<MusicRecommendation> generateMusicRecommendation(
+    DiaryEntry diary,
+  ) async {
+    final emotionsHint = diary.analysis?.emotions.isNotEmpty == true
+        ? diary.analysis!.emotions
+            .map((e) => '${e.name}(${e.score})')
+            .join(', ')
+        : diary.emotion;
+    final keywordsHint = diary.analysis?.keywords.isNotEmpty == true
+        ? diary.analysis!.keywords.map((k) => k.word).join(', ')
+        : '(없음)';
+
+    final promptMessages = [
+      {
+        "role": "system",
+        "content": '''
+너는 한국 음악 큐레이터야. 사용자가 오늘 쓴 일기를 읽고, 그 분위기/주제에 어울리는 한국 노래 1곡을 추천한다.
+
+반드시 아래 JSON 스키마로만 응답해:
+{
+  "song": "곡 제목 (정확한 한국어 표기, 부제/괄호 없이 핵심 제목만)",
+  "artist": "아티스트명 (그룹은 그룹명, 솔로는 솔로명)"
+}
+
+선곡 규칙:
+- 반드시 한국에서 발매된 한국어 노래로 추천 (K-POP, 인디, 발라드, OST, 힙합, 포크 모두 가능).
+- 일기의 주제/감정과 직접적으로 어울리는 곡을 선택. (예: 산책 → 산책을 노래한 곡, 고백 → 고백 주제 곡, 이별 → 이별 주제 곡)
+- 너무 뻔한 1순위 메가히트만 고르지 말고, 주제와의 결이 잘 맞으면 인디나 비교적 덜 알려진 곡도 환영.
+- 실존하는 노래만. 곡 제목과 아티스트가 정확히 매칭돼야 함 (사용자가 유튜브에서 검색했을 때 바로 나와야 함).
+- 일기가 부정적이면 위로/공감되는 곡, 긍정적이면 함께 들뜨는 곡 — 사용자의 감정 결을 따라가도록.
+
+형식 규칙:
+- song 에 "(Live)", "(Remix)", "(Official Audio)" 같은 부가 표기 금지.
+- artist 에 "feat.", "with" 표기 금지 — 메인 아티스트 1명/팀만.
+- 따옴표/마크다운/번호 매기기 금지.
+- JSON 외 텍스트 절대 금지.
+'''
+      },
+      {
+        "role": "user",
+        "content":
+            "일기 제목: ${diary.title}\n대표 감정: ${diary.emotion}\n감정 분포: $emotionsHint\n핵심 키워드: $keywordsHint\n일기 내용:\n${diary.content}"
+      }
+    ];
+
+    final res = await _postWithRetry(
+      Uri.parse('https://api.openai.com/v1/chat/completions'),
+      headers: {
+        'Authorization': 'Bearer $_apiKey',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        "model": "gpt-5.4-mini",
+        "messages": promptMessages,
+        "max_completion_tokens": 200,
+        "temperature": 0.7,
+        "response_format": {"type": "json_object"},
+      }),
+      timeout: _kMusicTimeout,
+      label: '음악 추천 생성',
+    );
+
+    if (res.statusCode != 200) {
+      _throwOpenAiError('음악 추천 생성', res);
+    }
+
+    final content = jsonDecode(res.body)['choices'][0]['message']['content'];
+    final jsonMap = jsonDecode(_stripCodeFence(content));
+    final result =
+        MusicRecommendation.fromJson(Map<String, dynamic>.from(jsonMap));
+    if (!result.isValid) {
+      throw OpenAIServiceException('음악 추천 결과가 비어있어요. 다시 시도해 주세요.');
+    }
+    return result;
   }
 }

@@ -4,7 +4,8 @@ import 'package:dearlog/app.dart';
 import 'package:dearlog/call/screens/call_loading_screen.dart';
 import 'package:dearlog/call/services/conversation_backup_service.dart';
 import 'package:dearlog/call/services/tts_service.dart';
-import 'package:flutter/foundation.dart';
+import 'package:dearlog/notification/providers/inbox_providers.dart';
+import 'package:dearlog/notification/screens/inbox_screen.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:dearlog/call/providers/voice_provider.dart';
@@ -55,10 +56,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Future<void> _restoreAndGoLoading() async {
     final messages = await ConversationBackupService.load();
     if (messages == null || !mounted) return;
+    // 백업 시 저장된 illustration 토글 복원 — 사용자가 끈 채로 끝났으면 복구 시에도 그대로.
+    final withIllustration =
+        await ConversationBackupService.getWithIllustration();
     ref.read(messageProvider.notifier).restore(messages);
     setState(() => _hasBackup = false);
+    if (!mounted) return;
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const CallLoadingScreen(elapsed: Duration.zero)),
+      MaterialPageRoute(
+        builder: (_) => CallLoadingScreen(
+          elapsed: Duration.zero,
+          withIllustration: withIllustration,
+        ),
+      ),
     );
   }
 
@@ -88,6 +98,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final userAsync = ref.watch(userProvider);
+    final unreadCount = ref.watch(unreadInboxCountProvider).valueOrNull ?? 0;
+    final hasUnread = unreadCount > 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -106,36 +118,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
         ),
         actions: [
-          if (kDebugMode)
-            IconButton(
-              tooltip: '회원가입 흐름 디버그',
-              onPressed: () {
-                // 디버그 모드 — 마지막 저장은 스킵되고 스낵바로 결과 출력.
-                ref.read(onboardingDraftProvider.notifier).state =
-                    const OnboardingDraft(isDebugRun: true);
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const OnboardingNameScreen(),
-                  ),
-                );
-              },
-              icon: Icon(
-                Icons.bug_report_outlined,
-                color: Colors.amberAccent.withOpacity(0.85),
-                size: 24,
+          Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const InboxScreen()),
+                  );
+                },
+                icon: const Icon(
+                  IconsaxPlusBold.notification,
+                  color: Colors.white,
+                  size: 28,
+                ),
               ),
-            ),
-          IconButton(
-            onPressed: () {
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => NoticeScreen()));
-            },
-            icon: Icon(
-              IconsaxPlusBold.notification,
-              color: Colors.white,
-              size: 28,
-            ),
+              if (hasUnread)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF4D6A),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.black.withOpacity(0.4),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(width: 15),
         ],
@@ -595,7 +611,7 @@ class _VoicePickerDialogState extends State<_VoicePickerDialog> {
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTap: () {
-                              widget.ref.read(selectedVoiceProvider.notifier).state = voice.id;
+                              widget.ref.read(selectedVoiceProvider.notifier).setVoice(voice.id);
                               _tts.stop();
                               Navigator.pop(context);
                             },

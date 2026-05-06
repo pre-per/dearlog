@@ -1,18 +1,50 @@
-import 'dart:ui';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 import 'app.dart';
+import 'community/screens/community_main_screen.dart';
+import 'community/screens/post_detail_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
+  // main() 의 await 가 길수록 Flutter 첫 프레임 전까지 검은 화면이 길게 보인다.
+  // 필수 init 만 여기서 처리하고 나머지는 SplashScreen 에서 진행률을 보여주며 처리.
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await RemoteConfigService().initialize();
-  await _requestNotificationPermission();
   await initializeDateFormatting('ko_KR', null);
-  await LocalNotificationService.instance.init();
+  _wireRemoteMessageHandlers(); // fire-and-forget — main 흐름을 막지 않는다
   runApp(ProviderScope(child: MyApp()));
+}
+
+/// FCM 푸시(원격 알림) 탭 → 앱 내 라우팅 연결.
+///
+/// `data.payload` 가 있는 메시지가 들어오면 [NotificationCenter] 에 흘려보내고,
+/// 이후 `MainScreen._handlePendingNotificationPayload` 가 일기/게시물 등 화면으로
+/// 디스패치한다. 로컬 알림과 FCM 푸시 양쪽 모두 동일 페이로드 규칙을 공유한다.
+///
+/// iOS 시뮬레이터처럼 APNS 토큰이 발급될 수 없는 환경에서는
+/// `getInitialMessage()` 가 영원히 pending 상태가 될 수 있어, main 진입을 막지
+/// 않도록 fire-and-forget + 짧은 timeout 으로 보호한다.
+void _wireRemoteMessageHandlers() {
+  // 백그라운드/포그라운드에서 알림 탭으로 앱이 열릴 때 — 즉시 등록 (sync).
+  FirebaseMessaging.onMessageOpenedApp.listen((msg) {
+    final p = msg.data['payload'];
+    if (p is String && p.isNotEmpty) NotificationCenter.post(p);
+  });
+
+  // 종료 상태(콜드 스타트)에서 알림 탭으로 앱이 처음 열린 경우 — 비동기 처리.
+  () async {
+    try {
+      final initial = await FirebaseMessaging.instance
+          .getInitialMessage()
+          .timeout(const Duration(seconds: 3));
+      if (initial == null) return;
+      final p = initial.data['payload'];
+      if (p is String && p.isNotEmpty) NotificationCenter.post(p);
+    } catch (e) {
+      debugPrint('[NOTI] getInitialMessage 스킵 (timeout/실패): $e');
+    }
+  }();
 }
 
 class MyApp extends StatelessWidget {
@@ -82,6 +114,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     HomeScreen(),
     DiaryMainScreen(),
     AnalysisScreen(),
+    CommunityMainScreen(),
     SettingMainScreen(),
   ];
 
@@ -139,6 +172,18 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       return;
     }
 
+    final commentPostId = NotificationPayload.extractCommentPostId(payload);
+    if (commentPostId != null) {
+      // 댓글 알림 → 게시물 상세로 이동
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PostDetailScreen(postId: commentPostId),
+        ),
+      );
+      return;
+    }
+
     final diaryId = NotificationPayload.extractDiaryId(payload);
     if (diaryId != null) {
       final userId = ref.read(userIdProvider);
@@ -164,112 +209,26 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   @override
   Widget build(BuildContext context) {
     int currentIndex = ref.watch(MainIndexProvider);
+    // IndexedStack 으로 탭별 state 를 유지 — 캘린더 focused-month, 검색어, 스크롤 위치
+    // 등이 탭 전환 시 사라지지 않게.
     return BaseScaffold(
-      body: _screens[currentIndex],
-      bottomNavigationBar: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX:25.0, sigmaY: 25.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.05),
-            ),
-            child: BottomNavigationBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              currentIndex: currentIndex,
-              selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.grey,
-              type: BottomNavigationBarType.fixed,
-              onTap:
-                  (index) => setState(
-                    () => ref.read(MainIndexProvider.notifier).state = index,
-                  ),
-              items: [
-                BottomNavigationBarItem(
-                  icon: SvgPicture.asset(
-                    'asset/icons/navigation/planet.svg',
-                    width: 28,
-                    height: 28,
-                    colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
-                  ),
-                  activeIcon: SvgPicture.asset(
-                    'asset/icons/navigation/planet.svg',
-                    width: 28,
-                    height: 28,
-                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                  ),
-                  label: '홈',
-                ),
-                BottomNavigationBarItem(
-                  icon: SvgPicture.asset(
-                    'asset/icons/navigation/moon_stars.svg',
-                    width: 28,
-                    height: 28,
-                    colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
-                  ),
-                  activeIcon: SvgPicture.asset(
-                    'asset/icons/navigation/moon_stars.svg',
-                    width: 28,
-                    height: 28,
-                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                  ),
-                  label: '일기장',
-                ),
-                BottomNavigationBarItem(
-                  icon: SvgPicture.asset(
-                    'asset/icons/navigation/analytics.svg',
-                    width: 28,
-                    height: 28,
-                    colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
-                  ),
-                  activeIcon: SvgPicture.asset(
-                    'asset/icons/navigation/analytics.svg',
-                    width: 28,
-                    height: 28,
-                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                  ),
-                  label: '분석',
-                ),
-                BottomNavigationBarItem(
-                  icon: SvgPicture.asset(
-                    'asset/icons/navigation/user.svg',
-                    width: 28,
-                    height: 28,
-                    colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
-                  ),
-                  activeIcon: SvgPicture.asset(
-                    'asset/icons/navigation/user.svg',
-                    width: 28,
-                    height: 28,
-                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                  ),
-                  label: '마이',
-                ),
-              ],
-            ),
-          ),
+      body: IndexedStack(index: currentIndex, children: _screens),
+      bottomNavigationBar: GlassBottomNav(
+        currentIndex: currentIndex,
+        onTap: (index) => setState(
+          () => ref.read(MainIndexProvider.notifier).state = index,
         ),
+        items: const [
+          GlassNavItem(svgPath: 'asset/icons/navigation/planet.svg', label: '홈'),
+          GlassNavItem(svgPath: 'asset/icons/navigation/moon_stars.svg', label: '일기장'),
+          GlassNavItem(svgPath: 'asset/icons/navigation/analytics.svg', label: '분석'),
+          GlassNavItem(icon: IconsaxPlusBold.profile_2user, label: '커뮤니티'),
+          GlassNavItem(svgPath: 'asset/icons/navigation/user.svg', label: '마이'),
+        ],
       ),
     );
   }
 }
 
-Future<void> _requestNotificationPermission() async {
-  FirebaseMessaging messaging = FirebaseMessaging.instance;
-
-  try {
-    NotificationSettings settings = await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-    print('[NOTI] FCM 권한 상태: ${settings.authorizationStatus}');
-
-    // ✅ 디버그 편의 — APNs/FCM 토큰 로그 (운영에서는 sentry 등으로 옮기는 게 안전)
-    final token = await messaging.getToken();
-    print('[NOTI] FCM token=${token == null ? "null" : "${token.substring(0, 16)}..."}');
-  } catch (e, st) {
-    print('[NOTI] ❌ FCM 권한 요청 실패: $e');
-    print('[NOTI] stack: $st');
-  }
-}
+// _requestNotificationPermission 은 SplashScreen.\_requestFcmPermission 으로 이동.
+// main() 의 await 를 줄여 OS 검은 화면을 짧게 만들기 위함.

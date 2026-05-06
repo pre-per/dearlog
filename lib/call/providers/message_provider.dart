@@ -27,6 +27,16 @@ class MessageNotifier extends StateNotifier<List<Message>> {
     state = updated;
   }
 
+  /// 사용자가 STT 오인식 결과를 직접 수정한 경우 호출.
+  /// AI 재응답은 일으키지 않고, 일기 저장 시 잘못된 단어가 남지 않도록 텍스트만 갈아끼운다.
+  void updateUserMessage(int index, String newContent) {
+    if (index < 0 || index >= state.length) return;
+    if (state[index].role != 'user') return;
+    final updated = List<Message>.from(state);
+    updated[index] = Message(role: 'user', content: newContent);
+    state = updated;
+  }
+
   void clear() {
     state = [Message(role: 'assistant', content: '여보세요? 오늘 하루는 어땠어?')];
   }
