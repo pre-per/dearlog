@@ -28,7 +28,7 @@ class LoginScreen extends ConsumerWidget {
       saveUserPushToken(userId);
 
       if (existingUser == null) {
-        // 신규 유저 → Firestore에 초기 데이터 생성
+        // 신규 유저 → Firestore에 초기 데이터 생성 + 약관 동의부터.
         await userRepo.initializeNewUser(
           userId: userId,
           email: email,
@@ -37,6 +37,20 @@ class LoginScreen extends ConsumerWidget {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const OnboardingAgreementScreen()),
+        );
+      } else if (!existingUser.profile.isComplete) {
+        // 기존 유저인데 프로필 정보 일부가 비어있으면 마저 입력하게 한다.
+        // 이전에 입력한 일부 값은 draft에 미리 채워서 이어 진행 가능.
+        ref.read(onboardingDraftProvider.notifier).state = OnboardingDraft(
+          nickname: existingUser.profile.nickname,
+          gender: existingUser.profile.gender,
+          ageGroup: existingUser.profile.ageGroup,
+          interests: existingUser.profile.interests,
+        );
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const OnboardingNameScreen()),
+          (route) => false,
         );
       } else {
         // 메인화면 이동

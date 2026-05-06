@@ -57,17 +57,39 @@ class DiaryRepository {
     return snapshot.docs.map((doc) => DiaryEntry.fromJson(doc.data())).toList();
   }
 
-  /// ✅ 일기 추가/덮어쓰기 (이미지 URL이 http(s)면 Storage 업로드 후 교체)
+  /// ✅ 일기 추가/덮어쓰기.
+  /// 이미지 URL 처리:
+  /// - 이미 우리 Storage에 있는 URL (firebasestorage.googleapis.com / gs://) → 그대로 보존.
+  ///   (이전엔 매 저장마다 재다운로드 → 토큰 만료 시 403. 이게 편지 추가/삭제 때 자주 떴던 원인.)
+  /// - 외부 임시 URL (OpenAI 등) → 1회 다운로드 후 우리 Storage로 업로드/교체.
+  /// - 외부 URL 다운로드 실패 시 → 원본 URL 보존하고 저장은 계속 진행.
+  ///   (이미지 한 장 때문에 일기/편지 본문 저장이 막히지 않도록.)
   Future<void> saveDiary(String userId, DiaryEntry entry) async {
-    final originalUrls = entry.imageUrls ?? [];
+    final originalUrls = entry.imageUrls;
 
-    // OpenAI 임시 링크처럼 http(s) 인 경우 업로드해서 교체
     final convertedUrls = <String>[];
     for (int i = 0; i < originalUrls.length; i++) {
       final url = originalUrls[i];
-      final isWebUrl = url.startsWith('http://') || url.startsWith('https://');
 
-      if (isWebUrl) {
+      // 이미 우리 Storage에 있는 URL이면 재업로드 불필요 → 그대로 사용.
+      final isAlreadyOurs =
+          url.startsWith('https://firebasestorage.googleapis.com') ||
+              url.startsWith('gs://');
+      if (isAlreadyOurs) {
+        convertedUrls.add(url);
+        continue;
+      }
+
+      final isExternalWebUrl =
+          url.startsWith('http://') || url.startsWith('https://');
+      if (!isExternalWebUrl) {
+        // 알 수 없는 형식은 그대로 보존
+        convertedUrls.add(url);
+        continue;
+      }
+
+      // 외부 임시 URL 1회 업로드 시도. 실패해도 본문 저장은 진행.
+      try {
         final firebaseUrl = await _uploadImageFromUrl(
           userId: userId,
           diaryId: entry.id,
@@ -75,8 +97,10 @@ class DiaryRepository {
           imageUrl: url,
         );
         convertedUrls.add(firebaseUrl);
-      } else {
-        // 이미 firebase url / gs:// 등인 경우 그대로
+      } catch (e) {
+        // OpenAI 임시 링크 만료 등은 일상적이므로 silent.
+        // ignore: avoid_print
+        print('[saveDiary] 외부 이미지 업로드 실패 — 원본 URL 보존: $e');
         convertedUrls.add(url);
       }
     }
@@ -168,4 +192,24 @@ class DiaryRepository {
     return DiaryEntry.fromJson(snap.docs.first.data());
   }
 
+  /// 최근 [limit]개 일기 (최신순). 통화 시스템 프롬프트에 컨텍스트로 주입할 때 사용.
+  Future<List<DiaryEntry>> fetchRecentDiaries(
+    String userId, {
+    int limit = 3,
+  }) async {
+    final snap = await _diaryCollection(userId)
+        .orderBy('date', descending: true)
+        .limit(limit)
+        .get();
+
+    return snap.docs.map((doc) => DiaryEntry.fromJson(doc.data())).toList();
+  }
+
+  Future<DiaryEntry?> fetchDiaryById(String userId, String diaryId) async {
+    final doc = await _diaryCollection(userId).doc(diaryId).get();
+    if (!doc.exists) return null;
+    final data = doc.data();
+    if (data == null) return null;
+    return DiaryEntry.fromJson(data);
+  }
 }

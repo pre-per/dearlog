@@ -35,7 +35,7 @@ class UserRepository {
       await firestore.doc('users/$userId').set({
         'email': email,
         'isCompleted': false,
-        'profile': UserProfile(nickname: '', age: 0, gender: '', location: '').toJson(),
+        'profile': UserProfile.empty().toJson(),
         'preferences': UserPreferences(preferredGender: '', ageRange: [0, 0], relationshipType: '').toJson(),
         'traits': UserTraits(emotions: [], personality: '', interestsScore: {}, lastAnalyzedAt: DateTime.now()).toJson(),
         'matches': [],

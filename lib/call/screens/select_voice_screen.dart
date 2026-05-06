@@ -11,9 +11,11 @@ class SelectVoiceScreen extends ConsumerStatefulWidget {
 }
 
 class _SelectVoiceScreenState extends ConsumerState<SelectVoiceScreen> {
-  static const List<String> _voices = [
-    'alloy', 'ash', 'ballad', 'cedar', 'coral', 'echo',
-    'fable', 'marin', 'nova', 'onyx', 'sage', 'shimmer', 'verse',
+  static const List<({String id, String label, String description})> _voices = [
+    (id: 'alex',    label: 'Alex',    description: '활기차고 밝은 남성'),
+    (id: 'daniel',  label: 'Daniel',  description: '따뜻하고 차분한 남성'),
+    (id: 'sarah',   label: 'Sarah',   description: '차분하고 안정적인 여성'),
+    (id: 'lily',    label: 'Lily',    description: '밝고 명랑한 여성'),
   ];
 
   late final TtsService _tts;
@@ -25,7 +27,11 @@ class _SelectVoiceScreenState extends ConsumerState<SelectVoiceScreen> {
   @override
   void initState() {
     super.initState();
-    _tts = TtsService(apiKey: RemoteConfigService().openAIApiKey);
+    final initialVoice = ref.read(selectedVoiceProvider);
+    _tts = TtsService(
+      apiKey: RemoteConfigService().openAIApiKey,
+      voice: initialVoice,
+    );
     _tts.init();
   }
 
@@ -103,8 +109,8 @@ class _SelectVoiceScreenState extends ConsumerState<SelectVoiceScreen> {
               itemCount: _voices.length,
               itemBuilder: (context, index) {
                 final voice = _voices[index];
-                final isSelected = selectedVoice == voice;
-                final isActive = _activeVoice == voice;
+                final isSelected = selectedVoice == voice.id;
+                final isActive = _activeVoice == voice.id;
                 final isLoadingThis = isActive && _isLoading;
                 final isPlayingThis = isActive && !_isLoading;
 
@@ -125,12 +131,12 @@ class _SelectVoiceScreenState extends ConsumerState<SelectVoiceScreen> {
                   ),
                   child: Row(
                     children: [
-                      // ── 선택 영역 (이름) ──────────────────────────────
+                      // ── 선택 영역 (이름 + 설명) ──────────────────────────────
                       Expanded(
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () {
-                            ref.read(selectedVoiceProvider.notifier).state = voice;
+                            ref.read(selectedVoiceProvider.notifier).state = voice.id;
                           },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
@@ -150,16 +156,31 @@ class _SelectVoiceScreenState extends ConsumerState<SelectVoiceScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 14),
-                                Text(
-                                  _capitalize(voice),
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : Colors.white.withOpacity(0.7),
-                                    fontSize: 16,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        voice.label,
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? Colors.white
+                                              : Colors.white.withOpacity(0.7),
+                                          fontSize: 16,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.w400,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        voice.description,
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.45),
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -171,7 +192,7 @@ class _SelectVoiceScreenState extends ConsumerState<SelectVoiceScreen> {
                       // ── 미리듣기 버튼 ─────────────────────────────────
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTap: () => _preview(voice),
+                        onTap: () => _preview(voice.id),
                         child: Padding(
                           padding: const EdgeInsets.only(right: 12),
                           child: Container(

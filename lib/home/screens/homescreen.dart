@@ -4,6 +4,7 @@ import 'package:dearlog/app.dart';
 import 'package:dearlog/call/screens/call_loading_screen.dart';
 import 'package:dearlog/call/services/conversation_backup_service.dart';
 import 'package:dearlog/call/services/tts_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:dearlog/call/providers/voice_provider.dart';
@@ -105,6 +106,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
         ),
         actions: [
+          if (kDebugMode)
+            IconButton(
+              tooltip: '회원가입 흐름 디버그',
+              onPressed: () {
+                // 디버그 모드 — 마지막 저장은 스킵되고 스낵바로 결과 출력.
+                ref.read(onboardingDraftProvider.notifier).state =
+                    const OnboardingDraft(isDebugRun: true);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const OnboardingNameScreen(),
+                  ),
+                );
+              },
+              icon: Icon(
+                Icons.bug_report_outlined,
+                color: Colors.amberAccent.withOpacity(0.85),
+                size: 24,
+              ),
+            ),
           IconButton(
             onPressed: () {
               Navigator.of(
@@ -445,7 +465,9 @@ class _VoiceSelectButton extends ConsumerWidget {
             const Icon(Icons.graphic_eq_rounded, color: Colors.white, size: 18),
             const SizedBox(width: 6),
             Text(
-              selectedVoice ?? '목소리 선택',
+              selectedVoice.isEmpty
+                  ? '목소리 선택'
+                  : selectedVoice[0].toUpperCase() + selectedVoice.substring(1),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 13,
@@ -470,9 +492,11 @@ class _VoicePickerDialog extends StatefulWidget {
 }
 
 class _VoicePickerDialogState extends State<_VoicePickerDialog> {
-  static const _voices = [
-    'alloy', 'ash', 'ballad', 'cedar', 'coral', 'echo',
-    'fable', 'marin', 'nova', 'onyx', 'sage', 'shimmer', 'verse',
+  static const List<({String id, String label, String description})> _voices = [
+    (id: 'alex',    label: 'Alex',    description: '활기차고 밝은 남성'),
+    (id: 'daniel',  label: 'Daniel',  description: '따뜻하고 차분한 남성'),
+    (id: 'sarah',   label: 'Sarah',   description: '차분하고 안정적인 여성'),
+    (id: 'lily',    label: 'Lily',    description: '밝고 명랑한 여성'),
   ];
 
   late final TtsService _tts;
@@ -482,7 +506,11 @@ class _VoicePickerDialogState extends State<_VoicePickerDialog> {
   @override
   void initState() {
     super.initState();
-    _tts = TtsService(apiKey: RemoteConfigService().openAIApiKey);
+    final initialVoice = widget.ref.read(selectedVoiceProvider);
+    _tts = TtsService(
+      apiKey: RemoteConfigService().openAIApiKey,
+      voice: initialVoice,
+    );
     _tts.init();
   }
 
@@ -516,8 +544,6 @@ class _VoicePickerDialogState extends State<_VoicePickerDialog> {
     }
   }
 
-  String _capitalize(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
-
   @override
   Widget build(BuildContext context) {
     final selectedVoice = widget.ref.watch(selectedVoiceProvider);
@@ -543,8 +569,8 @@ class _VoicePickerDialogState extends State<_VoicePickerDialog> {
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
                   final voice = _voices[index];
-                  final isSelected = selectedVoice == voice;
-                  final isActive = _activeVoice == voice;
+                  final isSelected = selectedVoice == voice.id;
+                  final isActive = _activeVoice == voice.id;
                   final isLoadingThis = isActive && _isLoading;
                   final isPlayingThis = isActive && !_isLoading;
 
@@ -569,7 +595,7 @@ class _VoicePickerDialogState extends State<_VoicePickerDialog> {
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTap: () {
-                              widget.ref.read(selectedVoiceProvider.notifier).state = voice;
+                              widget.ref.read(selectedVoiceProvider.notifier).state = voice.id;
                               _tts.stop();
                               Navigator.pop(context);
                             },
@@ -589,12 +615,27 @@ class _VoicePickerDialogState extends State<_VoicePickerDialog> {
                                     ),
                                   ),
                                   const SizedBox(width: 12),
-                                  Text(
-                                    _capitalize(voice),
-                                    style: TextStyle(
-                                      color: isSelected ? Colors.white : Colors.white.withOpacity(0.7),
-                                      fontSize: 15,
-                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          voice.label,
+                                          style: TextStyle(
+                                            color: isSelected ? Colors.white : Colors.white.withOpacity(0.7),
+                                            fontSize: 15,
+                                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          voice.description,
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(0.45),
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
@@ -605,7 +646,7 @@ class _VoicePickerDialogState extends State<_VoicePickerDialog> {
                         // 미리듣기 버튼
                         GestureDetector(
                           behavior: HitTestBehavior.opaque,
-                          onTap: () => _preview(voice),
+                          onTap: () => _preview(voice.id),
                           child: Padding(
                             padding: const EdgeInsets.only(right: 10),
                             child: Container(

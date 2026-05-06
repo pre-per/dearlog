@@ -9,7 +9,15 @@ enum _Phase { loading, done }
 class CallLoadingScreen extends ConsumerStatefulWidget {
   final Duration elapsed;
 
-  const CallLoadingScreen({super.key, required this.elapsed});
+  /// 그림일기 생성 여부. AiChatScreen에서 illustrationEnabledProvider 값을 넘김.
+  /// 기본 true로 두어 기존 호출처/콜드 진입과 호환.
+  final bool withIllustration;
+
+  const CallLoadingScreen({
+    super.key,
+    required this.elapsed,
+    this.withIllustration = true,
+  });
 
   @override
   ConsumerState<CallLoadingScreen> createState() => _CallLoadingScreenState();
@@ -23,13 +31,23 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen>
   DiaryEntry? _diary;
   int _currentStep = 0;
 
-  static const _totalSteps = 4;
-  static const _stepLabels = [
-    '대화를 저장하는 중',
-    '일기를 작성하는 중',
-    '감정을 분석하는 중',
-    '그림일기를 그리는 중',
-  ];
+  // 그림일기 유무에 따라 단계 구성이 바뀜.
+  // - 켜짐: 4단계 (저장 → 작성 → 분석 → 그림)
+  // - 꺼짐: 3단계 (저장 → 작성 → 분석)
+  late final List<String> _stepLabels = widget.withIllustration
+      ? const [
+          '대화를 저장하는 중',
+          '일기를 작성하는 중',
+          '감정을 분석하는 중',
+          '그림일기를 그리는 중',
+        ]
+      : const [
+          '대화를 저장하는 중',
+          '일기를 작성하는 중',
+          '감정을 분석하는 중',
+        ];
+
+  late final int _totalSteps = _stepLabels.length;
 
   // ─── Animation Controllers ────────────────────────────────────────────────
   late final AnimationController _glowCtrl;
@@ -114,9 +132,10 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen>
     _creepTimer?.cancel();
     _creepTimer = null;
 
-    if (step == 3) {
+    // 그림일기 단계(step==3)는 가장 오래 걸리므로 0.75까지 빠르게 이동 후 slow creep.
+    // 그림일기 OFF면 step 3 자체가 안 오므로 자연스럽게 보통 분배만 사용됨.
+    if (widget.withIllustration && step == 3) {
       _animateArcTo(0.75);
-      // After the quick snap to 0.75, start the slow creep
       Future.delayed(const Duration(milliseconds: 950), () {
         if (mounted && _currentStep == 3 && _phase == _Phase.loading) _startCreep();
       });
@@ -156,12 +175,16 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen>
       await ConversationBackupService.save(messages);
 
       log('generating diary...');
+      final existingKeywords = ref.read(currentMonthExistingKeywordsProvider);
+      log('existing keywords (${existingKeywords.length}): ${existingKeywords.join(", ")}');
       final diary = await openaiService.generateDiaryFromMessages(
         messages,
         callId: callId,
         onStep: _advanceStep,
+        existingKeywords: existingKeywords,
+        generateIllustration: widget.withIllustration,
       );
-      log('diary generated id=${diary.id} moodScore=${diary.analysis?.moodScore}');
+      log('diary generated id=${diary.id} emotions=${diary.analysis?.emotions.map((e) => e.name).join(",")}');
 
       log('saving diary...');
       await ref.read(diaryRepositoryProvider).saveDiary(userId!, diary);
@@ -234,6 +257,7 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen>
                               progress: _arcValue,
                               glowIntensity: _glowAnim.value,
                               isComplete: _phase == _Phase.done,
+                              totalSteps: _totalSteps,
                             ),
                           ),
 
@@ -535,11 +559,14 @@ class _ArcProgressPainter extends CustomPainter {
   final double progress;
   final double glowIntensity;
   final bool isComplete;
+  /// 단계 boundary 틱 표시용. 그림일기 ON이면 4, OFF면 3.
+  final int totalSteps;
 
   const _ArcProgressPainter({
     required this.progress,
     required this.glowIntensity,
     required this.isComplete,
+    this.totalSteps = 4,
   });
 
   @override
@@ -556,6 +583,35 @@ class _ArcProgressPainter extends CustomPainter {
         ..strokeWidth = 2.0
         ..style = PaintingStyle.stroke,
     );
+
+    // Step boundary ticks — totalSteps에 따라 갯수 다름.
+    // 단계 사이 경계에만 표시 (시작/끝 제외).
+    for (int i = 1; i < totalSteps; i++) {
+      final tickAngle = -pi / 2 + (i / totalSteps) * 2 * pi;
+      final tickPos = Offset(
+        center.dx + radius * cos(tickAngle),
+        center.dy + radius * sin(tickAngle),
+      );
+      final passed = (i / totalSteps) <= progress;
+      // 지나간 틱은 금색 글로우, 미진행은 무채색.
+      canvas.drawCircle(
+        tickPos,
+        passed ? 3.2 : 2.4,
+        Paint()
+          ..color = passed
+              ? const Color(0xFFFFD700).withOpacity(0.85)
+              : Colors.white.withOpacity(0.32),
+      );
+      if (passed) {
+        canvas.drawCircle(
+          tickPos,
+          5.5,
+          Paint()
+            ..color = const Color(0xFFFFD700).withOpacity(0.35 * glowIntensity)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+        );
+      }
+    }
 
     if (progress <= 0) return;
 
@@ -611,7 +667,8 @@ class _ArcProgressPainter extends CustomPainter {
   bool shouldRepaint(_ArcProgressPainter old) =>
       old.progress != progress ||
       old.glowIntensity != glowIntensity ||
-      old.isComplete != isComplete;
+      old.isComplete != isComplete ||
+      old.totalSteps != totalSteps;
 }
 
 // ─── Sparkle Painter ──────────────────────────────────────────────────────────

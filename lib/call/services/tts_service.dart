@@ -1,44 +1,84 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// OpenAI TTS 기반 TtsService (스트리밍 최적화)
-class TtsService {
-  final String apiKey;
-  String model;
-  String voice;
-  double speed;
-  String responseFormat;
+import 'supertonic/supertonic_tts_engine.dart';
 
-  final AudioPlayer _player = AudioPlayer();
+/// Quality (denoising steps) and speed for Supertonic synthesis.
+/// Tuned per product: 5 steps balances quality/latency, 1.2× matches the
+/// previous OpenAI 1.05× perceived pace given Supertonic's natural cadence.
+const int _kSupertonicSteps = 5;
+const double _kSupertonicSpeed = 1.2;
+
+/// OpenAI fallback voice mapping when Supertonic fails. Picked to roughly
+/// match the gender/timbre of the Supertonic preset so a fallback isn't
+/// jarring mid-conversation.
+const Map<String, String> _kOpenAiFallbackVoice = {
+  'alex': 'onyx',     // deep male
+  'daniel': 'echo',   // warm male
+  'sarah': 'nova',    // warm female
+  'lily': 'shimmer',  // bright female
+};
+
+/// Hybrid TTS service: Supertonic 2 (on-device, primary) with OpenAI TTS
+/// as a fallback when Supertonic fails to load or synthesize.
+///
+/// Public API is preserved from the previous OpenAI-only implementation so
+/// the streaming pipeline in ai_chat_screen.dart works unchanged:
+/// - `fetchAudio(text)` → Uint8List of audio bytes (WAV or MP3)
+/// - `playAudio(bytes)` → plays the bytes via just_audio
+/// - `speakAndWait(text)` → fetch + play in one call
+class TtsService {
+  /// OpenAI API key — only consulted when falling back from Supertonic.
+  final String apiKey;
+
+  /// User-facing voice name (alex/daniel/sarah/lily). Legacy OpenAI voices
+  /// (marin/onyx/...) are still accepted and route directly to OpenAI.
+  String voice;
+
+  /// OpenAI fallback parameters.
+  String openAiModel;
+  double openAiSpeed;
+  String openAiResponseFormat;
+
+  // Same audio session handling as before — see configureAudioSession() for
+  // why we manage focus manually instead of letting just_audio do it.
+  final AudioPlayer _player =
+      AudioPlayer(handleAudioSessionActivation: false);
   bool _initialized = false;
+  int _seq = 0;
 
   TtsService({
     required this.apiKey,
-    this.model = 'gpt-4o-mini-tts',
-    this.voice = 'marin', // 외부 주입 시 변경됨
-    this.speed = 1.05,
-    this.responseFormat = 'mp3',
+    this.voice = 'alex',
+    this.openAiModel = 'gpt-4o-mini-tts',
+    this.openAiSpeed = 1.05,
+    this.openAiResponseFormat = 'mp3',
   });
 
   Future<void> init() async {
     if (_initialized) return;
     await _configureAudioSession();
     _initialized = true;
+    // Kick off Supertonic load in the background — first synthesis still
+    // awaits, but subsequent calls are instant.
+    if (isSupertonicVoice(voice)) {
+      // ignore: unawaited_futures
+      SupertonicTtsEngine.instance.ensureLoaded().catchError((e) {
+        debugPrint('[TTS] background warm-up failed: $e');
+      });
+    }
   }
 
-  /// 오디오 세션을 스피커 출력용으로 설정
-  /// speech_to_text가 voiceCommunication(이어피스)으로 변경하므로,
-  /// TTS 재생 전에 다시 media(스피커)로 전환해야 함
-  Future<void> _configureAudioSession() async {
+  Future<bool> _configureAudioSession() async {
     final session = await AudioSession.instance;
     await session.configure(AudioSessionConfiguration(
-      // iOS: playAndRecord + defaultToSpeaker → 마이크/스피커 동시 사용
       avAudioSessionCategory: AVAudioSessionCategory.playAndRecord,
       avAudioSessionCategoryOptions:
           AVAudioSessionCategoryOptions.defaultToSpeaker,
@@ -46,8 +86,6 @@ class TtsService {
       avAudioSessionRouteSharingPolicy:
           AVAudioSessionRouteSharingPolicy.defaultPolicy,
       avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
-      // Android: media usage → 스피커로 출력
-      // (voiceCommunication은 이어피스로 라우팅되므로 사용 불가)
       androidAudioAttributes: const AndroidAudioAttributes(
         contentType: AndroidAudioContentType.speech,
         flags: AndroidAudioFlags.none,
@@ -56,6 +94,45 @@ class TtsService {
       androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
       androidWillPauseWhenDucked: false,
     ));
+
+    // ✅ Android 전용 보정:
+    // speech_to_text(SpeechRecognizer)가 시스템 audio mode를
+    // MODE_IN_COMMUNICATION으로 바꿔놓으면 음성 인식이 끝난 뒤에도
+    // 그 모드가 남아있어 미디어 재생이 이어피스로 라우팅되거나 무음이 됨.
+    if (!kIsWeb && Platform.isAndroid) {
+      final manager = AndroidAudioManager();
+      try {
+        await manager.setMode(AndroidAudioHardwareMode.normal);
+      } catch (e) {
+        debugPrint('[TTS] setMode(normal) 실패: $e');
+      }
+      try {
+        await manager.setSpeakerphoneOn(false);
+      } catch (e) {
+        debugPrint('[TTS] setSpeakerphoneOn(false) 실패: $e');
+      }
+    }
+
+    final granted = await _acquireFocusWithRetry(session);
+    if (!granted) {
+      debugPrint('[TTS] ❌ audio focus 획득 최종 실패 — 재생을 건너뜀');
+    }
+    return granted;
+  }
+
+  Future<bool> _acquireFocusWithRetry(AudioSession session) async {
+    try {
+      if (await session.setActive(true)) return true;
+    } catch (e) {
+      debugPrint('[TTS] setActive(true) 1차 예외: $e');
+    }
+    await Future.delayed(const Duration(milliseconds: 120));
+    try {
+      if (await session.setActive(true)) return true;
+    } catch (e) {
+      debugPrint('[TTS] setActive(true) 2차 예외: $e');
+    }
+    return false;
   }
 
   Future<void> dispose() async {
@@ -66,13 +143,41 @@ class TtsService {
     await _player.stop();
   }
 
-  /// HTTP 요청만 수행 — 오디오 바이트 반환 (재생 안 함)
-  /// 파이프라인에서 미리 패치할 때 사용
+  /// Returns audio bytes (WAV from Supertonic, or MP3 from OpenAI fallback).
+  /// Caller plays them via `playAudio`. The pipeline in ai_chat_screen.dart
+  /// kicks off `fetchAudio` per sentence in parallel with GPT streaming.
   Future<Uint8List> fetchAudio(String text) async {
     final cleaned = text.trim();
     if (cleaned.isEmpty) return Uint8List(0);
     if (!_initialized) await init();
 
+    if (isSupertonicVoice(voice)) {
+      try {
+        return await SupertonicTtsEngine.instance.synthesizeWav(
+          cleaned,
+          voice: voice,
+          steps: _kSupertonicSteps,
+          speed: _kSupertonicSpeed,
+        );
+      } catch (e, st) {
+        // Fall through to OpenAI on any Supertonic failure (load error,
+        // inference exception, etc.). This is the entire reason we keep
+        // the OpenAI path alive.
+        print('[TTS] ⚠️ Supertonic failed, falling back to OpenAI: $e');
+        debugPrint('$st');
+        return await _fetchOpenAi(cleaned, _kOpenAiFallbackVoice[voice] ?? 'onyx');
+      }
+    }
+
+    // Voice is a legacy OpenAI voice — go straight to OpenAI.
+    return await _fetchOpenAi(cleaned, voice);
+  }
+
+  Future<Uint8List> _fetchOpenAi(String text, String voiceName) async {
+    if (apiKey.isEmpty) {
+      print('[TTS] ❌ apiKey 가 비어 있습니다 — RemoteConfig fetch 가 실패한 상태일 가능성이 높습니다.');
+      throw Exception('TTS apiKey 비어 있음 (RemoteConfig fetch 실패 추정)');
+    }
     final response = await http.post(
       Uri.parse('https://api.openai.com/v1/audio/speech'),
       headers: {
@@ -80,79 +185,116 @@ class TtsService {
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        'model': model,
-        'voice': voice,
-        'input': cleaned,
-        'response_format': responseFormat,
-        'speed': speed,
+        'model': openAiModel,
+        'voice': voiceName,
+        'input': text,
+        'response_format': openAiResponseFormat,
+        'speed': openAiSpeed,
       }),
     );
-
     if (response.statusCode != 200) {
+      print('[TTS] ❌ OpenAI ${response.statusCode}: '
+          '${response.body.length > 200 ? response.body.substring(0, 200) : response.body}');
       throw Exception('TTS fetch 실패(${response.statusCode}): ${response.body}');
     }
     return response.bodyBytes;
   }
 
-  /// 바이트를 받아 재생 완료까지 대기
-  /// 파이프라인 플레이어 루프에서 사용
+  /// Plays raw audio bytes. Detects WAV vs MP3 from the magic header so the
+  /// temp file gets the right extension (some Android decoder paths sniff
+  /// the extension before the magic bytes).
   Future<void> playAudio(Uint8List bytes) async {
     if (bytes.isEmpty) return;
 
-    // speech_to_text가 voiceCommunication으로 세션을 바꿨을 수 있으므로
-    // 매 재생 전에 스피커 출력으로 재설정
-    await _configureAudioSession();
+    final ext = _detectAudioExt(bytes);
+    if (kDebugMode) {
+      debugPrint('[TTS] playback bytes=${bytes.length} ext=$ext');
+    }
+
+    final granted = await _configureAudioSession();
+    if (!granted) return;
+
     await _player.stop();
 
-    // Android: StreamAudioSource의 localhost 프록시 대신 임시 파일 사용
-    // 일부 기기에서 cleartext 차단으로 프록시 연결 실패하는 문제 우회
-    final file = await _writeTempFile(bytes, 'tts_playback.mp3');
-
+    final file = await _writeTempFile(bytes, _nextFileName('playback', ext));
     try {
       await _player.setFilePath(file.path);
-
       final completionFuture = _player.processingStateStream
           .firstWhere((s) => s == ProcessingState.completed)
           .timeout(const Duration(seconds: 60),
               onTimeout: () => ProcessingState.idle);
-
       await _player.play();
       await completionFuture;
+    } catch (e, st) {
+      print('[TTS] ❌ playAudio 예외: $e');
+      print('[TTS] stack: $st');
+      rethrow;
     } finally {
       _deleteSilently(file);
     }
   }
 
-  /// 미리보기용 — fetch + play를 한 번에 수행
-  /// [onPlaybackStart]: 오디오 다운로드 완료 후 재생 시작 직전에 호출됨
+  /// Synthesizes [text] and plays it through to completion.
+  /// [onPlaybackStart] fires once audio starts (used by preview UI to flip
+  /// from "loading spinner" to "stop button").
   Future<void> speakAndWait(String text,
       {void Function()? onPlaybackStart}) async {
     final bytes = await fetchAudio(text);
     if (bytes.isEmpty) return;
 
-    await _configureAudioSession();
+    final ext = _detectAudioExt(bytes);
+    if (kDebugMode) {
+      final magicHex = bytes.length >= 4
+          ? '${bytes[0].toRadixString(16)} ${bytes[1].toRadixString(16)} '
+              '${bytes[2].toRadixString(16)} ${bytes[3].toRadixString(16)}'
+          : '<too short>';
+      debugPrint('[TTS] preview bytes=${bytes.length} '
+          'magic=$magicHex ext=$ext');
+    }
+
+    final granted = await _configureAudioSession();
+    if (!granted) return;
+
     await _player.stop();
 
-    final file = await _writeTempFile(bytes, 'tts_preview.mp3');
-
+    final file = await _writeTempFile(bytes, _nextFileName('preview', ext));
     try {
       await _player.setFilePath(file.path);
-
       final completionFuture = _player.processingStateStream
           .firstWhere((s) => s == ProcessingState.completed)
           .timeout(const Duration(seconds: 60),
               onTimeout: () => ProcessingState.idle);
-
       onPlaybackStart?.call();
       await _player.play();
       await completionFuture;
       await _player.stop();
+    } catch (e, st) {
+      print('[TTS] ❌ play 단계 예외: $e');
+      print('[TTS] stack: $st');
+      rethrow;
     } finally {
       _deleteSilently(file);
     }
   }
 
   // ── 유틸 ──
+
+  /// Detects WAV vs MP3 from the first few bytes. Defaults to mp3 if unsure
+  /// (OpenAI fallback) since just_audio still plays WAV with .mp3 extension
+  /// on iOS but Android can be picky.
+  String _detectAudioExt(Uint8List bytes) {
+    if (bytes.length >= 4 &&
+        bytes[0] == 0x52 && bytes[1] == 0x49 &&
+        bytes[2] == 0x46 && bytes[3] == 0x46) {
+      return 'wav';
+    }
+    return 'mp3';
+  }
+
+  String _nextFileName(String prefix, String ext) {
+    _seq = (_seq + 1) & 0xFFFF;
+    return 'tts_${prefix}_$_seq.$ext';
+  }
 
   Future<File> _writeTempFile(Uint8List bytes, String name) async {
     final dir = await getTemporaryDirectory();

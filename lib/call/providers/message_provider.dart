@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/di/providers.dart';
 import '../../call/models/conversation/message.dart';
+import '../../diary/models/diary_entry.dart';
+import '../../user/providers/user_fetch_providers.dart';
 
 final messageProvider = StateNotifierProvider<MessageNotifier, List<Message>>(
       (ref) => MessageNotifier(ref),
@@ -36,7 +38,26 @@ class MessageNotifier extends StateNotifier<List<Message>> {
   Future<void> getAssistantResponse() async {
     try {
       final service = ref.read(openAIServiceProvider); // ⬅️ di 주입 사용
-      final response = await service.getChatResponse(state);
+      final profile = ref.read(userProfileProvider);
+      final userId = ref.read(userIdProvider);
+
+      // 최근 일기 3개 — 친구처럼 익숙한 맥락을 알도록. 실패해도 응답 자체는 진행.
+      List<DiaryEntry> recent = const [];
+      if (userId != null) {
+        try {
+          recent = await ref
+              .read(diaryRepositoryProvider)
+              .fetchRecentDiaries(userId, limit: 3);
+        } catch (_) {
+          // ignore — 컨텍스트 없이도 통화는 계속.
+        }
+      }
+
+      final response = await service.getChatResponse(
+        state,
+        profile: profile,
+        recentDiaries: recent,
+      );
       state = [
         for (final m in state)
           if (!(m.role == 'assistant' && m.content == '__loading__')) m,

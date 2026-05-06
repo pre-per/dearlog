@@ -1,7 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- AudioManager.setMode() / setSpeakerphoneOn() 호출에 필요.
+         speech_to_text가 시스템 audio mode를 MODE_IN_COMMUNICATION으로 바꿔놓는 것을
+         TTS 재생 직전에 MODE_NORMAL로 되돌리려면 반드시 필요한 normal-level 권한. -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- Android 13+ 정확 알람 (사용자 설정 없이) — 시간 민감 알림(편지 도착 등)에 사용 -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <!-- 인터넷 권한 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
@@ -43,6 +50,30 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- ✅ flutter_local_notifications 의 예약 알림 BroadcastReceiver 명시 등록.
+             플러그인이 자체 manifest 에 선언하지만 일부 환경(타겟 SDK 변경, AGP 버전,
+             tools:replace 충돌 등)에서 manifest 병합이 누락되는 경우가 있어
+             명시적으로 다시 선언해 둔다 (중복 선언은 동일 속성이면 안전).
+             - ScheduledNotificationReceiver: 매 알람 발화마다 호출되는 핵심 receiver.
+               이게 빠지면 AlarmManager 가 발화해도 알림이 표시되지 않음.
+             - ScheduledNotificationBootReceiver: 기기 재부팅 후 예약 알람 복원. -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
+            android:exported="false" />
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"
+            android:exported="false" />
     </application
     ><!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

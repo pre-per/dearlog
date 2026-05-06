@@ -412,18 +412,34 @@ class SettingMainScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 10),
                     SimpleTitleTile(
+                      title: '내 정보',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const ProfileEditScreen()),
+                      ),
+                    ),
+                    SimpleTitleTile(
                       title: '알림 설정',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const NotificationSettingScreen()),
                       ),
                     ),
                     SimpleTitleTile(
-                      title: '알림 테스트하기 (Beta) [10s]',
+                      title: '알림 즉시 표시 테스트',
                       onTap: () async {
-                        debugPrint('test tapped');
+                        // ✅ 즉시 알림 — _plugin.show() 가 정상 동작하는지 확인용.
+                        //    실패 시 로그에 "[NOTI] ❌ 즉시 표시 실패: ..." 가 찍힘.
+                        await LocalNotificationService.instance.showTestNow();
+                      },
+                    ),
+                    SimpleTitleTile(
+                      title: '10초 뒤 알림 예약 테스트',
+                      onTap: () async {
+                        // ✅ AlarmManager 경유 예약 알림 — 백그라운드 BroadcastReceiver
+                        //    가 살아있는지 확인용. 10초 뒤 알림이 안 뜨면
+                        //    Doze/배터리 최적화/Receiver stripping 의심.
                         await LocalNotificationService.instance
                             .scheduleTestIn10Seconds();
-                        debugPrint('showTestNow called');
                       },
                     ),
                   ],

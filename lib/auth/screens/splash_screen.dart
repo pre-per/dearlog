@@ -31,14 +31,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       // 2. userProvider 강제 fetch
       final user = await ref.read(userProvider.future);
 
-      // 3. user가 존재하면 MainScreen, 없으면 LoginScreen
+      // 3. user가 존재하면 프로필 완성도 체크 → 미완성이면 온보딩 마저 진행.
       if (user != null) {
         saveUserPushToken(user.id);
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
-        );
+        if (!user.profile.isComplete) {
+          // 닉네임/성별/나잇대/관심사 중 하나라도 비어있으면 강제 입력.
+          // 기존 draft에 일부 정보가 남아 있으면 거기서 이어가도록 미리 채워놓음.
+          ref.read(onboardingDraftProvider.notifier).state = OnboardingDraft(
+            nickname: user.profile.nickname,
+            gender: user.profile.gender,
+            ageGroup: user.profile.ageGroup,
+            interests: user.profile.interests,
+          );
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const OnboardingNameScreen()),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MainScreen()),
+          );
+        }
       } else {
         Navigator.pushReplacement(
           context,

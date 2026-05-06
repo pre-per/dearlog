@@ -1,6 +1,7 @@
 // speech_provider.dart
 import 'dart:async';
 import 'package:audio_session/audio_session.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
@@ -48,6 +49,13 @@ class SpeechNotifier extends StateNotifier<SpeechState> {
 
   bool _submittedThisSession = false;
 
+  // ✅ 자동 재시작 중복 방지 락 (onStatus / onError가 동시에 재시작 시도하는 race 차단)
+  bool _isRestarting = false;
+
+  // ✅ permanent 에러 누적 카운터 — N회 누적 시 연속 모드 OFF (무한 루프 방지)
+  int _consecutivePermanentErrors = 0;
+  static const int _maxConsecutivePermanentErrors = 3;
+
   // =========================
   // ✅ 무음(텍스트 변화 없음) 자동 제출 로직
   // =========================
@@ -62,45 +70,79 @@ class SpeechNotifier extends StateNotifier<SpeechState> {
   }
 
   Future<void> _initializeSpeech() async {
-    final ok = await _speech.initialize(
-      onStatus: (s) async {
-        // done / notListening = 세션 종료됨
-        if (s == 'done' || s == 'notListening') {
-          // ✅ 오디오 세션 비활성화
-          AudioSession.instance.then((session) => session.setActive(false));
+    debugPrint('[SPEECH] _initializeSpeech: 시작');
+    bool ok = false;
+    try {
+      ok = await _speech.initialize(
+        debugLogging: true,
+        onStatus: (s) async {
+          debugPrint('[SPEECH] onStatus: "$s" (continuous=$_continuous, isAvailable=${state.isAvailable}, isListening=${_speech.isListening})');
+          // done / notListening = 세션 종료됨
+          if (s == 'done' || s == 'notListening') {
+            // ✅ 오디오 세션 비활성화 — fire-and-forget 하면 안 됨!
+            // await 안 하면 TTS의 setActive(true)와 race가 발생해서
+            // TTS가 방금 획득한 focus를 이 setActive(false)가 즉시 abandon해버림.
+            // 그러면 just_audio가 silently 재생을 포기 → "됐다 안 됐다" 증상.
+            try {
+              final session = await AudioSession.instance;
+              await session.setActive(false);
+            } catch (e) {
+              debugPrint('[SPEECH] setActive(false) 실패: $e');
+            }
 
-          _cancelSilenceTimer();
-          _latestText = '';
-          state = state.copyWith(isRecording: false, currentText: '');
+            _cancelSilenceTimer();
+            _latestText = '';
+            state = state.copyWith(isRecording: false, currentText: '');
 
-          // ✅ 연속 모드일 때만 자동 재시작
-          if (_continuous && state.isAvailable) {
-            await Future.delayed(const Duration(milliseconds: 250));
-
-            if (_continuous && !_speech.isListening && _lastOnFinal != null) {
-              await startListening(_lastOnFinal!);
+            // ✅ 자동 재시작은 여기서만 (onError에서는 더 이상 안 함 — 중복/race 방지)
+            // _isRestarting 락으로 동시 재시작 호출 차단
+            if (_continuous && state.isAvailable && !_isRestarting) {
+              _isRestarting = true;
+              try {
+                await Future.delayed(const Duration(milliseconds: 250));
+                if (_continuous && !_speech.isListening && _lastOnFinal != null) {
+                  debugPrint('[SPEECH] onStatus: 연속 모드 → 자동 재시작');
+                  await startListening(_lastOnFinal!);
+                }
+              } finally {
+                _isRestarting = false;
+              }
             }
           }
-        }
-      },
-      onError: (e) async {
-        // ✅ 오디오 세션 비활성화
-        AudioSession.instance.then((session) => session.setActive(false));
-
-        _cancelSilenceTimer();
-        state = state.copyWith(isRecording: false);
-
-        // 에러가 나도 연속 모드면 재시도
-        if (_continuous && state.isAvailable) {
-          await Future.delayed(const Duration(milliseconds: 400));
-          if (_continuous && !_speech.isListening && _lastOnFinal != null) {
-            await startListening(_lastOnFinal!);
+        },
+        onError: (e) async {
+          debugPrint('[SPEECH] onError: ${e.errorMsg} (permanent=${e.permanent}, continuous=$_continuous, perm누적=$_consecutivePermanentErrors)');
+          // ✅ 오디오 세션 비활성화 — race 방지를 위해 반드시 await
+          try {
+            final session = await AudioSession.instance;
+            await session.setActive(false);
+          } catch (err) {
+            debugPrint('[SPEECH] onError setActive(false) 실패: $err');
           }
-        }
-      },
-    );
+
+          _cancelSilenceTimer();
+          state = state.copyWith(isRecording: false);
+
+          // ✅ permanent 에러 누적 시 연속 모드 OFF — 무한 재시작 루프 차단
+          if (e.permanent) {
+            _consecutivePermanentErrors++;
+            if (_consecutivePermanentErrors >= _maxConsecutivePermanentErrors) {
+              debugPrint('[SPEECH] onError: permanent 에러 ${_consecutivePermanentErrors}회 누적 → 연속 모드 OFF (재시도 중단)');
+              _continuous = false;
+            }
+          }
+
+          // ✅ 재시작 로직은 onStatus('done')에서 일원화 처리.
+          //    여기서 재시작 안 함 — race condition 방지.
+        },
+      );
+      debugPrint('[SPEECH] _speech.initialize() 결과: ok=$ok');
+    } catch (e, st) {
+      debugPrint('[SPEECH] _speech.initialize() 예외: $e\n$st');
+    }
 
     state = state.copyWith(isAvailable: ok);
+    debugPrint('[SPEECH] _initializeSpeech: 완료 (isAvailable=$ok)');
     if (!_initCompleter.isCompleted) _initCompleter.complete();
   }
 
@@ -109,6 +151,8 @@ class SpeechNotifier extends StateNotifier<SpeechState> {
   /// ✅ 통화 시작 시 호출: 자동 재시작 ON
   void enableContinuous() {
     _continuous = true;
+    // 명시적으로 다시 켜는 시점이면 permanent 에러 카운터 리셋
+    _consecutivePermanentErrors = 0;
   }
 
   /// ✅ 통화 종료/텍스트모드/일시정지 시 호출: 자동 재시작 OFF
@@ -168,18 +212,39 @@ class SpeechNotifier extends StateNotifier<SpeechState> {
 
   /// ✅ "듣기 시작"
   Future<void> startListening(Future<void> Function(String) onFinal) async {
+    debugPrint('[SPEECH] startListening: 호출됨 (initCompleted=${_initCompleter.isCompleted}, isAvailable=${state.isAvailable}, isListening=${_speech.isListening}, isRecording=${state.isRecording})');
     if (!_initCompleter.isCompleted) {
+      debugPrint('[SPEECH] startListening: ensureInitialized() 대기');
       await ensureInitialized();
     }
-    if (!state.isAvailable) return;
+    if (!state.isAvailable) {
+      debugPrint('[SPEECH] startListening: ⚠️ isAvailable=false → 조기 반환');
+      return;
+    }
 
-    // 이미 듣고 있으면 중복 방지
-    if (_speech.isListening || state.isRecording) return;
+    // ✅ 엔진의 isListening이 진실. state.isRecording은 UI용 미러.
+    //    엔진이 진짜로 듣는 중이면 중복 방지하고 반환.
+    if (_speech.isListening) {
+      debugPrint('[SPEECH] startListening: ⚠️ 엔진이 이미 듣는 중 → 조기 반환');
+      return;
+    }
+    // ✅ state desync 보정: state.isRecording=true인데 엔진은 안 듣고 있다면
+    //    이전 세션이 비정상 종료된 것 — 보정만 하고 진행.
+    if (state.isRecording) {
+      debugPrint('[SPEECH] startListening: state desync 감지 (isRecording=true, isListening=false) → 보정 후 진행');
+      state = state.copyWith(isRecording: false);
+    }
 
     // ✅ 오디오 세션 설정 및 활성화
-    final session = await AudioSession.instance;
-    await session.configure(AudioSessionConfiguration.speech());
-    await session.setActive(true);
+    debugPrint('[SPEECH] startListening: AudioSession 설정 시작');
+    try {
+      final session = await AudioSession.instance;
+      await session.configure(AudioSessionConfiguration.speech());
+      await session.setActive(true);
+      debugPrint('[SPEECH] startListening: AudioSession 활성화 완료');
+    } catch (e, st) {
+      debugPrint('[SPEECH] startListening: AudioSession 설정 실패: $e\n$st');
+    }
 
     _lastOnFinal = onFinal;
 
@@ -190,42 +255,55 @@ class SpeechNotifier extends StateNotifier<SpeechState> {
     _cancelSilenceTimer();
 
     state = state.copyWith(isRecording: true, currentText: '');
+    debugPrint('[SPEECH] startListening: state.isRecording=true 로 전환, _speech.listen() 호출');
 
-    await _speech.listen(
-      onResult: (result) async {
-        final text = result.recognizedWords.trim();
+    try {
+      await _speech.listen(
+        onResult: (result) async {
+          final text = result.recognizedWords.trim();
 
-        // 공백은 무시
-        if (text.isEmpty) return;
+          // 공백은 무시
+          if (text.isEmpty) return;
 
-        // ✅ 텍스트가 "실제로 바뀌었을 때만" 갱신 + 타이머 리셋
-        if (text != _latestText) {
-          _latestText = text;
-          state = state.copyWith(currentText: text);
+          // ✅ 실제 음성 인식 성공 → permanent 에러 카운터 리셋
+          //    (간헐적 permanent 에러가 누적되어 연속 모드가 OFF되는 걸 방지)
+          _consecutivePermanentErrors = 0;
 
-          // ✅ 마지막 텍스트 변화 시점으로부터 2초 무변화면 자동 제출
-          _restartSilenceTimer();
-        }
+          // ✅ 텍스트가 "실제로 바뀌었을 때만" 갱신 + 타이머 리셋
+          if (text != _latestText) {
+            _latestText = text;
+            state = state.copyWith(currentText: text);
 
-        // (옵션) finalResult가 오면 더 빠르게 제출해도 됨
-        // iOS 실기기에선 final이 잘 안 오는 경우가 있어서,
-        // 이건 "있으면 빨리 제출" 정도의 보너스 처리.
-        if (result.finalResult) {
-          _cancelSilenceTimer();
-          if (!_submittedThisSession) {
-            await _submitLatestText(_latestText.trim());
+            // ✅ 마지막 텍스트 변화 시점으로부터 2초 무변화면 자동 제출
+            _restartSilenceTimer();
           }
-        }
-      },
 
-      // ✅ 끊김 최소화 세팅(그대로 유지)
-      listenFor: const Duration(minutes: 5),
-      pauseFor: const Duration(minutes: 5),
+          // (옵션) finalResult가 오면 더 빠르게 제출해도 됨
+          // iOS 실기기에선 final이 잘 안 오는 경우가 있어서,
+          // 이건 "있으면 빨리 제출" 정도의 보너스 처리.
+          if (result.finalResult) {
+            debugPrint('[SPEECH] onResult: finalResult=true, text="${_latestText.trim()}"');
+            _cancelSilenceTimer();
+            if (!_submittedThisSession) {
+              await _submitLatestText(_latestText.trim());
+            }
+          }
+        },
 
-      partialResults: true,
-      localeId: 'ko_KR',
-      listenMode: stt.ListenMode.dictation,
-    );
+        // ✅ 끊김 최소화 세팅(그대로 유지)
+        listenFor: const Duration(minutes: 5),
+        pauseFor: const Duration(minutes: 5),
+
+        partialResults: true,
+        localeId: 'ko_KR',
+        listenMode: stt.ListenMode.dictation,
+      );
+      debugPrint('[SPEECH] startListening: _speech.listen() 반환됨 (isListening=${_speech.isListening})');
+    } catch (e, st) {
+      debugPrint('[SPEECH] startListening: _speech.listen() 예외: $e\n$st');
+      // listen() 실패 시 UI 상태도 되돌리기
+      state = state.copyWith(isRecording: false);
+    }
   }
 
   /// ✅ "완전 정지" (연속 재시작도 막으려면 disableContinuous 먼저 호출)
