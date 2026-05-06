@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:dearlog/app.dart';
-import 'package:flutter_svg/svg.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:dearlog/analysis/widget/today_summary_card.dart';
 
@@ -15,6 +15,8 @@ class DiaryDetailScreen extends ConsumerStatefulWidget {
 
 class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
   late DiaryEntry _diary;
+  bool _deleting = false;
+  bool _generatingIllustration = false;
 
   @override
   void initState() {
@@ -22,102 +24,146 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
     _diary = widget.diary;
   }
 
+  Future<bool> _confirmExitDuringGeneration() async {
+    final ok = await showGlassDialog<bool>(
+      context: context,
+      title: '그림 생성을 취소할까요?',
+      message: '지금 나가면 그리고 있던 그림이 사라져요.\n일기는 그대로 유지돼요.',
+      actions: const [
+        GlassDialogAction(label: '계속 만들기', value: false),
+        GlassDialogAction(label: '나가기', value: true, isDestructive: true),
+      ],
+    );
+    return ok == true;
+  }
+
   Future<void> _updateDiary(DiaryEntry updated) async {
     final userId = ref.read(userIdProvider);
     if (userId == null) return;
-    await DiaryRepository().saveDiary(userId, updated);
+    await ref.read(diaryRepositoryProvider).saveDiary(userId, updated);
     setState(() => _diary = updated);
   }
 
-  void _showLetterEditor() {
-    showModalBottomSheet(
+  Future<void> _confirmDelete() async {
+    if (_deleting) return;
+    final ok = await showGlassDialog<bool>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _LetterBottomSheet(
-        diary: _diary,
-        onSave: _updateDiary,
-      ),
+      title: '일기를 삭제할까요?',
+      message: '일기에 첨부된 그림과 편지, 분석 결과가 모두 사라져요.\n이 작업은 되돌릴 수 없어요.',
+      actions: const [
+        GlassDialogAction(label: '취소', value: false),
+        GlassDialogAction(label: '삭제', value: true, isDestructive: true),
+      ],
     );
+    if (ok != true) return;
+
+    setState(() => _deleting = true);
+    try {
+      final userId = ref.read(userIdProvider);
+      if (userId == null) return;
+
+      // 잠금 편지 알림 취소
+      final scheduler = LetterScheduler();
+      for (final l in _diary.letters) {
+        if (l.isLocked) {
+          await scheduler.cancel(l);
+        }
+      }
+
+      await ref.read(diaryRepositoryProvider).deleteDiary(userId, _diary.id);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('삭제에 실패했어요: $e'),
+          backgroundColor: const Color(0xFF1E1E2E),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BaseScaffold(
+    return PopScope(
+      // 그림 생성 중에는 시스템 백 / 앱바 ← / iOS 가장자리 스와이프 모두 차단,
+      // onPopInvokedWithResult에서 경고 다이얼로그 띄움.
+      canPop: !_generatingIllustration,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (!_generatingIllustration) return;
+        final shouldExit = await _confirmExitDuringGeneration();
+        if (!shouldExit) return;
+        if (!mounted) return;
+        Navigator.of(context).pop();
+      },
+      child: BaseScaffold(
       appBar: AppBar(
         title: Text(
           DateFormat('yyyy년 MM월 dd일', 'ko_KR').format(_diary.date),
-          style: const TextStyle(color: Colors.white, fontSize: 16, fontFamily: 'GowunBatang'),
+          style: const TextStyle(
+              color: Colors.white, fontSize: 16, fontFamily: 'GowunBatang'),
         ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
+        actions: [
+          IconButton(
+            tooltip: '삭제',
+            // 생성 중엔 삭제도 비활성 (편지/분석 함께 사라지면 혼란)
+            onPressed: (_deleting || _generatingIllustration)
+                ? null
+                : _confirmDelete,
+            icon: _deleting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.delete_outline,
+                    color: Colors.white, size: 22),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. 그림 일기
-            ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: _diary.imageUrls.isNotEmpty 
-                ? Image.network(
-                    _diary.imageUrls.first, 
-                    width: double.infinity, 
-                    height: 300, 
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        height: 300,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.white.withOpacity(0.1)),
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(color: Colors.white.withOpacity(0.5)),
-                              const SizedBox(height: 12),
-                              Text("그림일기를 불러오는 중...", style: TextStyle(color: Colors.white.withOpacity(0.7))),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  )
-                : Container(height: 300, color: Colors.white10),
+            // 1. 그림 일기 — 영역은 항상 유지. 그림이 없으면 placeholder + 지금 생성 버튼.
+            _DiaryImage(
+              diary: _diary,
+              onUpdate: _updateDiary,
+              onGeneratingChanged: (b) =>
+                  setState(() => _generatingIllustration = b),
             ),
             const SizedBox(height: 24),
 
             // 2. 일기 보기
             _paperCard(_diary),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // 3. 오늘의 감정 & 해석 요약 카드
-            TodaySummaryCard(diary: _diary),
-            const SizedBox(height: 24),
-            
-            // 4. AI의 한 마디
+            // 3. AI 댓글 (감정 요약 위로 이동)
             _AiCommentCard(comment: _diary.aiComment),
+            const SizedBox(height: 20),
 
-            const SizedBox(height: 24),
+            // 4. 오늘의 감정 & 해석 요약
+            TodaySummaryCard(diary: _diary),
+            const SizedBox(height: 20),
 
-            // 5. 내게 보내는 편지 버튼
-            _ActionButton(
-              title: "오늘의 내게 보내는 편지",
-              onTap: _showLetterEditor,
-            ),
-            
+            // 5. 내게 보내는 편지 섹션
+            LetterSection(diary: _diary, onUpdate: _updateDiary),
             const SizedBox(height: 12),
 
             // 6. 대화 확인하기 버튼
             if (_diary.callId != null)
               _ActionButton(
-                title: "대화 확인하기",
+                title: '대화 확인하기',
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -131,6 +177,350 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
           ],
         ),
       ),
+      ),
+    );
+  }
+}
+
+/// 그림일기 영역.
+/// - URL 있음: 이미지 표시
+/// - URL 없음: "통화 중에 생성되지 않았어요 — 지금 생성하기" placeholder
+/// - 생성 중: 카드 안에서 인라인 진행 표시 (30~60초). 부모에게 [onGeneratingChanged]로 알려서
+///   PopScope로 뒤로가기 차단 + 경고 다이얼로그 표시할 수 있게 함.
+/// - 실패: 에러 메시지 + 다시 시도
+class _DiaryImage extends ConsumerStatefulWidget {
+  final DiaryEntry diary;
+  final Future<void> Function(DiaryEntry) onUpdate;
+  final ValueChanged<bool>? onGeneratingChanged;
+
+  const _DiaryImage({
+    required this.diary,
+    required this.onUpdate,
+    this.onGeneratingChanged,
+  });
+
+  @override
+  ConsumerState<_DiaryImage> createState() => _DiaryImageState();
+}
+
+class _DiaryImageState extends ConsumerState<_DiaryImage> {
+  bool _generating = false;
+  String? _error;
+
+  static const _gold = Color(0xFFFFD700);
+
+  void _setGenerating(bool v) {
+    if (_generating == v) return;
+    setState(() => _generating = v);
+    widget.onGeneratingChanged?.call(v);
+  }
+
+  Future<void> _generate() async {
+    if (_generating) return;
+    setState(() => _error = null);
+    _setGenerating(true);
+    try {
+      final imageUrl =
+          await OpenAIService().generateIllustrationForDiary(widget.diary);
+      // 위젯이 dispose된 뒤(사용자가 나가기 선택 후)에는 결과 폐기.
+      if (!mounted) return;
+      final updated = widget.diary.copyWith(imageUrls: [imageUrl]);
+      await widget.onUpdate(updated);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = '$e');
+      }
+    } finally {
+      if (mounted) {
+        _setGenerating(false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = widget.diary.imageUrls.isNotEmpty;
+    if (hasImage && !_generating) {
+      return _buildImage(widget.diary.imageUrls.first);
+    }
+    return _buildPlaceholder();
+  }
+
+  Widget _buildImage(String url) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: Image.network(
+        url,
+        width: double.infinity,
+        height: 300,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            height: 300,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                      color: Colors.white.withOpacity(0.5)),
+                  const SizedBox(height: 12),
+                  Text('그림일기를 불러오는 중...',
+                      style:
+                          TextStyle(color: Colors.white.withOpacity(0.7))),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    return Container(
+      width: double.infinity,
+      height: 240,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        color: Colors.white.withOpacity(0.04),
+        border: Border.all(color: Colors.white.withOpacity(0.10)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _gold.withOpacity(0.06),
+            Colors.transparent,
+          ],
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Center(
+          child: _generating
+              ? _generatingView()
+              : (_error != null ? _errorView() : _idleView()),
+        ),
+      ),
+    );
+  }
+
+  Widget _idleView() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _gold.withOpacity(0.18),
+            border: Border.all(color: _gold.withOpacity(0.4)),
+          ),
+          child: const Icon(Icons.auto_awesome,
+              color: _gold, size: 26),
+        ),
+        const SizedBox(height: 14),
+        const Text(
+          '통화 중에는 그림이 생성되지 않았어요',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'GowunBatang',
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '지금 일기 내용을 바탕으로 그릴 수 있어요',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.55),
+            fontSize: 12,
+            fontFamily: 'GowunBatang',
+          ),
+        ),
+        const SizedBox(height: 16),
+        GestureDetector(
+          onTap: _generate,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            decoration: BoxDecoration(
+              color: _gold.withOpacity(0.18),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: _gold.withOpacity(0.55)),
+              boxShadow: [
+                BoxShadow(
+                  color: _gold.withOpacity(0.2),
+                  blurRadius: 12,
+                ),
+              ],
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.brush_outlined, color: _gold, size: 16),
+                SizedBox(width: 6),
+                Text(
+                  '지금 생성하기',
+                  style: TextStyle(
+                    color: _gold,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    fontFamily: 'GowunBatang',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _generatingView() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _gold.withOpacity(0.12),
+              ),
+            ),
+            const SizedBox(
+              width: 40,
+              height: 40,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                valueColor: AlwaysStoppedAnimation(_gold),
+              ),
+            ),
+            const Icon(Icons.auto_awesome, color: _gold, size: 18),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          '그림일기를 그리고 있어요',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'GowunBatang',
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '잠시만 기다려 주세요 (30~60초)',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.5),
+            fontSize: 12,
+            fontFamily: 'GowunBatang',
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: Colors.white.withOpacity(0.10)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.info_outline,
+                  color: Colors.white.withOpacity(0.55), size: 12),
+              const SizedBox(width: 5),
+              Text(
+                '나가면 생성이 취소돼요',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.65),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'GowunBatang',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _errorView() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.redAccent.withOpacity(0.15),
+            border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
+          ),
+          child: const Icon(Icons.error_outline,
+              color: Colors.redAccent, size: 24),
+        ),
+        const SizedBox(height: 14),
+        const Text(
+          '그림 생성에 실패했어요',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'GowunBatang',
+          ),
+        ),
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            '잠시 후 다시 시도해 주세요',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.55),
+              fontSize: 12,
+              fontFamily: 'GowunBatang',
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        GestureDetector(
+          onTap: _generate,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+            decoration: BoxDecoration(
+              color: _gold.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: _gold.withOpacity(0.45)),
+            ),
+            child: const Text(
+              '다시 시도',
+              style: TextStyle(
+                color: _gold,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                fontFamily: 'GowunBatang',
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -155,7 +545,11 @@ class _ActionButton extends StatelessWidget {
             ),
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Center(
-              child: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+              child: Text(title,
+                  style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white)),
             ),
           ),
         ),
@@ -164,138 +558,86 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _LetterBottomSheet extends StatefulWidget {
-  final DiaryEntry diary;
-  final Future<void> Function(DiaryEntry) onSave;
-  const _LetterBottomSheet({required this.diary, required this.onSave});
-  @override
-  State<_LetterBottomSheet> createState() => _LetterBottomSheetState();
-}
-
-class _LetterBottomSheetState extends State<_LetterBottomSheet> {
-  late TextEditingController _controller;
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.diary.myLetter ?? "");
-  }
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            color: Colors.black.withOpacity(0.6),
-            padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text("나에게 쓰는 편지", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'GowunBatang')),
-                    TextButton(
-                      onPressed: () async {
-                        await widget.onSave(widget.diary.copyWith(myLetter: _controller.text));
-                        if (mounted) Navigator.pop(context);
-                      },
-                      child: const Text("보내기", style: TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold)),
-                    )
-                  ],
-                ),
-                const Divider(color: Colors.white24),
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    maxLines: null,
-                    style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.8),
-                    decoration: const InputDecoration(
-                      hintText: "오늘 하루 수고한 나에게...",
-                      hintStyle: TextStyle(color: Colors.white30),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.all(10),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
+/// AI 댓글 카드 — 별 아이콘 아바타 + "AI" 닉네임 + 댓글 박스 형태.
+/// 일기에 누군가 댓글을 단 듯한 인상.
 class _AiCommentCard extends StatelessWidget {
   final String? comment;
   const _AiCommentCard({required this.comment});
 
-  static const _gradient = LinearGradient(
-    colors: [Color(0xFFA78BFA), Color(0xFF60A5FA)],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-  );
-
   @override
   Widget build(BuildContext context) {
+    final body = (comment != null && comment!.trim().isNotEmpty)
+        ? comment!
+        : 'AI가 글을 쓰다가 잠들어버렸어요..\n다음 일기에서 따뜻한 한 마디로 보답할게요!';
+
     return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0x33A78BFA), Color(0x2260A5FA)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFA78BFA).withOpacity(0.3), width: 1),
+        border: Border.all(color: Colors.white.withOpacity(0.10)),
       ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 헤더: 아이콘 + 타이틀 (그라데이션)
-          Row(
-            children: [
-              ShaderMask(
-                shaderCallback: (b) => _gradient.createShader(b),
-                blendMode: BlendMode.srcIn,
-                child: const Icon(Icons.auto_awesome, size: 16, color: Colors.white),
-              ),
-              const SizedBox(width: 6),
-              ShaderMask(
-                shaderCallback: (b) => _gradient.createShader(b),
-                blendMode: BlendMode.srcIn,
-                child: const Text(
-                  'AI의 한 마디',
-                  style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.3),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          // 그라데이션 구분선
+          // 아바타: 별 아이콘 + 그라데이션 배경
           Container(
-            height: 1,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0x88A78BFA), Color(0x8860A5FA), Color(0x00000000)],
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFA78BFA), Color(0xFF60A5FA)],
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFA78BFA).withOpacity(0.35),
+                  blurRadius: 12,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
+            child: const Icon(Icons.auto_awesome,
+                color: Colors.white, size: 18),
           ),
-          const SizedBox(height: 12),
-          // 본문
-          Text(
-            comment ?? "AI가 글을 쓰다가 잠들어버렸어요..\n다음 일기에서 따뜻한 한 마디로 보답할게요!",
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: 14.5,
-              height: 1.7,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'AI',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '· 한 마디 남겼어요',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.55),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  body,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.92),
+                    fontSize: 14.5,
+                    height: 1.65,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -308,7 +650,8 @@ Widget _paperCard(DiaryEntry diary) {
   return Stack(
     children: [
       Positioned.fill(
-        child: Image.asset('asset/image/diary_white_page.png', fit: BoxFit.fill),
+        child:
+            Image.asset('asset/image/diary_white_page.png', fit: BoxFit.fill),
       ),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 30),
@@ -316,9 +659,16 @@ Widget _paperCard(DiaryEntry diary) {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(diary.title, style: const TextStyle(fontSize: 18, height: 1.6, color: Colors.black87, fontWeight: FontWeight.w600)),
+            Text(diary.title,
+                style: const TextStyle(
+                    fontSize: 18,
+                    height: 1.6,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w600)),
             const SizedBox(height: 12),
-            Text(diary.content, style: const TextStyle(fontSize: 14.5, height: 1.6, color: Colors.black)),
+            Text(diary.content,
+                style: const TextStyle(
+                    fontSize: 14.5, height: 1.6, color: Colors.black)),
           ],
         ),
       ),

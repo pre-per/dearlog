@@ -44,6 +44,21 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+
+            // ✅ Flutter 는 release 빌드에서 R8 code shrinking 을 기본 활성화함.
+            //    R8 이 ExoPlayer/Media3, just_audio, audio_session 의
+            //    reflection 기반 내부 코드를 stripping/난독화해서
+            //    "TYPE_UNEXPECTED: null" / NPE in obfuscated getName() 형태로
+            //    재생이 깨지는 문제가 있어, 해당 클래스를 보존하는 규칙을
+            //    proguard-rules.pro 에 정의해두고 여기서 추가로 적용한다.
+            //    (getDefaultProguardFile 은 Android SDK 가 제공하는 기본 규칙이라
+            //     반드시 함께 포함해야 일반적인 코드 shrinking 이 정상 동작함.)
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }

@@ -64,11 +64,15 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   }
 
   Future<void> _ensureSpeechAndStart() async {
+    debugPrint('[CALL] _ensureSpeechAndStart: 시작');
     final speech = ref.read(speechNotifierProvider.notifier);
     await speech.ensureInitialized();
-    
+    final s = ref.read(speechNotifierProvider);
+    debugPrint('[CALL] _ensureSpeechAndStart: ensureInitialized 완료 (isAvailable=${s.isAvailable})');
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await Future.delayed(const Duration(milliseconds: 800));
+      debugPrint('[CALL] _ensureSpeechAndStart: 800ms 대기 후 _startListeningSafely 호출');
       await _startListeningSafely();
     });
   }
@@ -86,36 +90,52 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   }
 
   Future<void> _startListeningSafely() async {
-    if (!_sessionActive || _isPaused || _isTextMode) return;
-    if (_startingListening) return;
+    debugPrint('[CALL] _startListeningSafely: 진입 (sessionActive=$_sessionActive, paused=$_isPaused, textMode=$_isTextMode, starting=$_startingListening)');
+    if (!_sessionActive || _isPaused || _isTextMode) {
+      debugPrint('[CALL] _startListeningSafely: ⚠️ 세션/모드 조건 불충족 → 반환');
+      return;
+    }
+    if (_startingListening) {
+      debugPrint('[CALL] _startListeningSafely: ⚠️ 이미 시작 중 → 반환');
+      return;
+    }
 
     _startingListening = true;
     try {
       final speech = ref.read(speechNotifierProvider.notifier);
       final currentState = ref.read(speechNotifierProvider);
+      debugPrint('[CALL] _startListeningSafely: 현재 state(isAvailable=${currentState.isAvailable}, isRecording=${currentState.isRecording})');
 
-      if (currentState.isRecording) return;
+      if (currentState.isRecording) {
+        debugPrint('[CALL] _startListeningSafely: ⚠️ 이미 isRecording=true → 반환');
+        return;
+      }
 
       await speech.ensureInitialized();
 
       bool started = false;
       for (int i = 0; i < 3; i++) {
-        if (ref.read(speechNotifierProvider).isAvailable) {
+        final s = ref.read(speechNotifierProvider);
+        debugPrint('[CALL] _startListeningSafely: retry #$i (isAvailable=${s.isAvailable})');
+        if (s.isAvailable) {
           speech.enableContinuous();
           await speech.startListening(_sendText);
+          final after = ref.read(speechNotifierProvider);
+          debugPrint('[CALL] _startListeningSafely: startListening 후 (isRecording=${after.isRecording})');
           started = true;
           break;
         }
         await Future.delayed(const Duration(milliseconds: 300));
       }
-      
+
       if (!started) {
-        debugPrint("마이크 엔진을 시작할 수 없습니다.");
+        debugPrint("[CALL] _startListeningSafely: ❌ 마이크 엔진을 시작할 수 없습니다 (isAvailable이 끝까지 false).");
       }
-    } catch (e) {
-      debugPrint("마이크 시작 오류: $e");
+    } catch (e, st) {
+      debugPrint("[CALL] _startListeningSafely: ❌ 예외: $e\n$st");
     } finally {
       _startingListening = false;
+      debugPrint('[CALL] _startListeningSafely: 종료');
     }
   }
 
@@ -165,7 +185,25 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             .where((m) => m.content != '__loading__')
             .toList();
 
-        await for (final token in OpenAIService().streamChatTokens(messages)) {
+        // 사용자 프로필 + 최근 일기 3개 — 익명화된 컨텍스트로 친구 톤 유지.
+        final profile = ref.read(userProfileProvider);
+        final userId = ref.read(userIdProvider);
+        List<DiaryEntry> recentDiaries = const [];
+        if (userId != null) {
+          try {
+            recentDiaries = await ref
+                .read(diaryRepositoryProvider)
+                .fetchRecentDiaries(userId, limit: 3);
+          } catch (_) {
+            // 컨텍스트 fetch 실패해도 통화는 계속.
+          }
+        }
+
+        await for (final token in OpenAIService().streamChatTokens(
+          messages,
+          profile: profile,
+          recentDiaries: recentDiaries,
+        )) {
           if (!_sessionActive) break;
 
           fullResponse.write(token);
@@ -234,6 +272,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   Future<void> _runPlayerPipeline(Stream<Future<Uint8List>> stream) async {
     if (mounted) setState(() => _isSpeaking = true);
 
+    bool shownErrorSnack = false;
+
     await for (final fetchFuture in stream) {
       if (!_sessionActive || _isPaused || _isTextMode) {
         await _tts.stop();
@@ -244,7 +284,19 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
         if (!_sessionActive || _isPaused || _isTextMode) break;
         await _tts.playAudio(bytes);
       } catch (e) {
-        debugPrint('[PLAYER_PIPELINE] $e');
+        // ✅ 릴리즈 빌드에서도 보이도록 print() 사용.
+        //    debugPrint 는 릴리즈에서 no-op 이라 그동안 사용자에게 "오류 없는 무음"으로 보였음.
+        print('[PLAYER_PIPELINE] ❌ $e');
+        // ✅ 첫 에러 한 번만 사용자에게 가시 피드백.
+        if (!shownErrorSnack && mounted) {
+          shownErrorSnack = true;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('AI 음성 재생에 실패했어요. 잠시 후 다시 시도해 주세요.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
     }
 
@@ -325,10 +377,16 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     await ref.read(speechNotifierProvider.notifier).shutdown();
     await _tts.stop();
 
+    // 통화 종료 시점의 그림일기 토글 값을 캡처해 다음 화면에 전달.
+    final withIllustration = ref.read(illustrationEnabledProvider);
+
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => CallLoadingScreen(elapsed: _currentElapsed),
+        builder: (_) => CallLoadingScreen(
+          elapsed: _currentElapsed,
+          withIllustration: withIllustration,
+        ),
       ),
     );
   }

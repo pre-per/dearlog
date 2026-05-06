@@ -1,372 +1,354 @@
+import 'dart:math' as math;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../diary/providers/diary_providers.dart';
+import '../../diary/models/diary_analysis.dart';
 import '../../diary/models/diary_entry.dart';
 
-enum AnalysisRange { daily, weekly, monthly }
+class SelectedMonth {
+  final int year;
+  final int month;
+  const SelectedMonth(this.year, this.month);
 
-final analysisRangeProvider =
-StateProvider<AnalysisRange>((ref) => AnalysisRange.daily);
+  factory SelectedMonth.now() {
+    final n = DateTime.now();
+    return SelectedMonth(n.year, n.month);
+  }
 
-DateTime _startOfDay(DateTime d) => DateTime(d.year, d.month, d.day);
+  DateTime get start => DateTime(year, month, 1);
+  DateTime get end => DateTime(year, month + 1, 1);
 
-DateTime _startOfWeek(DateTime d) {
-  final weekday = d.weekday % 7; // Sun=0
-  return DateTime(d.year, d.month, d.day)
-      .subtract(Duration(days: weekday));
+  bool get isCurrent {
+    final n = DateTime.now();
+    return year == n.year && month == n.month;
+  }
+
+  SelectedMonth get previous {
+    final d = DateTime(year, month - 1, 1);
+    return SelectedMonth(d.year, d.month);
+  }
+
+  SelectedMonth get next {
+    final d = DateTime(year, month + 1, 1);
+    return SelectedMonth(d.year, d.month);
+  }
+
+  String get label => '$year년 $month월';
+
+  @override
+  bool operator ==(Object other) =>
+      other is SelectedMonth && other.year == year && other.month == month;
+
+  @override
+  int get hashCode => Object.hash(year, month);
 }
 
-class TrendPoint {
+final selectedMonthProvider =
+    StateProvider<SelectedMonth>((ref) => SelectedMonth.now());
+
+/// 선택된 달 내에서 가장 최근에 작성된 일기.
+/// 해당 달에 일기가 없으면 null.
+/// 분석 페이지의 "오늘의 마음 인지 필터" 카드가 이 일기를 기준으로 동작.
+final latestDiaryInSelectedMonthProvider = Provider<DiaryEntry?>((ref) {
+  final month = ref.watch(selectedMonthProvider);
+  final state = ref.watch(diaryStreamProvider);
+
+  return state.when(
+    data: (list) {
+      final inMonth = list
+          .where((e) =>
+              !e.date.isBefore(month.start) && e.date.isBefore(month.end))
+          .toList();
+      if (inMonth.isEmpty) return null;
+      inMonth.sort((a, b) => b.date.compareTo(a.date));
+      return inMonth.first;
+    },
+    loading: () => null,
+    error: (_, __) => null,
+  );
+});
+
+final currentMonthExistingKeywordsProvider = Provider<List<String>>((ref) {
+  final list = ref.watch(diaryStreamProvider).asData?.value;
+  if (list == null || list.isEmpty) return const [];
+
+  final n = DateTime.now();
+  final start = DateTime(n.year, n.month, 1);
+  final end = DateTime(n.year, n.month + 1, 1);
+
+  final words = <String>{};
+  for (final d in list) {
+    if (d.date.isBefore(start) || !d.date.isBefore(end)) continue;
+    final keywords = d.analysis?.keywords ?? const <KeywordEntry>[];
+    for (final k in keywords) {
+      final w = k.word.trim();
+      if (w.isNotEmpty) words.add(w);
+    }
+  }
+  return words.toList();
+});
+
+class DiaryRef {
+  final String diaryId;
   final DateTime date;
-  final int moodScore; // 0~100 (없으면 50)
-  final String emotionLabel; // DiaryEntry.emotion
-  TrendPoint({
+  final String quote;
+
+  DiaryRef({
+    required this.diaryId,
     required this.date,
-    required this.moodScore,
-    required this.emotionLabel,
+    required this.quote,
   });
 }
 
-final trendPointsProvider = Provider<AsyncValue<List<TrendPoint>>>((ref) {
-  final range = ref.watch(analysisRangeProvider);
+class KeywordMapItem {
+  final String word;
+  final KeywordCategory category;
+  final String emotion;
+  final Map<String, int> emotionCounts;
+  final int count;
+  final List<DiaryRef> sources;
+
+  KeywordMapItem({
+    required this.word,
+    required this.category,
+    required this.emotion,
+    required this.emotionCounts,
+    required this.count,
+    required this.sources,
+  });
+}
+
+const int _maxKeywordsOnMap = 15;
+
+final monthlyKeywordMapProvider =
+    Provider<AsyncValue<List<KeywordMapItem>>>((ref) {
+  final month = ref.watch(selectedMonthProvider);
   final base = ref.watch(diaryStreamProvider);
 
   return base.whenData((list) {
-    if (list.isEmpty) return const <TrendPoint>[];
+    final inMonth = list.where((e) {
+      return !e.date.isBefore(month.start) && e.date.isBefore(month.end);
+    }).toList();
 
-    final sorted = [...list]..sort((a, b) => a.date.compareTo(b.date));
+    if (inMonth.isEmpty) return const <KeywordMapItem>[];
 
-    List<TrendPoint> result = [];
+    final emotionFreq = <String, Map<String, int>>{};
+    final category = <String, KeywordCategory>{};
+    final count = <String, int>{};
+    final sources = <String, List<DiaryRef>>{};
 
-    if (range == AnalysisRange.daily) {
-      final picked =
-      sorted.length <= 4 ? sorted : sorted.sublist(sorted.length - 4);
+    for (final entry in inMonth) {
+      final analysis = entry.analysis;
+      if (analysis == null) continue;
+      final evidences = analysis.evidence;
 
-      result = picked.map(_entryToPoint).toList();
-    }
+      for (final kw in analysis.keywords) {
+        final w = kw.word.trim();
+        if (w.isEmpty) continue;
 
-    else if (range == AnalysisRange.weekly) {
-      final now = DateTime.now();
+        count[w] = (count[w] ?? 0) + 1;
+        category[w] ??= kw.category;
 
-      // 최근 4주
-      final List<TrendPoint> weeklyPoints = [];
-
-      for (int i = 3; i >= 0; i--) {
-        final refDate = now.subtract(Duration(days: i * 7));
-
-        final weekStart = _startOfWeek(refDate);
-        final weekEnd = weekStart.add(const Duration(days: 7));
-
-        final entries = sorted.where((e) {
-          final d = e.date;
-          return !d.isBefore(weekStart) && d.isBefore(weekEnd);
-        }).toList();
-
-        if (entries.isEmpty) continue;
-
-        // ✅ 최빈 감정
-        final freq = <String, int>{};
-        for (final e in entries) {
-          freq[e.emotion] = (freq[e.emotion] ?? 0) + 1;
+        final eFreq = emotionFreq.putIfAbsent(w, () => <String, int>{});
+        if (kw.emotion.isNotEmpty) {
+          eFreq[kw.emotion] = (eFreq[kw.emotion] ?? 0) + 1;
         }
 
-        final topEmotion =
-            freq.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
-
-        weeklyPoints.add(
-          TrendPoint(
-            date: weekStart,        // 주의 기준 날짜
-            emotionLabel: topEmotion,
-            moodScore: 50,          // 의미 없음 (고정)
-          ),
-        );
-      }
-
-      return weeklyPoints;
-    }
-
-    else {
-      // ✅ 월간: 최근 4개월
-      final now = DateTime.now();
-
-      // Map<yyyy-mm, List<DiaryEntry>>
-      final buckets = <String, List<DiaryEntry>>{};
-
-      for (final e in sorted) {
-        final key = '${e.date.year}-${e.date.month}';
-        buckets.putIfAbsent(key, () => []).add(e);
-      }
-
-      // 최근 4개월 key 만들기
-      final keys = List.generate(4, (i) {
-        final d = DateTime(now.year, now.month - i, 1);
-        return '${d.year}-${d.month}';
-      }).reversed.toList();
-
-      for (final key in keys) {
-        final entries = buckets[key];
-        if (entries == null || entries.isEmpty) continue;
-
-        final avgScore = (entries
-            .map((e) => e.analysis?.moodScore ?? 50)
-            .reduce((a, b) => a + b) /
-            entries.length)
-            .round();
-
-        // 대표 감정: 가장 많이 나온 emotion
-        final freq = <String, int>{};
-        for (final e in entries) {
-          freq[e.emotion] = (freq[e.emotion] ?? 0) + 1;
+        String quote = '';
+        for (final ev in evidences) {
+          if (ev.quote.contains(w)) {
+            quote = ev.quote;
+            break;
+          }
         }
-        final topEmotion =
-            freq.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
+        if (quote.isEmpty && evidences.isNotEmpty) {
+          quote = evidences.first.quote;
+        }
+        if (quote.isEmpty) {
+          if (entry.title.isNotEmpty) {
+            quote = entry.title;
+          } else {
+            final c = entry.content.trim();
+            quote = c.length > 60 ? '${c.substring(0, 60)}…' : c;
+          }
+        }
 
-        final anyDate = entries.first.date;
-
-        result.add(TrendPoint(
-          date: DateTime(anyDate.year, anyDate.month, 1),
-          moodScore: avgScore,
-          emotionLabel: topEmotion,
-        ));
+        sources.putIfAbsent(w, () => []).add(DiaryRef(
+              diaryId: entry.id,
+              date: entry.date,
+              quote: quote,
+            ));
       }
     }
 
-    return result;
+    final items = count.entries.map((e) {
+      final word = e.key;
+      final eFreq = emotionFreq[word] ?? const <String, int>{};
+      String dominantEmotion = '';
+      if (eFreq.isNotEmpty) {
+        final sorted = eFreq.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        dominantEmotion = sorted.first.key;
+      }
+      final src = sources[word] ?? const <DiaryRef>[];
+      final sortedSrc = [...src]..sort((a, b) => b.date.compareTo(a.date));
+      return KeywordMapItem(
+        word: word,
+        category: category[word] ?? KeywordCategory.noun,
+        emotion: dominantEmotion,
+        emotionCounts: Map<String, int>.from(eFreq),
+        count: e.value,
+        sources: sortedSrc,
+      );
+    }).toList()
+      ..sort((a, b) {
+        final c = b.count.compareTo(a.count);
+        if (c != 0) return c;
+        final ad = a.sources.isEmpty
+            ? DateTime.fromMillisecondsSinceEpoch(0)
+            : a.sources.first.date;
+        final bd = b.sources.isEmpty
+            ? DateTime.fromMillisecondsSinceEpoch(0)
+            : b.sources.first.date;
+        final d = bd.compareTo(ad);
+        if (d != 0) return d;
+        return a.word.compareTo(b.word);
+      });
+
+    return items.take(_maxKeywordsOnMap).toList();
   });
 });
 
-TrendPoint _entryToPoint(DiaryEntry e) {
-  return TrendPoint(
+// ─────────────────────────────────────────────────
+// Monthly mood series — 한 달 기분 흐름 그래프용
+// ─────────────────────────────────────────────────
+
+/// 한 일기 항목의 기분 데이터 포인트.
+class MoodPoint {
+  final String diaryId;
+  final DateTime date;
+  /// -100 ~ +100. analysis.moodScore. analysis 없으면 0.
+  final int score;
+  /// 그 일기의 대표 명사 키워드 (annotation 표시용). 없으면 null.
+  final String? topNoun;
+
+  MoodPoint({
+    required this.diaryId,
+    required this.date,
+    required this.score,
+    required this.topNoun,
+  });
+}
+
+/// 그래프 위에 말풍선으로 강조할 극점 인덱스.
+class MoodExtreme {
+  final int index;
+  /// 진폭 (인접 평균 대비 차이의 절대값). 표시 우선순위 정렬에 사용.
+  final double swing;
+  /// true면 봉우리(neighbor 대비 위), false면 골짜기(아래).
+  final bool isPeak;
+
+  MoodExtreme({
+    required this.index,
+    required this.swing,
+    required this.isPeak,
+  });
+}
+
+class MoodSeriesData {
+  final List<MoodPoint> points;
+  final List<MoodExtreme> extremes;
+
+  const MoodSeriesData({required this.points, required this.extremes});
+
+  bool get isEmpty => points.isEmpty;
+}
+
+const double _extremeThreshold = 25.0;
+const int _maxExtremes = 4;
+
+/// 선택된 달의 기분 흐름 시계열.
+/// 일기 없는 날은 점이 없음 (선이 양옆 점들을 그대로 이어줌).
+final monthlyMoodSeriesProvider =
+    Provider<AsyncValue<MoodSeriesData>>((ref) {
+  final month = ref.watch(selectedMonthProvider);
+  final base = ref.watch(diaryStreamProvider);
+
+  return base.whenData((list) {
+    final inMonth = list
+        .where((e) =>
+            !e.date.isBefore(month.start) && e.date.isBefore(month.end))
+        .toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    if (inMonth.isEmpty) {
+      return const MoodSeriesData(points: [], extremes: []);
+    }
+
+    final points = inMonth.map((e) => _buildPoint(e)).toList();
+    final extremes = _findExtremes(points);
+    return MoodSeriesData(points: points, extremes: extremes);
+  });
+});
+
+MoodPoint _buildPoint(DiaryEntry e) {
+  final analysis = e.analysis;
+  final score = analysis?.moodScore ?? 0;
+
+  String? topNoun;
+  if (analysis != null) {
+    for (final k in analysis.keywords) {
+      if (k.category == KeywordCategory.noun && k.word.trim().isNotEmpty) {
+        topNoun = k.word.trim();
+        break;
+      }
+    }
+  }
+  return MoodPoint(
+    diaryId: e.id,
     date: e.date,
-    moodScore: e.analysis?.moodScore ?? 50,
-    emotionLabel: e.emotion,
+    score: score,
+    topNoun: topNoun,
   );
 }
 
-
-class EmotionDistItem {
-  final String emotion;
-  final int percent; // 0~100
-  EmotionDistItem({required this.emotion, required this.percent});
-}
-
-/// 주간 기준 감정 분포 (DiaryEntry.emotion 빈도 -> 퍼센트)
-final weeklyEmotionDistProvider = Provider<AsyncValue<List<EmotionDistItem>>>((ref) {
-  final base = ref.watch(diaryStreamProvider);
-
-  return base.whenData((list) {
-    final now = DateTime.now();
-    final start = _startOfDay(now).subtract(const Duration(days: 6));
-    final end = _startOfDay(now).add(const Duration(days: 1));
-
-    final weekly = list.where((e) {
-      final d = e.date;
-      return !d.isBefore(start) && d.isBefore(end);
-    }).toList();
-
-    if (weekly.isEmpty) return const <EmotionDistItem>[];
-
-    final freq = <String, int>{};
-    for (final e in weekly) {
-      final key = e.emotion.trim().isEmpty ? '기타' : e.emotion.trim();
-      freq[key] = (freq[key] ?? 0) + 1;
+/// 로컬 극점(주변보다 두드러진 봉우리/골짜기)을 진폭 큰 순으로 [_maxExtremes]개.
+/// - 점 1개: 점이 임계값 이상으로 0과 떨어져 있으면 단독 극점으로 표시.
+/// - 점 2개 이상: 양옆 점과 비교해 진폭 [_extremeThreshold] 이상이면 후보.
+List<MoodExtreme> _findExtremes(List<MoodPoint> series) {
+  if (series.isEmpty) return const [];
+  if (series.length == 1) {
+    final s = series[0].score;
+    if (s.abs() >= _extremeThreshold) {
+      return [MoodExtreme(index: 0, swing: s.abs().toDouble(), isPeak: s > 0)];
     }
+    return const [];
+  }
 
-    final total = weekly.length;
-    final items = freq.entries.map((en) {
-      final pct = ((en.value / total) * 100).round();
-      return EmotionDistItem(emotion: en.key, percent: pct);
-    }).toList();
+  final candidates = <MoodExtreme>[];
+  for (int i = 0; i < series.length; i++) {
+    final score = series[i].score;
+    final left = i > 0 ? series[i - 1].score : null;
+    final right = i < series.length - 1 ? series[i + 1].score : null;
 
-    // 많이 나온 순
-    items.sort((a, b) => b.percent.compareTo(a.percent));
-    return items.take(5).toList();
-  });
-});
+    final isLocalMax =
+        (left == null || score > left) && (right == null || score > right);
+    final isLocalMin =
+        (left == null || score < left) && (right == null || score < right);
+    if (!isLocalMax && !isLocalMin) continue;
 
-class KeywordInsight {
-  final String keyword;
-  final int count;
-  final String example; // 대표 문장 1개
-  KeywordInsight({
-    required this.keyword,
-    required this.count,
-    required this.example,
-  });
-}
+    double swing = 0;
+    if (left != null) swing = math.max(swing, (score - left).abs().toDouble());
+    if (right != null) swing = math.max(swing, (score - right).abs().toDouble());
 
-final weeklyKeywordInsightsProvider =
-Provider<AsyncValue<List<KeywordInsight>>>((ref) {
-  final base = ref.watch(diaryStreamProvider);
-
-  return base.whenData((list) {
-    final now = DateTime.now();
-    final start = _startOfDay(now).subtract(const Duration(days: 6));
-    final end = _startOfDay(now).add(const Duration(days: 1));
-
-    final weekly = list.where((e) {
-      final d = e.date;
-      return !d.isBefore(start) && d.isBefore(end);
-    }).toList();
-
-    if (weekly.isEmpty) return const <KeywordInsight>[];
-
-    final freq = <String, int>{};
-    final examples = <String, String>{};
-
-    for (final entry in weekly) {
-      final keys = entry.analysis?.mainWords ?? const <String>[];
-      final sentences = entry.content
-          .split(RegExp(r'(?<=[\.\!\?\n])\s+'))
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
-
-      for (final k in keys) {
-        final kk = k.trim();
-        if (kk.isEmpty) continue;
-        freq[kk] = (freq[kk] ?? 0) + 1;
-
-        // 대표 문장: 키워드가 포함된 문장 1개
-        examples[kk] ??= sentences.firstWhere(
-              (s) => s.contains(kk),
-          orElse: () => sentences.isNotEmpty ? sentences.first : '',
-        );
-      }
+    if (swing >= _extremeThreshold) {
+      candidates
+          .add(MoodExtreme(index: i, swing: swing, isPeak: isLocalMax));
     }
+  }
 
-    if (freq.isEmpty) return const <KeywordInsight>[];
-
-    final sorted = freq.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    return sorted.take(3).map((e) {
-      final ex = (examples[e.key] ?? '').trim();
-      return KeywordInsight(
-        keyword: e.key,
-        count: e.value,
-        example: ex.isEmpty ? '이번 주에 "${e.key}" 이야기가 자주 나왔어요.' : ex,
-      );
-    }).toList();
-  });
-});
-
-
-List<String> _splitSentences(String text) {
-  // 한국어 단순 문장 분리: ., !, ?, \n 기준
-  return text
-      .split(RegExp(r'(?<=[\.\!\?\n])\s+'))
-      .map((s) => s.trim())
-      .where((s) => s.isNotEmpty)
-      .toList();
+  candidates.sort((a, b) => b.swing.compareTo(a.swing));
+  return candidates.take(_maxExtremes).toList()
+    ..sort((a, b) => a.index.compareTo(b.index));
 }
-
-class ExtremeDayInsight {
-  final DiaryEntry best;
-  final DiaryEntry worst;
-  ExtremeDayInsight({required this.best, required this.worst});
-}
-
-final weeklyExtremeDaysProvider =
-Provider<AsyncValue<ExtremeDayInsight?>>((ref) {
-  final base = ref.watch(diaryStreamProvider);
-
-  return base.whenData((list) {
-    final now = DateTime.now();
-    final start = _startOfDay(now).subtract(const Duration(days: 6));
-    final end = _startOfDay(now).add(const Duration(days: 1));
-
-    final weekly = list.where((e) {
-      final d = e.date;
-      return !d.isBefore(start) && d.isBefore(end);
-    }).toList();
-
-    if (weekly.isEmpty) return null;
-
-    int scoreOf(DiaryEntry e) => e.analysis?.moodScore ?? 50;
-
-    weekly.sort((a, b) => scoreOf(a).compareTo(scoreOf(b)));
-    final worst = weekly.first;
-    final best = weekly.last;
-
-    return ExtremeDayInsight(best: best, worst: worst);
-  });
-});
-
-class WeeklyStabilityInsight {
-  final int volatility; // max-min
-  final int negativeStreakMax;
-  final int stablePositiveStreakMax;
-  WeeklyStabilityInsight({
-    required this.volatility,
-    required this.negativeStreakMax,
-    required this.stablePositiveStreakMax,
-  });
-}
-
-final weeklyStabilityProvider =
-Provider<AsyncValue<WeeklyStabilityInsight?>>((ref) {
-  final base = ref.watch(diaryStreamProvider);
-
-  return base.whenData((list) {
-    final now = DateTime.now();
-    final start = _startOfDay(now).subtract(const Duration(days: 6));
-    final end = _startOfDay(now).add(const Duration(days: 1));
-
-    final weekly = list.where((e) {
-      final d = e.date;
-      return !d.isBefore(start) && d.isBefore(end);
-    }).toList();
-
-    if (weekly.length < 2) return null;
-
-    weekly.sort((a, b) => a.date.compareTo(b.date));
-
-    int scoreOf(DiaryEntry e) => e.analysis?.moodScore ?? 50;
-    final scores = weekly.map(scoreOf).toList();
-
-    final maxScore = scores.reduce((a, b) => a > b ? a : b);
-    final minScore = scores.reduce((a, b) => a < b ? a : b);
-    final volatility = maxScore - minScore;
-
-    // 감정 카테고리로 연속 구간 계산
-    // 부정: 슬픔/외로움/우울/분노/짜증/답답함
-    // 안정/긍정: 평온/안정/차분/행복/만족/감사/기쁨/설렘/즐거움
-    bool isNegative(String emo) => const {
-      '슬픔','외로움','우울','분노','짜증','답답함'
-    }.contains(emo);
-
-    bool isStablePositive(String emo) => const {
-      '평온','안정','차분','행복','만족','감사','기쁨','설렘','즐거움'
-    }.contains(emo);
-
-    int negMax = 0, negCur = 0;
-    int posMax = 0, posCur = 0;
-
-    for (final e in weekly) {
-      final emo = e.emotion.trim();
-
-      if (isNegative(emo)) {
-        negCur++;
-      } else {
-        negMax = negCur > negMax ? negCur : negMax;
-        negCur = 0;
-      }
-
-      if (isStablePositive(emo)) {
-        posCur++;
-      } else {
-        posMax = posCur > posMax ? posCur : posMax;
-        posCur = 0;
-      }
-    }
-    negMax = negCur > negMax ? negCur : negMax;
-    posMax = posCur > posMax ? posCur : posMax;
-
-    return WeeklyStabilityInsight(
-      volatility: volatility,
-      negativeStreakMax: negMax,
-      stablePositiveStreakMax: posMax,
-    );
-  });
-});
 

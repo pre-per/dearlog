@@ -11,13 +11,25 @@ export 'package:dearlog/ai/services/openai_service.dart';
 
 // analysis
 export 'analysis/providers/analysis_providers.dart';
+export 'analysis/providers/insight_providers.dart';
+export 'analysis/providers/stats_providers.dart';
 export 'analysis/screens/analysis_main_screen.dart';
-export 'analysis/widget/emotion_trend_card.dart';
-export 'analysis/widget/analysis_range_tabs.dart';
 export 'analysis/widget/today_summary_card.dart';
-export 'analysis/widget/deep_insight_section.dart';
-export 'analysis/widget/emotion_distribution_card.dart';
-export 'analysis/widget/emotion_report_section.dart';
+export 'analysis/widget/keyword_map_card.dart';
+export 'analysis/widget/mood_chart_card.dart';
+export 'analysis/widget/month_navigator.dart';
+export 'analysis/widget/section_header.dart';
+export 'analysis/widget/streak_badge.dart';
+export 'analysis/widget/ai_insight_card.dart';
+export 'analysis/widget/keyword_impact_card.dart';
+export 'analysis/widget/best_worst_day_cards.dart';
+export 'analysis/widget/weekday_mood_card.dart';
+export 'analysis/widget/emotion_donut_card.dart';
+export 'analysis/widget/resilience_card.dart';
+export 'analysis/widget/new_keywords_card.dart';
+export 'analysis/widget/month_comparison_card.dart';
+export 'analysis/widget/nlp_insight_card.dart';
+export 'analysis/widget/monthly_nlp_insight_section.dart';
 
 
 // app
@@ -29,10 +41,14 @@ export 'app/theme/app_theme.dart';
 // auth
 export 'auth/providers/current_userid_provider.dart';
 export 'auth/providers/google_auth_provider.dart';
+export 'auth/providers/onboarding_provider.dart';
 export 'auth/screens/auth_error_screen.dart';
 export 'auth/screens/login_screen.dart';
 export 'auth/screens/onboarding_agreement_screen.dart';
 export 'auth/screens/onboarding_name_screen.dart';
+export 'auth/screens/onboarding_gender_screen.dart';
+export 'auth/screens/onboarding_age_group_screen.dart';
+export 'auth/screens/onboarding_interests_screen.dart';
 export 'auth/screens/splash_screen.dart';
 export 'auth/services/google_auth_service.dart';
 
@@ -41,6 +57,7 @@ export 'call/models/conversation/call.dart';
 export 'call/models/conversation/chat_response.dart';
 export 'call/models/conversation/message.dart';
 export 'call/providers/call_provider.dart';
+export 'call/providers/illustration_toggle_provider.dart';
 export 'call/providers/message_provider.dart';
 export 'call/providers/speech_provider.dart';
 export 'call/repository/call_repository.dart';
@@ -66,14 +83,20 @@ export 'package:dearlog/core/base_scaffold.dart';
 // diary
 export 'diary/models/diary_entry.dart';
 export 'diary/models/diary_analysis.dart';
+export 'diary/models/letter.dart';
+export 'diary/models/monthly_insight.dart';
+export 'diary/models/nlp_insight.dart';
 export 'diary/providers/diary_providers.dart';
 export 'diary/repository/diary_repository.dart';
+export 'diary/repository/insight_repository.dart';
 export 'diary/screens/diary_detail_screen.dart';
 export 'diary/screens/diary_edit_screen.dart';
 export 'diary/screens/diary_main_screen.dart';
 export 'diary/screens/diary_search_screen.dart';
 export 'diary/sections/index.dart';
 export 'diary/sections/storybook_section_diary.dart';
+export 'diary/services/letter_scheduler.dart';
+export 'diary/widgets/letter_section.dart';
 
 // home
 export 'home/screens/homescreen.dart';
@@ -86,6 +109,7 @@ export 'notification/models/reminder_scheduler.dart';
 export 'notification/providers/reminder_refresh_provider.dart';
 export 'notification/repository/reminder_settings_repository.dart';
 export 'notification/service/local_notification_service.dart';
+export 'notification/utils/notification_navigator.dart';
 export 'notification/utils/reminder_message_builder.dart';
 
 // settings
@@ -96,6 +120,7 @@ export 'settings/screens/sub_screens/faq_screen.dart';
 export 'settings/screens/sub_screens/notice_screen.dart';
 export 'settings/screens/sub_screens/notification_setting_screen.dart';
 export 'settings/screens/sub_screens/privacy_policy_screen.dart';
+export 'settings/screens/sub_screens/profile_edit_screen.dart';
 export 'settings/screens/setting_main_screen.dart';
 export 'settings/widgets/bottom_modal_sheet/feedback_modal_sheet.dart';
 export 'settings/widgets/tile/faq_tile.dart';
@@ -106,10 +131,12 @@ export 'shared_ui/utils/search_utils.dart';
 export 'shared_ui/utils/planet_asset_mapper.dart';
 export 'shared_ui/widgets/chart/emotion_chart_widget.dart';
 export 'shared_ui/widgets/chart/simple_bar_chart.dart';
+export 'shared_ui/widgets/dialog/glass_dialog.dart';
 export 'shared_ui/widgets/dialog/lottie_popup_dialog.dart';
 export 'shared_ui/widgets/dialog/subscription_dialog.dart';
 export 'shared_ui/widgets/tile/promotile.dart';
 export 'shared_ui/widgets/tile/simple_title_tile.dart';
+export 'shared_ui/widgets/dotted_divider.dart';
 export 'shared_ui/widgets/elevated_card_container.dart';
 export 'shared_ui/widgets/searchbar_ui.dart';
 export 'shared_ui/widgets/storybook_widget.dart';
