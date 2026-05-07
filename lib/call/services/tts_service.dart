@@ -96,24 +96,6 @@ class TtsService {
       androidWillPauseWhenDucked: false,
     ));
 
-    // ✅ Android 전용 보정:
-    // speech_to_text(SpeechRecognizer)가 시스템 audio mode를
-    // MODE_IN_COMMUNICATION으로 바꿔놓으면 음성 인식이 끝난 뒤에도
-    // 그 모드가 남아있어 미디어 재생이 이어피스로 라우팅되거나 무음이 됨.
-    if (!kIsWeb && Platform.isAndroid) {
-      final manager = AndroidAudioManager();
-      try {
-        await manager.setMode(AndroidAudioHardwareMode.normal);
-      } catch (e) {
-        debugPrint('[TTS] setMode(normal) 실패: $e');
-      }
-      try {
-        await manager.setSpeakerphoneOn(false);
-      } catch (e) {
-        debugPrint('[TTS] setSpeakerphoneOn(false) 실패: $e');
-      }
-    }
-
     final granted = await _acquireFocusWithRetry(session);
     if (!granted) {
       debugPrint('[TTS] ❌ audio focus 획득 최종 실패 — 재생을 건너뜀');
