@@ -83,6 +83,22 @@
 -keep class net.wuerl.flutter_timezone.** { *; }
 -dontwarn net.wuerl.flutter_timezone.**
 
+# ── flutter_onnxruntime + Microsoft ONNX Runtime (Supertonic TTS) ────
+# Supertonic 음성 합성이 ONNX 모델을 JNI 로 호출한다.
+# R8 가 native binding 클래스/리플렉션 경로를 stripping 하면 release 빌드에서
+# 첫 inference 시 NoClassDefFoundError / UnsatisfiedLinkError 로 죽는다.
+# (debug 빌드는 minify 가 꺼져 있어 재현 안 됨 — release-only crash.)
+-keep class com.masicai.flutteronnxruntime.** { *; }
+-dontwarn com.masicai.flutteronnxruntime.**
+-keep class ai.onnxruntime.** { *; }
+-keep interface ai.onnxruntime.** { *; }
+-dontwarn ai.onnxruntime.**
+
+# JNI native 메서드 일반 보호 — 이름 난독화 시 JNI 심볼 매칭이 깨짐.
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
 # ── 일반 안전망 ──────────────────────────────────────────────────────
 # 어노테이션 보존 (라이브러리들이 런타임에 어노테이션 검사하는 경우).
 -keepattributes *Annotation*
