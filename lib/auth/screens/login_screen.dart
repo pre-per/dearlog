@@ -36,9 +36,20 @@ class LoginScreen extends ConsumerWidget {
       final email = firebaseUser.email ?? '';
 
       ref.read(userIdProvider.notifier).state = userId;
+      // ignore: unawaited_futures
+      AnalyticsService.setUserId(userId);
 
       // 유저 데이터 존재 여부 확인
       final existingUser = await userRepo.fetchUser(userId);
+
+      // GA4 segmentation 용 인구통계 user property — 기존 유저면 기존 값,
+      // 신규 유저는 빈 값 (다음 setUserProperties 호출이 onboarding 완료 후
+      // 새 값으로 덮어씀).
+      // ignore: unawaited_futures
+      AnalyticsService.setUserProperties(
+        gender: existingUser?.profile.gender,
+        ageGroup: existingUser?.profile.ageGroup,
+      );
 
       saveUserPushToken(userId);
 

@@ -11,7 +11,7 @@ const _kLetterNotifEnabled = 'letter_notif_enabled';
 /// 편지 잠금/알림 스케줄링 헬퍼.
 ///
 /// 정책:
-/// - 보내기를 누르면 30~40일 사이 랜덤 일수가 잠금 기간이 됨
+/// - 사용자가 [defaultLockDays] (기본 30일) 또는 직접 선택한 일수만큼 잠금
 /// - 잠금 해제 시각은 그날 19:00 (오후 7시)
 /// - 1회성 로컬 알림 예약 (편지 채널)
 /// - 알림 페이로드는 `letter:{diaryId}` 형식 → 탭 시 해당 일기 detail로 라우팅
@@ -25,29 +25,39 @@ class LetterScheduler {
   final LocalNotificationService _noti;
   final Random _random;
 
-  /// [디버그 전용] true면 잠금 기간을 0~30초로 단축. false면 정상 30~40일.
+  /// 기본 잠금 일수. 에디터에서 사용자가 따로 고르지 않으면 이 값으로 봉인됨.
+  static const int defaultLockDays = 30;
+
+  /// 잠금 일수 선택 가능 범위 (UI 픽커의 min/max).
+  static const int minLockDays = 1;
+  static const int maxLockDays = 180;
+
+  /// [디버그 전용] true면 잠금 기간을 0~30초로 단축. false면 정상 lockDays.
   /// 알림 발화 + 도착 메시지까지 E2E 검증할 때 켭니다.
   static bool debugFastMode = false;
 
   /// 잠금 해제 시각 계산.
-  /// 정상: sentAt + (30~40일 사이 랜덤) → 그날 오후 7시.
+  /// 정상: sentAt + lockDays → 그날 오후 7시.
   /// debugFastMode: sentAt + 0~30초.
-  ({DateTime sentAt, DateTime unlockAt}) computeLock(DateTime now) {
+  ({DateTime sentAt, DateTime unlockAt}) computeLock(
+    DateTime now, {
+    int lockDays = defaultLockDays,
+  }) {
     if (debugFastMode) {
       final seconds = _random.nextInt(31); // 0..30 inclusive
       return (sentAt: now, unlockAt: now.add(Duration(seconds: seconds)));
     }
-    final lockDays = 30 + _random.nextInt(11); // 30..40 inclusive
-    final base = now.add(Duration(days: lockDays));
+    final clamped = lockDays.clamp(minLockDays, maxLockDays);
+    final base = now.add(Duration(days: clamped));
     final unlockAt = DateTime(base.year, base.month, base.day, 19);
     return (sentAt: now, unlockAt: unlockAt);
   }
 
   /// 봉인만 — sentAt + unlockAt 부여, 알림 예약 안 함.
   /// 단계별 진행 표시가 필요한 경우 [seal] → 저장 → [schedule] 순으로 호출.
-  Letter seal(Letter letter, {DateTime? now}) {
+  Letter seal(Letter letter, {DateTime? now, int lockDays = defaultLockDays}) {
     final base = now ?? DateTime.now();
-    final lock = computeLock(base);
+    final lock = computeLock(base, lockDays: lockDays);
     return letter.copyWith(sentAt: lock.sentAt, unlockAt: lock.unlockAt);
   }
 
@@ -81,8 +91,9 @@ class LetterScheduler {
     required Letter letter,
     required String diaryId,
     DateTime? now,
+    int lockDays = defaultLockDays,
   }) async {
-    final sealed = seal(letter, now: now);
+    final sealed = seal(letter, now: now, lockDays: lockDays);
     await schedule(sealed: sealed, diaryId: diaryId);
     return sealed;
   }

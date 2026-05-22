@@ -56,7 +56,7 @@ class _OnboardingNameScreenState extends ConsumerState<OnboardingNameScreen> {
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
-        title: const _StepLabel(current: 1, total: 4),
+        title: const _StepLabel(current: 1, total: 5),
         centerTitle: false,
       ),
       body: SafeArea(

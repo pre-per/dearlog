@@ -519,7 +519,18 @@ Future<String> _copyModelToFile(String assetPath) async {
   if (await file.exists() && await file.length() == byteData.lengthInBytes) {
     return modelPath;
   }
-  await file.writeAsBytes(byteData.buffer.asUint8List());
+  try {
+    await file.writeAsBytes(byteData.buffer.asUint8List());
+  } catch (e) {
+    // 저장공간 부족 등으로 쓰기가 중간에 실패하면 partial 파일이 남고,
+    // 그러면 다음 cold start에서도 size 가 안 맞아 또 다시 쓰다가 실패하는
+    // 사이클이 반복된다. 깨끗하게 지우고 호출자에 throw — fetchAudio 의
+    // catch 가 OpenAI fallback 으로 안내한다.
+    try {
+      if (await file.exists()) await file.delete();
+    } catch (_) {}
+    rethrow;
+  }
   return modelPath;
 }
 

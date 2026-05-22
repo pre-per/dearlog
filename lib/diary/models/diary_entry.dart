@@ -1,4 +1,5 @@
 import 'package:dearlog/app.dart';
+import 'package:dearlog/core/crypto/encrypted_field.dart';
 import 'package:dearlog/diary/models/letter.dart';
 import 'package:dearlog/diary/models/music_recommendation.dart';
 import 'package:dearlog/diary/models/nlp_insight.dart';
@@ -67,8 +68,10 @@ class DiaryEntry {
     );
   }
 
+  /// 평문 도메인 객체로 변환 (암호화 처리 없음). 호출자는 legacy 평문 doc 또는
+  /// 이미 복호화된 doc 을 넘긴다고 가정. Firestore 에서 직접 읽을 땐
+  /// [DiaryRepository] 가 복호화 후 이걸 호출한다.
   factory DiaryEntry.fromJson(Map<String, dynamic> json) {
-    // letters 우선 파싱. 없으면 구버전(myLetter: String)을 단일 draft로 마이그레이션.
     final lettersRaw = json['letters'] as List?;
     List<Letter> letters;
     if (lettersRaw != null) {
@@ -93,13 +96,13 @@ class DiaryEntry {
     return DiaryEntry(
       id: json['id'],
       date: DateTime.parse(json['date']),
-      title: json['title'],
-      content: json['content'],
+      title: (json['title'] as String?) ?? '',
+      content: (json['content'] as String?) ?? '',
       emotion: json['emotion'],
       imageUrls: List<String>.from(json['imageUrls']),
       callId: json['callId'],
       letters: letters,
-      aiComment: json['aiComment'],
+      aiComment: json['aiComment'] as String?,
       analysis: json['analysis'] != null
           ? DiaryAnalysis.fromJson(Map<String, dynamic>.from(json['analysis']))
           : null,
@@ -114,6 +117,8 @@ class DiaryEntry {
     );
   }
 
+  /// 평문 toJson — 마이그레이션 안 된 legacy 포맷이 필요할 때만.
+  /// 새 저장 흐름은 [DiaryRepository] 가 암호화 후 별도 toJson 을 사용한다.
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -131,4 +136,10 @@ class DiaryEntry {
       if (music != null) 'music': music!.toJson(),
     };
   }
+}
+
+/// Firestore raw map 이 KMS envelope 포맷(`wrappedDek` 보유)인지 판별.
+bool diaryRawIsEncrypted(Map<String, dynamic> raw) {
+  return raw['wrappedDek'] is String &&
+      EncryptedField.isEncryptedJson(raw['content']);
 }

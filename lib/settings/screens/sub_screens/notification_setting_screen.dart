@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dearlog/app.dart';
+import 'package:dearlog/fortune/services/daily_fortune_notification.dart';
 import 'package:dearlog/notification/service/local_notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -30,6 +31,10 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
   int _minute = 0;
   bool _letterEnabled = true;
   bool _commentEnabled = true;
+  bool _fortuneEnabled = DailyFortuneNotificationScheduler.defaultEnabled;
+  int _fortuneHour = DailyFortuneNotificationScheduler.defaultHour;
+  int _fortuneMinute = DailyFortuneNotificationScheduler.defaultMinute;
+  bool _fortuneSaving = false;
   bool _loading = true;
   bool _saving = false;
   bool _permissionDenied = false;
@@ -81,6 +86,14 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
       // 편지/커뮤니티 알림 기본값은 ON. (기존 사용자가 새 prefs key 를 만나면 켠 상태로 간주)
       _letterEnabled = prefs.getBool(_kLetterNotifEnabled) ?? true;
       _commentEnabled = prefs.getBool(_kCommentNotifEnabled) ?? true;
+      _fortuneEnabled =
+          prefs.getBool(DailyFortuneNotificationScheduler.prefsEnabled) ??
+              DailyFortuneNotificationScheduler.defaultEnabled;
+      _fortuneHour = prefs.getInt(DailyFortuneNotificationScheduler.prefsHour) ??
+          DailyFortuneNotificationScheduler.defaultHour;
+      _fortuneMinute =
+          prefs.getInt(DailyFortuneNotificationScheduler.prefsMinute) ??
+              DailyFortuneNotificationScheduler.defaultMinute;
       _permissionDenied = denied;
       _loading = false;
     });
@@ -171,6 +184,37 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
     }
   }
 
+  // ───── 오늘의 운세 알림 ─────
+
+  Future<void> _saveFortune({bool? enabled, int? hour, int? minute}) async {
+    setState(() => _fortuneSaving = true);
+
+    final newEnabled = enabled ?? _fortuneEnabled;
+    final newHour = hour ?? _fortuneHour;
+    final newMinute = minute ?? _fortuneMinute;
+
+    await DailyFortuneNotificationScheduler.save(
+      enabled: newEnabled,
+      hour: newHour,
+      minute: newMinute,
+    );
+
+    setState(() {
+      _fortuneEnabled = newEnabled;
+      _fortuneHour = newHour;
+      _fortuneMinute = newMinute;
+      _fortuneSaving = false;
+    });
+
+    if (mounted) {
+      _toast(
+        newEnabled
+            ? '매일 ${_formatTime(newHour, newMinute)}에 오늘의 운세를 알려드릴게요.'
+            : '오늘의 운세 알림이 꺼졌어요.',
+      );
+    }
+  }
+
   void _toast(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -187,8 +231,28 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
   }
 
   void _pickTime() {
-    int tempHour = _hour;
-    int tempMinute = _minute;
+    _showTimePicker(
+      initialHour: _hour,
+      initialMinute: _minute,
+      onPicked: (h, m) => _saveReminder(hour: h, minute: m),
+    );
+  }
+
+  void _pickFortuneTime() {
+    _showTimePicker(
+      initialHour: _fortuneHour,
+      initialMinute: _fortuneMinute,
+      onPicked: (h, m) => _saveFortune(hour: h, minute: m),
+    );
+  }
+
+  void _showTimePicker({
+    required int initialHour,
+    required int initialMinute,
+    required void Function(int hour, int minute) onPicked,
+  }) {
+    int tempHour = initialHour;
+    int tempMinute = initialMinute;
 
     showCupertinoModalPopup(
       context: context,
@@ -209,7 +273,7 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
                   CupertinoButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      _saveReminder(hour: tempHour, minute: tempMinute);
+                      onPicked(tempHour, tempMinute);
                     },
                     child: const Text('완료', style: TextStyle(color: Color(0xFFFFD700))),
                   ),
@@ -228,7 +292,8 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
                 child: CupertinoDatePicker(
                   mode: CupertinoDatePickerMode.time,
                   use24hFormat: false,
-                  initialDateTime: DateTime(2024, 1, 1, _hour, _minute),
+                  initialDateTime:
+                      DateTime(2024, 1, 1, initialHour, initialMinute),
                   onDateTimeChanged: (dt) {
                     tempHour = dt.hour;
                     tempMinute = dt.minute;
@@ -324,6 +389,42 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
                   value: _commentEnabled,
                   onChanged: _saveCommunity,
                 ),
+
+                const SizedBox(height: 12),
+
+                // ── 오늘의 운세 알림 ──
+                _ToggleCard(
+                  title: '오늘의 운세 알림',
+                  subtitle: '매일 아침 오늘의 운세가 담긴 유리병이 도착해요',
+                  value: _fortuneEnabled,
+                  saving: _fortuneSaving,
+                  onChanged: (v) => _saveFortune(enabled: v),
+                ),
+                if (_fortuneEnabled) ...[
+                  const SizedBox(height: 12),
+                  _SettingCard(
+                    onTap: _pickFortuneTime,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          '알림 시간',
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              _formatTime(_fortuneHour, _fortuneMinute),
+                              style: const TextStyle(color: Color(0xFFFFD700), fontSize: 16, fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.chevron_right, color: Colors.white38, size: 20),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
     );

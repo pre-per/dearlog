@@ -14,6 +14,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- 기기 재시작 후 예약 알림을 복원하기 위해 필요 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- Android 9 이하에서 gal 로 사진 앱(MediaStore) 에 저장하려면 필요.
+         Android 10+ 부터는 scoped storage 로 권한 없이 저장 가능해 maxSdkVersion 으로 한정. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
     <application
         android:label="Dearlog"
         android:name="${applicationName}"

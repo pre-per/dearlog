@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:dearlog/app.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -104,7 +105,11 @@ class _LetterSectionState extends ConsumerState<LetterSection> {
 
     if (result.action == _EditorAction.send) {
       if (trimmed.isEmpty) return;
-      await _sendWithProgress(letter: letter, content: trimmed);
+      await _sendWithProgress(
+        letter: letter,
+        content: trimmed,
+        lockDays: result.lockDays,
+      );
     }
   }
 
@@ -112,6 +117,7 @@ class _LetterSectionState extends ConsumerState<LetterSection> {
   Future<void> _sendWithProgress({
     required Letter letter,
     required String content,
+    required int lockDays,
   }) async {
     final stepNotifier = ValueNotifier<int>(0);
 
@@ -130,7 +136,7 @@ class _LetterSectionState extends ConsumerState<LetterSection> {
         // Step 1: 편지 봉하기 (sentAt + unlockAt 부여)
         await Future.delayed(const Duration(milliseconds: 350));
         final base = letter.copyWith(content: content);
-        final sealed = _scheduler.seal(base);
+        final sealed = _scheduler.seal(base, lockDays: lockDays);
         stepNotifier.value = 1;
 
         // Step 2: 일기에 저장 (Firestore, 자동 3회 재시도)
@@ -736,6 +742,51 @@ class _PaperPainter extends CustomPainter {
 }
 
 // ─────────────────────────────────────────────────
+// 날짜 선택 칩 — 에디터 헤더에서 "30일 뒤 도착" 으로 보이는 작은 chip.
+// ─────────────────────────────────────────────────
+
+class _DaysChip extends StatelessWidget {
+  final int days;
+  final VoidCallback onTap;
+  const _DaysChip({required this.days, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: _gold.withOpacity(0.14),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: _gold.withOpacity(0.45)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.schedule_rounded, color: _gold, size: 13),
+            const SizedBox(width: 5),
+            Text(
+              '$days일 뒤 도착',
+              style: const TextStyle(
+                color: _ink,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'GowunBatang',
+              ),
+            ),
+            const SizedBox(width: 3),
+            Icon(Icons.expand_more_rounded,
+                color: _ink.withOpacity(0.55), size: 14),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────
 // 빈 상태 힌트
 // ─────────────────────────────────────────────────
 
@@ -776,7 +827,7 @@ class _EmptyHint extends StatelessWidget {
                   ),
                   SizedBox(height: 2),
                   Text(
-                    '30~40일 뒤 알림으로 도착해요.',
+                    '원하는 날 뒤 알림으로 도착해요.',
                     style: TextStyle(
                       color: _inkSoft,
                       fontSize: 12,
@@ -1074,7 +1125,12 @@ enum _EditorAction { close, send }
 class _EditorResult {
   final _EditorAction action;
   final String content;
-  _EditorResult(this.action, this.content);
+
+  /// 보내기 시 적용할 잠금 일수. close 액션일 때는 의미 없음(기본값 유지).
+  final int lockDays;
+
+  _EditorResult(this.action, this.content,
+      {this.lockDays = LetterScheduler.defaultLockDays});
 }
 
 class _LetterEditorSheet extends StatefulWidget {
@@ -1088,6 +1144,9 @@ class _LetterEditorSheet extends StatefulWidget {
 class _LetterEditorSheetState extends State<_LetterEditorSheet> {
   late final TextEditingController _controller;
   final _focus = FocusNode();
+
+  /// 사용자가 고른 잠금 일수. 기본 30일.
+  int _lockDays = LetterScheduler.defaultLockDays;
 
   @override
   void initState() {
@@ -1103,7 +1162,11 @@ class _LetterEditorSheetState extends State<_LetterEditorSheet> {
   }
 
   void _close() {
-    Navigator.pop(context, _EditorResult(_EditorAction.close, _controller.text));
+    Navigator.pop(
+      context,
+      _EditorResult(_EditorAction.close, _controller.text,
+          lockDays: _lockDays),
+    );
   }
 
   void _send() {
@@ -1116,7 +1179,80 @@ class _LetterEditorSheetState extends State<_LetterEditorSheet> {
       );
       return;
     }
-    Navigator.pop(context, _EditorResult(_EditorAction.send, _controller.text));
+    Navigator.pop(
+      context,
+      _EditorResult(_EditorAction.send, _controller.text, lockDays: _lockDays),
+    );
+  }
+
+  /// 며칠 뒤 도착할지 픽커 — CupertinoPicker 휠. 1~180일 범위.
+  Future<void> _pickLockDays() async {
+    int tempDays = _lockDays;
+    final picked = await showCupertinoModalPopup<int>(
+      context: context,
+      builder: (_) => Container(
+        height: 280,
+        color: const Color(0xFF1C1C2E),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  CupertinoButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('취소',
+                        style: TextStyle(color: Colors.white70)),
+                  ),
+                  CupertinoButton(
+                    onPressed: () => Navigator.pop(context, tempDays),
+                    child: const Text('완료',
+                        style: TextStyle(color: _gold)),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: CupertinoPicker(
+                magnification: 1.1,
+                squeeze: 1.2,
+                useMagnifier: true,
+                itemExtent: 40,
+                scrollController: FixedExtentScrollController(
+                  initialItem: _lockDays - LetterScheduler.minLockDays,
+                ),
+                onSelectedItemChanged: (i) {
+                  tempDays = LetterScheduler.minLockDays + i;
+                },
+                children: List<Widget>.generate(
+                  LetterScheduler.maxLockDays -
+                      LetterScheduler.minLockDays +
+                      1,
+                  (i) {
+                    final d = LetterScheduler.minLockDays + i;
+                    return Center(
+                      child: Text(
+                        '$d일 뒤',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (picked != null && picked != _lockDays) {
+      setState(() => _lockDays = picked);
+    }
   }
 
   @override
@@ -1173,11 +1309,11 @@ class _LetterEditorSheetState extends State<_LetterEditorSheet> {
                             ),
                           ),
                           const SizedBox(width: 4),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
+                                const Text(
                                   '미래의 나에게',
                                   style: TextStyle(
                                     color: _ink,
@@ -1186,14 +1322,10 @@ class _LetterEditorSheetState extends State<_LetterEditorSheet> {
                                     fontFamily: 'GowunBatang',
                                   ),
                                 ),
-                                SizedBox(height: 2),
-                                Text(
-                                  '보낸 편지는 30~40일 뒤 알림으로 도착해요',
-                                  style: TextStyle(
-                                    color: _inkSoft,
-                                    fontSize: 11.5,
-                                    fontFamily: 'GowunBatang',
-                                  ),
+                                const SizedBox(height: 4),
+                                _DaysChip(
+                                  days: _lockDays,
+                                  onTap: _pickLockDays,
                                 ),
                               ],
                             ),

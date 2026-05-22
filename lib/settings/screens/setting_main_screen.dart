@@ -175,6 +175,10 @@ class SettingMainScreen extends ConsumerWidget {
     // 인증/식별
     ref.read(userIdProvider.notifier).state = null;
     ref.invalidate(userProvider);
+    // ignore: unawaited_futures
+    AnalyticsService.setUserId(null);
+    // ignore: unawaited_futures
+    AnalyticsService.clearUserProperties();
 
     // 네비게이션 인덱스
     ref.read(MainIndexProvider.notifier).state = 0;
@@ -182,7 +186,6 @@ class SettingMainScreen extends ConsumerWidget {
     // 통화 관련
     ref.invalidate(messageProvider);
     ref.invalidate(selectedVoiceProvider);
-    ref.invalidate(illustrationEnabledProvider);
 
     // 일기 / 검색
     ref.invalidate(searchQueryProvider);

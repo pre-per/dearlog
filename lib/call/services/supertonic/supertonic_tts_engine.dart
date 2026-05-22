@@ -41,6 +41,12 @@ class SupertonicTtsEngine {
   TextToSpeech? _tts;
   Completer<void>? _loadCompleter;
   Object? _loadError;
+  // Once a load attempt fails (commonly: low storage, partial bundle copy on
+  // first launch), every subsequent `synthesizeWav` would otherwise re-enter
+  // `loadTextToSpeech` and pay the full disk-IO cost before giving up. That
+  // delays the OpenAI fallback per sentence and makes the call feel frozen.
+  // Latch the failure so callers fail fast and route to the fallback path.
+  bool _hasGivenUp = false;
   final Map<String, Style> _styleCache = {};
 
   // ONNX sessions hold mutable state during inference — running two synthesis
@@ -53,14 +59,20 @@ class SupertonicTtsEngine {
   /// True once the ONNX models are loaded and ready for synthesis.
   bool get isReady => _tts != null;
 
-  /// True if a previous load attempt failed; a retry will be attempted on
-  /// the next `synthesizeWav` call so transient asset/IO issues self-heal.
-  bool get hasFailedToLoad => _loadError != null;
+  /// True if a previous load attempt failed and we've stopped retrying for
+  /// this app session. Callers (e.g., `TtsService`) check this to skip
+  /// straight to the OpenAI fallback without waiting on another disk hit.
+  bool get hasGivenUp => _hasGivenUp;
 
   /// Kick off the model load in the background. Safe to call multiple times.
   /// Returns a future that completes when the engine is ready (or fails).
   Future<void> ensureLoaded() async {
     if (_tts != null) return;
+    if (_hasGivenUp) {
+      // Already failed once this session — fail fast so the caller can fall
+      // back without paying disk IO again.
+      throw _loadError ?? StateError('Supertonic engine previously failed to load');
+    }
     if (_loadCompleter != null) {
       // Another caller is already loading — wait for it.
       return _loadCompleter!.future;
@@ -73,9 +85,10 @@ class SupertonicTtsEngine {
       completer.complete();
     } catch (e, st) {
       _loadError = e;
+      _hasGivenUp = true;
       // Print survives release builds — these errors are critical to diagnose
       // when bundle assets fail to extract on a real device.
-      debugPrint('[Supertonic] ❌ load failed: $e\n$st');
+      debugPrint('[Supertonic] ❌ load failed (giving up for session): $e\n$st');
       completer.completeError(e, st);
     } finally {
       _loadCompleter = null;

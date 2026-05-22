@@ -59,3 +59,54 @@ final selectedVoiceProvider =
 final normalizedSelectedVoiceProvider = Provider<String>((ref) {
   return _normalizeVoice(ref.watch(selectedVoiceProvider));
 });
+
+// ─────────────────────────────────────────────────
+// TTS 재생 속도
+// ─────────────────────────────────────────────────
+
+/// 사용자가 고르는 TTS 재생 속도 배율. 1.0 = 기본 속도.
+/// UI 슬라이더의 min/max/step 도 이 파일을 single source of truth 로 삼는다.
+const double kMinSpeed = 0.5;
+const double kMaxSpeed = 2.0;
+const double kSpeedStep = 0.1;
+const double kDefaultSpeed = 1.0;
+const String _kSpeedPrefsKey = 'selected_tts_speed';
+
+/// 슬라이더 값이 0.1 배수에 맞도록 반올림 + 범위 clamp.
+double _normalizeSpeed(double s) {
+  if (s.isNaN || s.isInfinite) return kDefaultSpeed;
+  final stepped = (s / kSpeedStep).roundToDouble() * kSpeedStep;
+  if (stepped < kMinSpeed) return kMinSpeed;
+  if (stepped > kMaxSpeed) return kMaxSpeed;
+  // 부동소수 오차로 1.0000000001 같은 값이 새는 걸 막기 위해 1 decimal 로 자른다.
+  return double.parse(stepped.toStringAsFixed(1));
+}
+
+class SelectedSpeedNotifier extends Notifier<double> {
+  @override
+  double build() {
+    _loadFromPrefs();
+    return kDefaultSpeed;
+  }
+
+  Future<void> _loadFromPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getDouble(_kSpeedPrefsKey);
+      if (saved != null) state = _normalizeSpeed(saved);
+    } catch (_) {/* 실패 시 default 유지 */}
+  }
+
+  Future<void> setSpeed(double speed) async {
+    final normalized = _normalizeSpeed(speed);
+    if (state == normalized) return;
+    state = normalized;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_kSpeedPrefsKey, normalized);
+    } catch (_) {/* 영속화 실패해도 메모리 상태는 그대로 */}
+  }
+}
+
+final selectedSpeedProvider =
+    NotifierProvider<SelectedSpeedNotifier, double>(SelectedSpeedNotifier.new);

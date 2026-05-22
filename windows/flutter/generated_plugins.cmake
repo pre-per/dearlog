@@ -10,6 +10,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   flutter_onnxruntime
   flutter_timezone
   flutter_tts
+  gal
   permission_handler_windows
   url_launcher_windows
 )

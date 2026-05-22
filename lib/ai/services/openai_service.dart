@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:dearlog/app.dart';
+import 'package:dearlog/fortune/models/daily_fortune.dart';
 
 String _stripCodeFence(String content) {
   final s = content.trim();
@@ -22,6 +23,7 @@ const Duration _kNLPTimeout = Duration(seconds: 45);
 const Duration _kMusicTimeout = Duration(seconds: 30);
 const Duration _kImageTimeout = Duration(seconds: 90);
 const Duration _kStreamConnectTimeout = Duration(seconds: 30);
+const Duration _kFortuneTimeout = Duration(seconds: 45);
 
 /// 사용자에게 보여지는 에러 메시지로 변환되는 예외.
 /// (응답 body 같은 raw 정보는 절대 message 에 포함하지 않는다.)
@@ -341,7 +343,6 @@ class OpenAIService {
     String? callId,
     void Function(int step)? onStep,
     List<String> existingKeywords = const [],
-    bool generateIllustration = true,
   }) async {
     // 1단계: 일기 요약 및 AI 위로 한마디 생성 요청
     onStep?.call(1);
@@ -418,29 +419,8 @@ JSON 외의 말은 하지 마.
       music = null;
     }
 
-    // 3단계: 그림 이미지 생성 — 사용자가 토글로 끄면 스킵.
-    // (스킵된 경우 일기 detail에서 나중에 생성 가능. generateIllustrationForDiary 사용.)
-    String? imageUrl;
-    if (generateIllustration) {
-      onStep?.call(3);
-      final diaryWithAnalysis = DiaryEntry(
-        id: diaryForAnalysis.id,
-        date: diaryForAnalysis.date,
-        title: title,
-        content: content,
-        emotion: emotion,
-        aiComment: diaryForAnalysis.aiComment,
-        imageUrls: const [],
-        callId: callId,
-        analysis: analysis,
-      );
-      imageUrl = await generateIllustrationForDiary(
-        diary: diaryWithAnalysis,
-        userId: userId,
-      );
-    }
-
-    // 최종 DiaryEntry 반환
+    // 그림은 통화 종료 시점에서는 생성하지 않는다 — 사용자가 일기 상세 화면에서
+    // 직접 테마를 선택해 생성하도록 분리됨. [generateIllustrationForDiary] 참조.
     return DiaryEntry(
       id: diaryForAnalysis.id,
       date: diaryForAnalysis.date,
@@ -448,7 +428,7 @@ JSON 외의 말은 하지 마.
       content: content,
       emotion: emotion,
       aiComment: diaryForAnalysis.aiComment,
-      imageUrls: imageUrl != null ? [imageUrl] : const [],
+      imageUrls: const [],
       callId: callId,
       analysis: analysis,
       music: music,
@@ -712,9 +692,8 @@ keywords: $keywordsLine
     );
   }
 
-  /// 기존 일기에 대해 그림만 생성 + Storage 업로드 후 다운로드 URL 반환.
-  /// 통화 중 그림 생성을 OFF했던 일기를 나중에 그림 추가할 때 사용.
-  /// 일기에 대한 그림 생성 + Firebase Storage 업로드 + downloadURL 반환.
+  /// 일기 상세 화면에서 사용자가 [IllustrationTheme] 을 선택해 호출.
+  /// 그림 생성 → Firebase Storage 업로드 → downloadURL 반환.
   ///
   /// 업로드 위치는 `users/{userId}/diaries/{diary.id}/illustration.png` —
   /// user-scoped 경로라 storage.rules 의 `users/{uid}/{allPaths=**}` 규칙으로
@@ -722,6 +701,7 @@ keywords: $keywordsLine
   Future<String> generateIllustrationForDiary({
     required DiaryEntry diary,
     required String userId,
+    required IllustrationTheme theme,
   }) async {
     final mainWordsStr = (diary.analysis?.keywords ?? const <KeywordEntry>[])
         .where((k) => k.category == KeywordCategory.noun)
@@ -729,7 +709,7 @@ keywords: $keywordsLine
         .join(', ');
 
     final imagePrompt = '''
-You are illustrating a single-scene pastel-style diary illustration for a Korean user's daily journal entry.
+You are illustrating a single-scene diary illustration for a Korean user's daily journal entry.
 
 [DIARY INFO]
 - Title: ${diary.title}
@@ -739,11 +719,11 @@ You are illustrating a single-scene pastel-style diary illustration for a Korean
 
 [ILLUSTRATION RULES]
 1. Scene: Choose ONE specific location or moment from the content (e.g., a cozy room, a café, a park bench, a bed at night). The scene must directly reflect a concrete detail mentioned in the content — not a generic setting.
-2. Character: One small, round, simple cartoon character at the center. The character's pose, action, and facial expression must reflect the emotion ("${diary.emotion}") and what they are doing in the story.
+2. Character: One small, simple character at the center. The character's pose, action, and facial expression must reflect the emotion ("${diary.emotion}") and what they are doing in the story.
 3. Key objects: Identify 3–5 concrete nouns or actions from the content (e.g., a book, a phone call, music notes, food, a friend, rain, a TV) and include them visually in the scene as props or background details. Prioritize objects related to the key themes: $mainWordsStr.
 4. Storytelling details: Scatter small visual storytelling elements throughout — things like: items on a desk, what's outside the window, objects on the floor, or subtle symbols that hint at what happened that day.
-5. Style: Soft pastel color palette, hand-drawn feel, smooth rounded lines, light texture. Warm and gentle mood. No text or letters in the image.
-6. Composition: Single unified scene, no split panels. The illustration should feel like one complete, lived-in moment — not a generic or symbolic image.
+5. ${theme.promptFragment}
+6. Composition: Single unified scene, no split panels. The illustration should feel like one complete, lived-in moment — not a generic or symbolic image. No text or letters in the image.
 ''';
 
     final imageResponse = await _postWithRetry(
@@ -975,4 +955,96 @@ evidence 규칙:
     }
     return result;
   }
+}
+
+/// 오늘의 운세 생성 — 한 건의 랜덤 일일운세를 생성.
+/// 결과는 클라이언트에서 하루 단위로 캐시 ([DailyFortuneCache]).
+extension OpenAIDailyFortune on OpenAIService {
+  Future<DailyFortune> generateDailyFortune(DateTime date) async {
+    final dateStr =
+        '${date.year}년 ${date.month}월 ${date.day}일 (${_weekdayKr(date)})';
+    final dateKey = todayKey(date);
+
+    final messages = [
+      {
+        "role": "system",
+        "content": '''
+너는 한국 사용자에게 따뜻하고 부드러운 일일운세를 들려주는 운세 작성자야.
+$dateStr 의 "오늘의 운세" 한 건을 JSON 으로만 출력해.
+
+[스키마]
+{
+  "body": "오늘의 운세 본문 (2~3 문장).",
+  "money": 1~5 정수,
+  "love": 1~5 정수,
+  "work": 1~5 정수,
+  "health": 1~5 정수,
+  "luckyColor": "한국어 색 이름 (예: 그레이, 빨강, 골드, 초록, 네이비)",
+  "luckyItem": "행운 아이템 짧은 표현 (예: 액세서리, 스포츠 음료, 이차원 코드, 붓꽃)"
+}
+
+[톤 & 매너]
+- 부드러운 존댓말. "~해요", "~예요", "~네요". 격식체("~입니다") 금지.
+- 진단·단정 금지. 과한 부정 표현(저주·불행 강조) 금지.
+- 따옴표(", ', ", "), 마크다운(**굵게**, _기울임_), 번호 매기기(1.) 금지.
+- 이모지는 쓰지 말 것.
+- 별자리/띠 같은 특정 분류를 언급하지 말 것.
+
+[본문 규칙]
+- 2~3문장. 80~140자 내외.
+- 그날의 작은 행동/마음가짐 팁이 자연스럽게 한 가지 들어가면 좋아.
+- 매일 다른 결로 — 어제 본 표현을 그대로 쓰지 않게.
+
+[별점 규칙]
+- 각 항목 1~5 정수. 모든 항목이 같지 않게 자연스럽게 분산.
+
+[행운 색상 / 아이템]
+- 일상적이고 구체적인 명사구로 짧게.
+
+JSON 외 어떤 텍스트도 출력 금지.
+'''
+      },
+      {
+        "role": "user",
+        "content": "$dateStr 의 오늘의 운세를 만들어줘."
+      }
+    ];
+
+    final res = await _postWithRetry(
+      Uri.parse('https://api.openai.com/v1/chat/completions'),
+      headers: {
+        'Authorization': 'Bearer ${RemoteConfigService().openAIApiKey}',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        "model": "gpt-5.4-mini",
+        "messages": messages,
+        "max_completion_tokens": 600,
+        "temperature": 0.9,
+        "response_format": {"type": "json_object"},
+      }),
+      timeout: _kFortuneTimeout,
+      label: '오늘의 운세 생성',
+    );
+
+    if (res.statusCode != 200) {
+      _throwOpenAiError('오늘의 운세 생성', res);
+    }
+
+    final content = jsonDecode(res.body)['choices'][0]['message']['content'];
+    final jsonMap = jsonDecode(_stripCodeFence(content)) as Map<String, dynamic>;
+    // dateKey 는 응답에 없을 수도 있으니 클라이언트 기준으로 채워준다.
+    jsonMap['dateKey'] = dateKey;
+
+    final fortune = DailyFortune.fromJson(jsonMap);
+    if (fortune.body.isEmpty) {
+      throw OpenAIServiceException('오늘의 운세 결과가 비어있어요. 다시 시도해 주세요.');
+    }
+    return fortune;
+  }
+}
+
+String _weekdayKr(DateTime d) {
+  const names = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
+  return names[d.weekday - 1];
 }

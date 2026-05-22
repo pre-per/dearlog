@@ -28,9 +28,11 @@ class _SelectVoiceScreenState extends ConsumerState<SelectVoiceScreen> {
   void initState() {
     super.initState();
     final initialVoice = ref.read(selectedVoiceProvider);
+    final initialSpeed = ref.read(selectedSpeedProvider);
     _tts = TtsService(
       apiKey: RemoteConfigService().openAIApiKey,
       voice: initialVoice,
+      speedMultiplier: initialSpeed,
     );
     _tts.init();
   }

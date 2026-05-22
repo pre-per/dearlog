@@ -4,8 +4,13 @@ import 'package:dearlog/app.dart';
 import 'package:dearlog/call/screens/call_loading_screen.dart';
 import 'package:dearlog/call/services/conversation_backup_service.dart';
 import 'package:dearlog/call/services/tts_service.dart';
+import 'package:dearlog/fortune/providers/daily_fortune_providers.dart';
+import 'package:dearlog/fortune/services/daily_fortune_cache.dart';
+import 'package:dearlog/fortune/widgets/floating_bottle.dart';
+import 'package:dearlog/fortune/widgets/fortune_card_sheet.dart';
 import 'package:dearlog/notification/providers/inbox_providers.dart';
 import 'package:dearlog/notification/screens/inbox_screen.dart';
+import 'package:flutter/foundation.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:dearlog/call/providers/voice_provider.dart';
@@ -56,9 +61,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Future<void> _restoreAndGoLoading() async {
     final messages = await ConversationBackupService.load();
     if (messages == null || !mounted) return;
-    // 백업 시 저장된 illustration 토글 복원 — 사용자가 끈 채로 끝났으면 복구 시에도 그대로.
-    final withIllustration =
-        await ConversationBackupService.getWithIllustration();
     ref.read(messageProvider.notifier).restore(messages);
     setState(() => _hasBackup = false);
     if (!mounted) return;
@@ -66,7 +68,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       MaterialPageRoute(
         builder: (_) => CallLoadingScreen(
           elapsed: Duration.zero,
-          withIllustration: withIllustration,
         ),
       ),
     );
@@ -118,6 +119,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
         ),
         actions: [
+          if (kDebugMode)
+            IconButton(
+              tooltip: '유리병 다시 띄우기 (디버그)',
+              onPressed: () async {
+                // 오늘 본 기록 + 운세 캐시 둘 다 지워 fresh fetch + 유리병 재등장.
+                await ref.read(fortuneSeenProvider.notifier).resetSeen();
+                await DailyFortuneCache.instance.clearTodayFortune();
+                ref.invalidate(dailyFortuneProvider);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('유리병을 다시 띄웠어요'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(
+                Icons.science_outlined,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
           Stack(
             clipBehavior: Clip.none,
             alignment: Alignment.center,
@@ -161,7 +185,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         data: (user) {
           if (user == null) return AuthErrorScreen();
 
-          return SingleChildScrollView(
+          final showBottle = ref.watch(shouldShowBottleProvider);
+
+          return Stack(
+            children: [
+              Positioned.fill(child: _buildHomeContent()),
+              // 떠다니는 오늘의 운세 유리병. hit 영역은 병 자체뿐이라 배경의
+              // 통화 버튼/스크롤 인터랙션을 가리지 않는다.
+              if (showBottle)
+                Positioned.fill(
+                  child: FloatingBottle(
+                    onTap: () => FortuneCardSheet.show(context),
+                  ),
+                ),
+            ],
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, __) => const Center(
+          child: Text('잠시 후 다시 시도해 주세요.', style: TextStyle(color: Colors.white)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHomeContent() {
+    return SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
@@ -288,11 +337,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ],
             ),
           );
-        },
-        error: (err, _) => Center(child: Text('유저 데이터를 불러오지 못했습니다.\n오류:$err')),
-        loading: () => const Center(child: CircularProgressIndicator()),
-      ),
-    );
   }
 }
 
@@ -519,13 +563,20 @@ class _VoicePickerDialogState extends State<_VoicePickerDialog> {
   String? _activeVoice;
   bool _isLoading = false;
 
+  /// 슬라이더 드래그 중에는 prefs 저장을 미루기 위해 로컬 상태로 보유.
+  /// onChanged 마다 [TtsService.speedMultiplier] 만 즉시 갱신하고,
+  /// onChangeEnd 에서 [SelectedSpeedNotifier.setSpeed] 호출.
+  late double _localSpeed;
+
   @override
   void initState() {
     super.initState();
     final initialVoice = widget.ref.read(selectedVoiceProvider);
+    _localSpeed = widget.ref.read(selectedSpeedProvider);
     _tts = TtsService(
       apiKey: RemoteConfigService().openAIApiKey,
       voice: initialVoice,
+      speedMultiplier: _localSpeed,
     );
     _tts.init();
   }
@@ -577,8 +628,21 @@ class _VoicePickerDialogState extends State<_VoicePickerDialog> {
               style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 16),
+            _SpeedSliderRow(
+              speed: _localSpeed,
+              onChanged: (s) {
+                setState(() {
+                  _localSpeed = s;
+                  _tts.speedMultiplier = s;
+                });
+              },
+              onChangeEnd: (s) {
+                widget.ref.read(selectedSpeedProvider.notifier).setSpeed(s);
+              },
+            ),
+            const SizedBox(height: 16),
             SizedBox(
-              height: 360,
+              height: 320,
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: _voices.length,
@@ -705,6 +769,119 @@ class _VoicePickerDialogState extends State<_VoicePickerDialog> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// AI 목소리 선택 다이얼로그 상단에 위치하는 TTS 배속 슬라이더.
+/// onChanged 마다 부모가 TtsService 와 로컬 _localSpeed 를 즉시 업데이트.
+/// onChangeEnd 에서 prefs 저장(provider.setSpeed) 을 한 번만 수행해 IO 줄임.
+class _SpeedSliderRow extends StatelessWidget {
+  final double speed;
+  final ValueChanged<double> onChanged;
+  final ValueChanged<double> onChangeEnd;
+
+  const _SpeedSliderRow({
+    required this.speed,
+    required this.onChanged,
+    required this.onChangeEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const gold = Color(0xFFFFD700);
+    final divisions = ((kMaxSpeed - kMinSpeed) / kSpeedStep).round();
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.speed_rounded, color: Colors.white70, size: 16),
+              const SizedBox(width: 6),
+              const Text(
+                '재생 속도',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: gold.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: gold.withOpacity(0.4)),
+                ),
+                child: Text(
+                  '${speed.toStringAsFixed(1)}x',
+                  style: const TextStyle(
+                    color: gold,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SliderTheme(
+            data: SliderThemeData(
+              activeTrackColor: gold,
+              inactiveTrackColor: Colors.white.withOpacity(0.18),
+              thumbColor: gold,
+              overlayColor: gold.withOpacity(0.2),
+              trackHeight: 3,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+              valueIndicatorColor: gold,
+            ),
+            child: Slider(
+              value: speed.clamp(kMinSpeed, kMaxSpeed),
+              min: kMinSpeed,
+              max: kMaxSpeed,
+              divisions: divisions,
+              label: '${speed.toStringAsFixed(1)}x',
+              onChanged: onChanged,
+              onChangeEnd: onChangeEnd,
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${kMinSpeed.toStringAsFixed(1)}x',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.45),
+                  fontSize: 10.5,
+                ),
+              ),
+              Text(
+                '1.0x',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.45),
+                  fontSize: 10.5,
+                ),
+              ),
+              Text(
+                '${kMaxSpeed.toStringAsFixed(1)}x',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.45),
+                  fontSize: 10.5,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

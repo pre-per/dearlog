@@ -49,6 +49,7 @@ export 'auth/screens/onboarding_name_screen.dart';
 export 'auth/screens/onboarding_gender_screen.dart';
 export 'auth/screens/onboarding_age_group_screen.dart';
 export 'auth/screens/onboarding_interests_screen.dart';
+export 'auth/screens/onboarding_reminder_screen.dart';
 export 'auth/screens/splash_screen.dart';
 export 'auth/services/google_auth_service.dart';
 
@@ -57,7 +58,6 @@ export 'call/models/conversation/call.dart';
 export 'call/models/conversation/chat_response.dart';
 export 'call/models/conversation/message.dart';
 export 'call/providers/call_provider.dart';
-export 'call/providers/illustration_toggle_provider.dart';
 export 'call/providers/message_provider.dart';
 export 'call/providers/speech_provider.dart';
 export 'call/repository/call_repository.dart';
@@ -77,12 +77,14 @@ export 'call/widgets/record_button.dart';
 export 'call/widgets/recording_indicator.dart';
 
 // core
+export 'core/analytics/analytics_service.dart';
 export 'core/config/remote_config_service.dart';
 export 'package:dearlog/core/base_scaffold.dart';
 
 // diary
 export 'diary/models/diary_entry.dart';
 export 'diary/models/diary_analysis.dart';
+export 'diary/models/illustration_theme.dart';
 export 'diary/models/letter.dart';
 export 'diary/models/monthly_insight.dart';
 export 'diary/models/music_recommendation.dart';
@@ -94,9 +96,11 @@ export 'diary/screens/diary_detail_screen.dart';
 export 'diary/screens/diary_edit_screen.dart';
 export 'diary/screens/diary_main_screen.dart';
 export 'diary/screens/diary_search_screen.dart';
+export 'diary/screens/diary_share_preview_screen.dart';
 export 'diary/sections/index.dart';
 export 'diary/sections/storybook_section_diary.dart';
 export 'diary/services/letter_scheduler.dart';
+export 'diary/widgets/illustration_theme_picker_dialog.dart';
 export 'diary/widgets/letter_section.dart';
 export 'diary/widgets/music_recommendation_section.dart';
 

@@ -24,6 +24,13 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
   void initState() {
     super.initState();
     _diary = widget.diary;
+    // CBT 지표 — AI 산출물(일기) 조회.
+    // ignore: unawaited_futures
+    AnalyticsService.logReportViewed(
+      source: 'diary_detail',
+      diaryId: _diary.id,
+      hasImage: _diary.imageUrls.isNotEmpty,
+    );
   }
 
   Future<bool> _confirmExitDuringGeneration() async {
@@ -157,7 +164,22 @@ class _DiaryDetailScreenState extends ConsumerState<DiaryDetailScreen> {
             LetterSection(diary: _diary, onUpdate: _updateDiary),
             const SizedBox(height: 12),
 
-            // 6. 대화 확인하기 버튼
+            // 6. 사진 앱에 저장 — 옵션 토글 + 9:16 카드 캡쳐.
+            //    그림 생성 중에는 캡쳐 무결성을 위해 비활성.
+            _ShareToImageButton(
+              disabled: _generatingIllustration,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        DiarySharePreviewScreen(diary: _diary),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+
+            // 7. 대화 확인하기 버튼
             if (_diary.callId != null)
               _ActionButton(
                 title: '대화 확인하기',
@@ -223,6 +245,12 @@ class _DiaryImageState extends ConsumerState<_DiaryImage> {
 
   Future<void> _generate() async {
     if (_generating) return;
+
+    // 1) 사용자에게 그림 스타일 먼저 선택받는다 — 취소 시 생성 진입 자체를 막음.
+    final theme = await showIllustrationThemePicker(context);
+    if (theme == null) return;
+    if (!mounted) return;
+
     setState(() => _error = null);
     _setGenerating(true);
     try {
@@ -233,6 +261,7 @@ class _DiaryImageState extends ConsumerState<_DiaryImage> {
       final imageUrl = await OpenAIService().generateIllustrationForDiary(
         diary: widget.diary,
         userId: userId,
+        theme: theme,
       );
       // 위젯이 dispose된 뒤(사용자가 나가기 선택 후)에는 결과 폐기.
       if (!mounted) return;
@@ -341,7 +370,7 @@ class _DiaryImageState extends ConsumerState<_DiaryImage> {
         ),
         const SizedBox(height: 14),
         const Text(
-          '통화 중에는 그림이 생성되지 않았어요',
+          '오늘의 일기를 그림으로 남겨볼까요?',
           style: TextStyle(
             color: Colors.white,
             fontSize: 14,
@@ -351,7 +380,7 @@ class _DiaryImageState extends ConsumerState<_DiaryImage> {
         ),
         const SizedBox(height: 4),
         Text(
-          '지금 일기 내용을 바탕으로 그릴 수 있어요',
+          '원하는 스타일을 골라 그림을 그릴 수 있어요',
           style: TextStyle(
             color: Colors.white.withOpacity(0.55),
             fontSize: 12,
@@ -611,6 +640,72 @@ class _DeleteDiaryButton extends StatelessWidget {
   }
 }
 
+/// 사진 앱 저장 진입 버튼 — 골드 글래스 톤으로 일반 _ActionButton 보다 한 단계 강조.
+/// 일기 본문 확인 → 사진 저장 → (대화 확인) → 삭제 순서로 흐름이 이어지도록 위에 배치.
+class _ShareToImageButton extends StatelessWidget {
+  final VoidCallback onTap;
+  final bool disabled;
+
+  const _ShareToImageButton({
+    required this.onTap,
+    required this.disabled,
+  });
+
+  static const _gold = Color(0xFFFFD700);
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: disabled ? 0.5 : 1,
+      child: GestureDetector(
+        onTap: disabled ? null : onTap,
+        behavior: HitTestBehavior.opaque,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: _gold.withOpacity(0.12),
+                border: Border.all(color: _gold.withOpacity(0.45)),
+                boxShadow: [
+                  BoxShadow(
+                    color: _gold.withOpacity(0.16),
+                    blurRadius: 14,
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    IconsaxPlusLinear.gallery_add,
+                    color: _gold,
+                    size: 17,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    '사진으로 저장하기',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: _gold,
+                      fontFamily: 'GowunBatang',
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ActionButton extends StatelessWidget {
   final String title;
   final VoidCallback onTap;
@@ -644,7 +739,7 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-/// AI 댓글 카드 — 별 아이콘 아바타 + "AI" 닉네임 + 댓글 박스 형태.
+/// 디어로그 댓글 카드 — 별 아이콘 아바타 + "디어로그" 닉네임 + 댓글 박스 형태.
 /// 일기에 누군가 댓글을 단 듯한 인상.
 class _AiCommentCard extends StatelessWidget {
   final String? comment;
@@ -654,7 +749,7 @@ class _AiCommentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final body = (comment != null && comment!.trim().isNotEmpty)
         ? comment!
-        : 'AI가 글을 쓰다가 잠들어버렸어요..\n다음 일기에서 따뜻한 한 마디로 보답할게요!';
+        : '디어로그가 글을 쓰다가 잠들어버렸어요..\n다음 일기에서 따뜻한 한 마디로 보답할게요!';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
@@ -693,26 +788,14 @@ class _AiCommentCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const Text(
-                      'AI',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '· 한 마디 남겼어요',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.55),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+                const Text(
+                  '디어로그',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(

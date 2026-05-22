@@ -38,7 +38,7 @@ class _OnboardingGenderScreenState
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
-        title: const OnboardingStepLabel(current: 2, total: 4),
+        title: const OnboardingStepLabel(current: 2, total: 5),
         centerTitle: false,
       ),
       body: SafeArea(

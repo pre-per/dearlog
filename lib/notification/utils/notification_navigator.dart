@@ -31,11 +31,13 @@ class NotificationCenter {
 /// - "daily_reminder"          : 일일 리마인더 → 일기 작성 유도
 /// - "letter:{diaryId}"        : 편지 잠금 해제 → 해당 일기 detail
 /// - "comment:{postId}"        : 내 공개 게시물에 댓글 달림 → 게시물 상세
+/// - "daily_fortune"           : 오늘의 운세 알림 → 홈에 유리병 표시
 /// - "test_*"                  : 테스트
 class NotificationPayload {
   static const String dailyReminder = 'daily_reminder';
   static const String letterPrefix = 'letter:';
   static const String commentPrefix = 'comment:';
+  static const String dailyFortune = 'daily_fortune';
 
   static String letter(String diaryId) => '$letterPrefix$diaryId';
   static String comment(String postId) => '$commentPrefix$postId';

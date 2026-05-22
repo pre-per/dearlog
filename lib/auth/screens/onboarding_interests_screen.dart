@@ -129,6 +129,14 @@ class _OnboardingInterestsScreenState
       );
       await repo.updateIsCompleted(userId, true);
 
+      // GA4 인구통계 user property — 회원가입 직후 라벨이 박혀야 이후
+      // call_ended 같은 이벤트가 처음부터 segmentation 가능.
+      // ignore: unawaited_futures
+      AnalyticsService.setUserProperties(
+        gender: draft.gender,
+        ageGroup: draft.ageGroup,
+      );
+
       // userProvider 캐시를 무효화해서 메인에서 새 프로필이 즉시 반영되게.
       ref.invalidate(userProvider);
 
@@ -136,10 +144,12 @@ class _OnboardingInterestsScreenState
       draftNotifier.state = const OnboardingDraft();
 
       if (!mounted) return;
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const MainScreen()),
-        (_) => false,
+      // 회원가입 끝 — 마지막 5단계로 알림 권유 화면으로 이동.
+      // 이 화면이 끝나면 MainScreen 으로 진입.
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => const OnboardingReminderScreen(),
+        ),
       );
     } catch (e) {
       if (mounted) {
@@ -163,7 +173,7 @@ class _OnboardingInterestsScreenState
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
-        title: const OnboardingStepLabel(current: 4, total: 4),
+        title: const OnboardingStepLabel(current: 4, total: 5),
         centerTitle: false,
       ),
       body: SafeArea(
@@ -205,7 +215,7 @@ class _OnboardingInterestsScreenState
               ),
               const SizedBox(height: 8),
               OnboardingNextButton(
-                label: '시작하기',
+                label: '다음',
                 enabled: canFinish,
                 loading: _saving,
                 onTap: _finish,
