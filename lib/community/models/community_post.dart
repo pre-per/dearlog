@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'nlp_filter_snapshot.dart';
+
 /// 사용자가 자신의 일기를 커뮤니티에 공개한 게시물.
 ///
 /// - `community_posts/{postId}` 최상위 컬렉션에 저장된다.
@@ -31,6 +33,17 @@ class CommunityPost {
   final int commentCount;
   final int reportCount;
 
+  /// 게시 시점에 동결되는 NLP 인지 필터 스냅샷. 일기 공유 시 토글이 켜져
+  /// 있었으면 1~2개, 그렇지 않으면 빈 리스트. 본문에 합쳐지지 않고 카드/상세
+  /// 화면에서 별도 보라색 그라데이션 블록으로 렌더링된다.
+  final List<NlpFilterSnapshot> nlpFilters;
+
+  /// 익명 게시일 때도 작성자의 랭크 배지/스트릭 글로우를 노출할지.
+  /// 게시 시점의 user preference 를 동결해서 저장 — 사용자가 나중에 설정을
+  /// 바꿔도 과거 게시물의 노출 정책은 그대로 유지된다. 비익명 게시물은
+  /// 항상 노출되므로 이 필드는 무시된다.
+  final bool showRankIfAnonymous;
+
   const CommunityPost({
     required this.id,
     required this.authorUid,
@@ -46,6 +59,8 @@ class CommunityPost {
     this.likeCount = 0,
     this.commentCount = 0,
     this.reportCount = 0,
+    this.nlpFilters = const [],
+    this.showRankIfAnonymous = false,
   });
 
   /// UI 표시용 작성자 이름. 익명이면 '익명' 으로 가린다.
@@ -70,6 +85,8 @@ class CommunityPost {
     int? likeCount,
     int? commentCount,
     int? reportCount,
+    List<NlpFilterSnapshot>? nlpFilters,
+    bool? showRankIfAnonymous,
   }) {
     return CommunityPost(
       id: id ?? this.id,
@@ -87,6 +104,8 @@ class CommunityPost {
       likeCount: likeCount ?? this.likeCount,
       commentCount: commentCount ?? this.commentCount,
       reportCount: reportCount ?? this.reportCount,
+      nlpFilters: nlpFilters ?? List<NlpFilterSnapshot>.from(this.nlpFilters),
+      showRankIfAnonymous: showRankIfAnonymous ?? this.showRankIfAnonymous,
     );
   }
 
@@ -110,6 +129,12 @@ class CommunityPost {
       likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
       commentCount: (json['commentCount'] as num?)?.toInt() ?? 0,
       reportCount: (json['reportCount'] as num?)?.toInt() ?? 0,
+      nlpFilters: (json['nlpFilters'] as List?)
+              ?.map((e) =>
+                  NlpFilterSnapshot.fromJson(Map<String, dynamic>.from(e)))
+              .toList() ??
+          const [],
+      showRankIfAnonymous: (json['showRankIfAnonymous'] as bool?) ?? false,
     );
   }
 
@@ -129,6 +154,9 @@ class CommunityPost {
       'likeCount': likeCount,
       'commentCount': commentCount,
       'reportCount': reportCount,
+      if (nlpFilters.isNotEmpty)
+        'nlpFilters': nlpFilters.map((f) => f.toJson()).toList(),
+      'showRankIfAnonymous': showRankIfAnonymous,
     };
   }
 }

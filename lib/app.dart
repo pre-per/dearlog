@@ -108,6 +108,7 @@ export 'diary/widgets/music_recommendation_section.dart';
 export 'home/screens/homescreen.dart';
 export 'home/widgets/call_start_iconbutton.dart';
 export 'home/widgets/IncomingCallBanner.dart';
+export 'home/providers/incoming_call_provider.dart';
 
 // notification
 export 'notification/models/diary_reminder_settings.dart';

@@ -6,9 +6,11 @@ import '../../core/base_scaffold.dart';
 import '../../shared_ui/widgets/dialog/glass_dialog.dart';
 import '../../user/providers/user_fetch_providers.dart';
 import '../models/community_post.dart';
+import '../providers/anonymous_default_provider.dart';
 import '../providers/community_providers.dart';
 import '../utils/emotion_groups.dart';
 import '../widgets/post_card.dart';
+import '../widgets/standalone_share_options_panel.dart';
 
 /// 일기 없이 커뮤니티에 직접 글을 쓰거나, 본인이 게시한 글을 수정하는 화면.
 ///
@@ -26,9 +28,11 @@ class CreateEditPostScreen extends ConsumerStatefulWidget {
 class _CreateEditPostScreenState extends ConsumerState<CreateEditPostScreen> {
   late final TextEditingController _titleCtrl;
   late final TextEditingController _contentCtrl;
-  bool _isAnonymous = false;
   String? _emotionGroupKey;
+  late StandaloneShareOptions _options;
   bool _saving = false;
+  // 수정 모드 진입 시 기존 익명 설정을 글로벌 provider 에 한 번만 반영하기 위한 가드.
+  bool _appliedExistingAnonymous = false;
 
   bool get _isEdit => widget.existing != null;
 
@@ -40,7 +44,6 @@ class _CreateEditPostScreenState extends ConsumerState<CreateEditPostScreen> {
       ..addListener(_onChanged);
     _contentCtrl = TextEditingController(text: ex?.content ?? '')
       ..addListener(_onChanged);
-    _isAnonymous = ex?.isAnonymous ?? false;
     // 기존 emotion 문자열 → 그룹 키 역추적 (수정 모드에서 칩 활성화 표시용)
     if (ex != null && ex.emotion.trim().isNotEmpty) {
       for (final g in emotionGroups) {
@@ -50,6 +53,9 @@ class _CreateEditPostScreenState extends ConsumerState<CreateEditPostScreen> {
         }
       }
     }
+    _options = StandaloneShareOptions.initial(
+      hasEmotion: _emotionGroupKey != null,
+    );
   }
 
   void _onChanged() => setState(() {});
@@ -64,8 +70,8 @@ class _CreateEditPostScreenState extends ConsumerState<CreateEditPostScreen> {
   Future<void> _submit() async {
     if (_saving) return;
 
-    final title = _titleCtrl.text.trim();
-    final content = _contentCtrl.text.trim();
+    final title = _options.includeTitle ? _titleCtrl.text.trim() : '';
+    final content = _options.includeContent ? _contentCtrl.text.trim() : '';
     if (title.isEmpty && content.isEmpty) {
       _snack('제목이나 내용 중 하나는 채워주세요');
       return;
@@ -79,13 +85,15 @@ class _CreateEditPostScreenState extends ConsumerState<CreateEditPostScreen> {
 
     final group = findEmotionGroup(_emotionGroupKey);
     // 그룹 대표 감정으로 저장 — 행성 매핑이 한 그룹의 모든 단어를 같은 행성으로 처리하니
-    // 어떤 단어를 골라도 동일하게 보인다. 첫 단어를 대표로.
-    final emotion = group?.emotions.first ?? '';
+    // 어떤 단어를 골라도 동일하게 보인다. 첫 단어를 대표로. 토글 OFF 면 빈 문자열.
+    final emotion =
+        _options.includeEmotion ? (group?.emotions.first ?? '') : '';
+    final isAnonymous = ref.read(anonymousDefaultProvider);
 
     final ok = await showGlassDialog<bool>(
       context: context,
       title: _isEdit ? '게시물을 수정할까요?' : '커뮤니티에 게시할까요?',
-      message: _isAnonymous
+      message: isAnonymous
           ? '익명으로 게시돼요.\n다른 사람들이 댓글과 좋아요를 남길 수 있어요.'
           : '"${user.profile.nickname}" 으로 게시돼요.\n다른 사람들이 댓글과 좋아요를 남길 수 있어요.',
       actions: [
@@ -105,17 +113,18 @@ class _CreateEditPostScreenState extends ConsumerState<CreateEditPostScreen> {
           title: title,
           content: content,
           emotion: emotion,
-          isAnonymous: _isAnonymous,
+          isAnonymous: isAnonymous,
         );
         ref.invalidate(communityPostStreamProvider(widget.existing!.id));
       } else {
         await repo.createStandalonePost(
           authorUid: user.id,
           authorNickname: user.profile.nickname,
-          isAnonymous: _isAnonymous,
+          isAnonymous: isAnonymous,
           title: title,
           content: content,
           emotion: emotion,
+          showRankIfAnonymous: user.preferences.showRankWhenAnonymous,
         );
       }
       ref.invalidate(communityFeedProvider);
@@ -142,20 +151,36 @@ class _CreateEditPostScreenState extends ConsumerState<CreateEditPostScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(userProvider).valueOrNull;
     final nickname = user?.profile.nickname ?? '';
+    final isAnonymous = ref.watch(anonymousDefaultProvider);
+
+    // 수정 모드 진입 첫 빌드에 기존 게시물의 익명 설정을 글로벌 provider 로
+    // 한 번만 반영. 이후엔 사용자가 토글하면 provider 가 단일 진실로 동작.
+    if (_isEdit && !_appliedExistingAnonymous) {
+      _appliedExistingAnonymous = true;
+      final existingAnon = widget.existing!.isAnonymous;
+      if (existingAnon != isAnonymous) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref
+              .read(anonymousDefaultProvider.notifier)
+              .setAnonymous(existingAnon);
+        });
+      }
+    }
 
     final group = findEmotionGroup(_emotionGroupKey);
     final previewPost = CommunityPost(
       id: widget.existing?.id ?? '_preview',
       authorUid: user?.id ?? '',
       authorNicknameSnapshot: nickname,
-      isAnonymous: _isAnonymous,
+      isAnonymous: isAnonymous,
       originalDiaryId: widget.existing?.originalDiaryId ?? '',
-      title: _titleCtrl.text,
-      content: _contentCtrl.text,
-      emotion: group?.emotions.first ?? '',
+      title: _options.includeTitle ? _titleCtrl.text : '',
+      content: _options.includeContent ? _contentCtrl.text : '',
+      emotion: _options.includeEmotion ? (group?.emotions.first ?? '') : '',
       imageUrls: widget.existing?.imageUrls ?? const [],
       diaryDate: widget.existing?.diaryDate ?? DateTime.now(),
       createdAt: widget.existing?.createdAt ?? DateTime.now(),
+      nlpFilters: widget.existing?.nlpFilters ?? const [],
     );
 
     return BaseScaffold(
@@ -184,39 +209,54 @@ class _CreateEditPostScreenState extends ConsumerState<CreateEditPostScreen> {
                     const SizedBox(height: 10),
                     PostCard(post: previewPost),
                     const SizedBox(height: 28),
+                    _sectionLabel('공유할 정보'),
+                    const SizedBox(height: 10),
+                    StandaloneShareOptionsPanel(
+                      options: _options,
+                      onChanged: (next) => setState(() => _options = next),
+                    ),
+                    const SizedBox(height: 28),
                     _sectionLabel('표시 이름'),
                     const SizedBox(height: 10),
                     _IdentityToggle(
                       nickname: nickname.isEmpty ? '닉네임' : nickname,
-                      isAnonymous: _isAnonymous,
-                      onChanged: (v) => setState(() => _isAnonymous = v),
+                      isAnonymous: isAnonymous,
+                      onChanged: (v) => ref
+                          .read(anonymousDefaultProvider.notifier)
+                          .setAnonymous(v),
                     ),
-                    const SizedBox(height: 28),
-                    _sectionLabel('감정 (선택)'),
-                    const SizedBox(height: 10),
-                    _EmotionPicker(
-                      selected: _emotionGroupKey,
-                      onChanged: (v) =>
-                          setState(() => _emotionGroupKey = v),
-                    ),
-                    const SizedBox(height: 28),
-                    _sectionLabel('제목'),
-                    const SizedBox(height: 10),
-                    _GlassTextField(
-                      controller: _titleCtrl,
-                      hint: '제목 (선택)',
-                      maxLines: 1,
-                      maxLength: 100,
-                    ),
-                    const SizedBox(height: 24),
-                    _sectionLabel('내용'),
-                    const SizedBox(height: 10),
-                    _GlassTextField(
-                      controller: _contentCtrl,
-                      hint: '내용을 입력해 주세요',
-                      maxLines: 10,
-                      maxLength: 5000,
-                    ),
+                    if (_options.includeEmotion) ...[
+                      const SizedBox(height: 28),
+                      _sectionLabel('감정 (선택)'),
+                      const SizedBox(height: 10),
+                      _EmotionPicker(
+                        selected: _emotionGroupKey,
+                        onChanged: (v) =>
+                            setState(() => _emotionGroupKey = v),
+                      ),
+                    ],
+                    if (_options.includeTitle) ...[
+                      const SizedBox(height: 28),
+                      _sectionLabel('제목'),
+                      const SizedBox(height: 10),
+                      _GlassTextField(
+                        controller: _titleCtrl,
+                        hint: '제목 (선택)',
+                        maxLines: 1,
+                        maxLength: 100,
+                      ),
+                    ],
+                    if (_options.includeContent) ...[
+                      const SizedBox(height: 24),
+                      _sectionLabel('내용'),
+                      const SizedBox(height: 10),
+                      _GlassTextField(
+                        controller: _contentCtrl,
+                        hint: '내용을 입력해 주세요',
+                        maxLines: 10,
+                        maxLength: 5000,
+                      ),
+                    ],
                   ],
                 ),
               ),

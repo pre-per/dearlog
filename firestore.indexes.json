@@ -23,6 +23,14 @@
         { "fieldPath": "authorUid", "order": "ASCENDING" },
         { "fieldPath": "originalDiaryId", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "dailyCommunityNotifEnabled", "order": "ASCENDING" },
+        { "fieldPath": "dailyCommunityNotifSlot", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

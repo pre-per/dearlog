@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import '../../shared_ui/utils/planet_asset_mapper.dart';
+import '../../user/providers/user_stats_providers.dart';
 import '../models/community_post.dart';
 import '../utils/relative_time.dart';
 import 'community_avatar.dart';
+import 'community_nlp_block.dart';
+import 'rank_badge.dart';
+import 'streak_avatar_glow.dart';
 
 /// 피드에 노출되는 게시물 카드 한 개.
 ///
@@ -82,6 +87,10 @@ class PostCard extends StatelessWidget {
                 ),
               ),
             ],
+            if (post.nlpFilters.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              CommunityNlpBlock(filters: post.nlpFilters, compact: true),
+            ],
             const SizedBox(height: 12),
             _Footer(post: post),
           ],
@@ -148,33 +157,59 @@ class _PaperBody extends StatelessWidget {
   }
 }
 
-class _Header extends StatelessWidget {
+class _Header extends ConsumerWidget {
   final CommunityPost post;
   const _Header({required this.post});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 익명 게시물이면 작성자 본인이 게시 시점에 "익명이어도 랭크 보이기"를 켰을 때만
+    // 노출. 비익명이면 항상 노출.
+    final showRank = !post.isAnonymous || post.showRankIfAnonymous;
+
+    final statsAsync = showRank
+        ? ref.watch(userStatsByUidProvider(post.authorUid))
+        : const AsyncValue<dynamic>.data(null);
+    final stats = statsAsync.maybeWhen(data: (s) => s, orElse: () => null);
+    final streak = showRank ? liveCurrentStreak(stats) : 0;
+    final diaryCount = showRank ? (stats?.diaryCount ?? 0) : 0;
+
+    final avatar = CommunityAvatar(
+      authorUid: post.authorUid,
+      displayName: post.displayName,
+      isAnonymous: post.isAnonymous,
+    );
+
     return Row(
       children: [
-        CommunityAvatar(
-          authorUid: post.authorUid,
-          displayName: post.displayName,
-          isAnonymous: post.isAnonymous,
-        ),
+        StreakAvatarGlow(streak: streak, child: avatar),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                post.displayName.isEmpty ? '익명' : post.displayName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      post.displayName.isEmpty ? '익명' : post.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (showRank && diaryCount > 0) ...[
+                    const SizedBox(width: 6),
+                    Builder(builder: (_) {
+                      final badge = RankBadge.fromCount(diaryCount);
+                      return badge ?? const SizedBox.shrink();
+                    }),
+                  ],
+                ],
               ),
               Text(
                 formatRelativeTime(post.createdAt),

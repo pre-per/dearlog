@@ -8,14 +8,19 @@ import '../../core/base_scaffold.dart';
 import '../../shared_ui/utils/planet_asset_mapper.dart';
 import '../../shared_ui/widgets/dialog/glass_dialog.dart';
 import '../../user/providers/user_fetch_providers.dart';
+import '../../user/providers/user_stats_providers.dart';
+import '../models/community_comment.dart';
 import '../models/community_post.dart';
 import '../providers/community_providers.dart';
 import '../utils/relative_time.dart';
 import '../widgets/comment_card.dart';
 import '../widgets/comment_input_bar.dart';
 import '../widgets/community_avatar.dart';
+import '../widgets/community_nlp_block.dart';
 import '../widgets/like_button.dart';
+import '../widgets/rank_badge.dart';
 import '../widgets/report_dialog.dart';
+import '../widgets/streak_avatar_glow.dart';
 import 'create_edit_post_screen.dart';
 
 /// 공개 게시물 상세 화면.
@@ -144,6 +149,10 @@ class _PostBody extends StatelessWidget {
               _PostImage(url: post.imageUrls[i]),
             ],
           ],
+          if (post.nlpFilters.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            CommunityNlpBlock(filters: post.nlpFilters),
+          ],
           const SizedBox(height: 20),
           // 일기 원본 작성일 (작성 시점 vs 게시 시점 구분)
           Text(
@@ -225,35 +234,58 @@ class _PaperFullBody extends StatelessWidget {
   }
 }
 
-class _Header extends StatelessWidget {
+class _Header extends ConsumerWidget {
   final CommunityPost post;
   const _Header({required this.post});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final showRank = !post.isAnonymous || post.showRankIfAnonymous;
+    final stats = showRank
+        ? ref
+            .watch(userStatsByUidProvider(post.authorUid))
+            .maybeWhen(data: (s) => s, orElse: () => null)
+        : null;
+    final streak = showRank ? liveCurrentStreak(stats) : 0;
+    final diaryCount = showRank ? (stats?.diaryCount ?? 0) : 0;
+    final badge =
+        showRank && diaryCount > 0 ? RankBadge.fromCount(diaryCount, size: RankBadgeSize.full) : null;
+
+    final avatar = CommunityAvatar(
+      authorUid: post.authorUid,
+      displayName: post.displayName,
+      isAnonymous: post.isAnonymous,
+      size: 44,
+    );
+
     return Row(
       children: [
-        CommunityAvatar(
-          authorUid: post.authorUid,
-          displayName: post.displayName,
-          isAnonymous: post.isAnonymous,
-          size: 44,
-        ),
+        StreakAvatarGlow(streak: streak, child: avatar, avatarSize: 44),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                post.displayName.isEmpty ? '익명' : post.displayName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'GowunBatang',
-                ),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      post.displayName.isEmpty ? '익명' : post.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'GowunBatang',
+                      ),
+                    ),
+                  ),
+                  if (badge != null) ...[
+                    const SizedBox(width: 8),
+                    badge,
+                  ],
+                ],
               ),
               const SizedBox(height: 2),
               Text(
@@ -407,17 +439,51 @@ class _CommentsSection extends ConsumerWidget {
             if (comments.isEmpty) {
               return _emptyState();
             }
-            return Column(
-              children: [
-                for (int i = 0; i < comments.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 10),
-                  CommentCard(
-                    comment: comments[i],
+            // 답글은 부모 아래에 들여쓰기. 부모 댓글 묶음은 최신순(descending),
+            // 한 부모 아래 답글은 오래된 순(ascending) — 대화 흐름이 자연스럽게.
+            final byParent = <String, List<CommunityComment>>{};
+            final topLevel = <CommunityComment>[];
+            for (final c in comments) {
+              if (c.parentCommentId == null) {
+                topLevel.add(c);
+              } else {
+                byParent.putIfAbsent(c.parentCommentId!, () => []).add(c);
+              }
+            }
+            // watchComments 가 이미 descending — top-level 은 그대로 두고
+            // 부모 없는 답글(부모 삭제됨) 은 top-level 로 승격해 누락 방지.
+            final topIds = topLevel.map((c) => c.id).toSet();
+            for (final entry in byParent.entries) {
+              if (!topIds.contains(entry.key)) {
+                topLevel.addAll(entry.value);
+              }
+            }
+            topLevel.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+            final blocks = <Widget>[];
+            for (int i = 0; i < topLevel.length; i++) {
+              if (i > 0) blocks.add(const SizedBox(height: 10));
+              final top = topLevel[i];
+              blocks.add(CommentCard(
+                comment: top,
+                postAuthorUid: post.authorUid,
+              ));
+              final replies = (byParent[top.id] ?? const <CommunityComment>[])
+                  .toList()
+                ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+              for (final r in replies) {
+                blocks.add(const SizedBox(height: 6));
+                blocks.add(Padding(
+                  padding: const EdgeInsets.only(left: 28),
+                  child: CommentCard(
+                    comment: r,
                     postAuthorUid: post.authorUid,
+                    isReply: true,
                   ),
-                ],
-              ],
-            );
+                ));
+              }
+            }
+            return Column(children: blocks);
           },
         ),
       ],

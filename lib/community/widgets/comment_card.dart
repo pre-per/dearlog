@@ -4,27 +4,35 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/di/providers.dart';
 import '../../shared_ui/widgets/dialog/glass_dialog.dart';
 import '../../user/providers/user_fetch_providers.dart';
+import '../../user/providers/user_stats_providers.dart';
 import '../models/community_comment.dart';
+import '../providers/reply_target_provider.dart';
 import '../utils/relative_time.dart';
 import 'community_avatar.dart';
+import 'rank_badge.dart';
 import 'report_dialog.dart';
+import 'streak_avatar_glow.dart';
 
 /// 댓글 한 개를 표시하는 카드.
 ///
 /// - 본인 댓글: 우측 하단에 [수정] [삭제] 텍스트 액션
 /// - 게시물 작성자가 본인이면 (남의 댓글에도) [삭제] 액션 (모더레이션)
+/// - 답글 버튼은 최상위 댓글에만 표시 — 답글의 답글은 만들지 않는다 (1단계 정책)
 /// - 수정은 인라인 모드 — 카드 안의 본문이 입력 필드로 변환됨
-/// - 신고 액션은 PR6 에서 추가
 class CommentCard extends ConsumerStatefulWidget {
   final CommunityComment comment;
 
   /// 게시물 작성자의 uid. 본인이면 자기 글의 댓글을 삭제할 수 있다.
   final String postAuthorUid;
 
+  /// 답글 카드(true)면 답글 버튼을 숨기고 카드 크기를 좀 더 작게 표시한다.
+  final bool isReply;
+
   const CommentCard({
     super.key,
     required this.comment,
     required this.postAuthorUid,
+    this.isReply = false,
   });
 
   @override
@@ -152,29 +160,46 @@ class _CommentCardState extends ConsumerState<CommentCard> {
     }
   }
 
+  void _startReply() {
+    // 대댓글에 답글이 달려도 들여쓰기 단계는 1단계로 고정 — 저장되는
+    // parentCommentId 는 항상 최상위 댓글 id 로 통일하고, @멘션만 즉시 응답하는
+    // 사람의 이름으로 채워 대화 흐름을 유지한다 (Instagram/Twitter 식 평면 스레드).
+    final rootId =
+        widget.comment.parentCommentId ?? widget.comment.id;
+    ref.read(replyTargetProvider.notifier).setTarget(
+          ReplyTarget(
+            postId: widget.comment.postId,
+            parentCommentId: rootId,
+            parentDisplayName: widget.comment.displayName,
+          ),
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
     final myUid = ref.watch(userIdProvider);
     final isMine = myUid != null && widget.comment.authorUid == myUid;
     final iAmPostAuthor = myUid != null && widget.postAuthorUid == myUid;
     final canReport = myUid != null && !isMine;
-    final hasAnyAction = isMine || iAmPostAuthor || canReport;
+    // 모든 댓글(답글 포함)에 [답글] 버튼 노출. 답글의 답글은 같은 들여쓰기 줄에
+    // 평면화돼 데이터/UI 모두 1단계 정책을 깨지 않는다 (_startReply 참조).
+    final canReply = myUid != null;
+    final hasAnyAction = isMine || iAmPostAuthor || canReport || canReply;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withOpacity(widget.isReply ? 0.035 : 0.05),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.10)),
+        border: Border.all(
+            color: Colors.white.withOpacity(widget.isReply ? 0.07 : 0.10)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CommunityAvatar(
-            authorUid: widget.comment.authorUid,
-            displayName: widget.comment.displayName,
-            isAnonymous: widget.comment.isAnonymous,
-            size: 32,
+          _AvatarWithGlow(
+            comment: widget.comment,
+            size: widget.isReply ? 26 : 32,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -190,6 +215,7 @@ class _CommentCardState extends ConsumerState<CommentCard> {
                     isMine: isMine,
                     canDelete: isMine || iAmPostAuthor,
                     canReport: canReport,
+                    canReply: canReply,
                   ),
                 ],
               ],
@@ -202,6 +228,15 @@ class _CommentCardState extends ConsumerState<CommentCard> {
 
   Widget _header() {
     final c = widget.comment;
+    final showRank = !c.isAnonymous || c.showRankIfAnonymous;
+    final statsAsync = showRank
+        ? ref.watch(userStatsByUidProvider(c.authorUid))
+        : const AsyncValue<dynamic>.data(null);
+    final stats = statsAsync.maybeWhen(data: (s) => s, orElse: () => null);
+    final diaryCount = showRank ? (stats?.diaryCount ?? 0) : 0;
+    final badge =
+        showRank && diaryCount > 0 ? RankBadge.fromCount(diaryCount) : null;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -218,6 +253,10 @@ class _CommentCardState extends ConsumerState<CommentCard> {
             ),
           ),
         ),
+        if (badge != null) ...[
+          const SizedBox(width: 5),
+          badge,
+        ],
         const SizedBox(width: 8),
         Text(
           formatRelativeTime(c.createdAt),
@@ -310,10 +349,15 @@ class _CommentCardState extends ConsumerState<CommentCard> {
     required bool isMine,
     required bool canDelete,
     required bool canReport,
+    required bool canReply,
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
+        if (canReply) ...[
+          _miniAction(label: '답글', onTap: _startReply),
+          if (isMine || canReport || canDelete) const SizedBox(width: 12),
+        ],
         if (isMine) ...[
           _miniAction(label: '수정', onTap: _startEdit),
           const SizedBox(width: 12),
@@ -353,5 +397,34 @@ class _CommentCardState extends ConsumerState<CommentCard> {
         ),
       ),
     );
+  }
+}
+
+/// 댓글 작성자 아바타 + 스트릭 글로우. 익명이면서 작성자가 토글을 꺼둔 경우엔
+/// 글로우 없이 평범한 아바타만 노출한다.
+class _AvatarWithGlow extends ConsumerWidget {
+  final CommunityComment comment;
+  final double size;
+
+  const _AvatarWithGlow({required this.comment, required this.size});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final avatar = CommunityAvatar(
+      authorUid: comment.authorUid,
+      displayName: comment.displayName,
+      isAnonymous: comment.isAnonymous,
+      size: size,
+    );
+    final showRank = !comment.isAnonymous || comment.showRankIfAnonymous;
+    if (!showRank) return avatar;
+
+    final stats =
+        ref.watch(userStatsByUidProvider(comment.authorUid)).maybeWhen(
+              data: (s) => s,
+              orElse: () => null,
+            );
+    final streak = liveCurrentStreak(stats);
+    return StreakAvatarGlow(streak: streak, child: avatar, avatarSize: size);
   }
 }

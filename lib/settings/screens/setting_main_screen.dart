@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dearlog/app.dart';
 import 'package:dearlog/call/providers/voice_provider.dart';
 import 'package:dearlog/community/repository/community_repository.dart';
+import 'package:dearlog/community/screens/community_settings_screen.dart';
+import 'package:dearlog/community/widgets/my_rank_card.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
@@ -518,6 +520,8 @@ class SettingMainScreen extends ConsumerWidget {
             child: ListView(
               children: [
                 const SizedBox(height: 20),
+                const MyRankCard(),
+                const SizedBox(height: 20),
                 _OpinionGiveMe(
                   onTap: () {
                     showModalBottomSheet(
@@ -621,6 +625,13 @@ class SettingMainScreen extends ConsumerWidget {
                       title: '알림 설정',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const NotificationSettingScreen()),
+                      ),
+                    ),
+                    SimpleTitleTile(
+                      title: '커뮤니티 설정',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const CommunitySettingsScreen()),
                       ),
                     ),
                     SimpleTitleTile(

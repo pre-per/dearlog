@@ -15,6 +15,9 @@ const _kReminderHour = 'reminder_hour';
 const _kReminderMinute = 'reminder_minute';
 const _kLetterNotifEnabled = 'letter_notif_enabled';
 const _kCommentNotifEnabled = 'comment_notif_enabled';
+const _kCommunityRecapEnabled = 'community_recap_enabled';
+const _kCommunityRecapHour = 'community_recap_hour';
+const _kCommunityRecapMinute = 'community_recap_minute';
 const _notificationId = 1001;
 
 class NotificationSettingScreen extends StatefulWidget {
@@ -35,6 +38,11 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
   int _fortuneHour = DailyFortuneNotificationScheduler.defaultHour;
   int _fortuneMinute = DailyFortuneNotificationScheduler.defaultMinute;
   bool _fortuneSaving = false;
+  // 커뮤니티 일일 알림 — Cloud Functions 가 서버에서 발송 (commentNotifEnabled 와 동일 패턴).
+  bool _recapEnabled = false;
+  int _recapHour = 19;
+  int _recapMinute = 0;
+  bool _recapSaving = false;
   bool _loading = true;
   bool _saving = false;
   bool _permissionDenied = false;
@@ -94,6 +102,10 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
       _fortuneMinute =
           prefs.getInt(DailyFortuneNotificationScheduler.prefsMinute) ??
               DailyFortuneNotificationScheduler.defaultMinute;
+      // 커뮤니티 일일 알림 기본값은 OFF — 새 사용자에게 사전 동의 없이 push 를 보내지 않는다.
+      _recapEnabled = prefs.getBool(_kCommunityRecapEnabled) ?? false;
+      _recapHour = prefs.getInt(_kCommunityRecapHour) ?? 19;
+      _recapMinute = prefs.getInt(_kCommunityRecapMinute) ?? 0;
       _permissionDenied = denied;
       _loading = false;
     });
@@ -184,6 +196,60 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
     }
   }
 
+  // ───── 커뮤니티 일일 알림 ─────
+  //
+  // Cloud Functions 가 매 N 분 cron 으로 돌면서 user doc 의
+  // dailyCommunityNotifSlot/Enabled 를 보고 발송하므로, 클라이언트는 prefs +
+  // Firestore 미러만 한다. (LocalNotificationService 와 무관)
+  Future<void> _saveCommunityRecap({
+    bool? enabled,
+    int? hour,
+    int? minute,
+  }) async {
+    setState(() => _recapSaving = true);
+
+    final newEnabled = enabled ?? _recapEnabled;
+    final newHour = hour ?? _recapHour;
+    final newMinute = minute ?? _recapMinute;
+    final newSlot = newHour * 60 + newMinute;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kCommunityRecapEnabled, newEnabled);
+    await prefs.setInt(_kCommunityRecapHour, newHour);
+    await prefs.setInt(_kCommunityRecapMinute, newMinute);
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      try {
+        await FirebaseFirestore.instance.doc('users/$uid').set({
+          'dailyCommunityNotifEnabled': newEnabled,
+          'dailyCommunityNotifHour': newHour,
+          'dailyCommunityNotifMinute': newMinute,
+          'dailyCommunityNotifSlot': newSlot,
+        }, SetOptions(merge: true));
+      } catch (e) {
+        if (mounted) _toast('서버 동기화에 실패했어요: $e');
+        setState(() => _recapSaving = false);
+        return;
+      }
+    }
+
+    setState(() {
+      _recapEnabled = newEnabled;
+      _recapHour = newHour;
+      _recapMinute = newMinute;
+      _recapSaving = false;
+    });
+
+    if (mounted) {
+      _toast(
+        newEnabled
+            ? '매일 ${_formatTime(newHour, newMinute)}쯤 새 게시글 알림을 드릴게요.'
+            : '커뮤니티 일일 알림이 꺼졌어요.',
+      );
+    }
+  }
+
   // ───── 오늘의 운세 알림 ─────
 
   Future<void> _saveFortune({bool? enabled, int? hour, int? minute}) async {
@@ -243,6 +309,14 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
       initialHour: _fortuneHour,
       initialMinute: _fortuneMinute,
       onPicked: (h, m) => _saveFortune(hour: h, minute: m),
+    );
+  }
+
+  void _pickRecapTime() {
+    _showTimePicker(
+      initialHour: _recapHour,
+      initialMinute: _recapMinute,
+      onPicked: (h, m) => _saveCommunityRecap(hour: h, minute: m),
     );
   }
 
@@ -415,6 +489,42 @@ class _NotificationSettingScreenState extends State<NotificationSettingScreen>
                           children: [
                             Text(
                               _formatTime(_fortuneHour, _fortuneMinute),
+                              style: const TextStyle(color: Color(0xFFFFD700), fontSize: 16, fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.chevron_right, color: Colors.white38, size: 20),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 12),
+
+                // ── 커뮤니티 일일 알림 ──
+                _ToggleCard(
+                  title: '커뮤니티 일일 알림',
+                  subtitle: '하루 한 번 새 게시글을 알려드려요',
+                  value: _recapEnabled,
+                  saving: _recapSaving,
+                  onChanged: (v) => _saveCommunityRecap(enabled: v),
+                ),
+                if (_recapEnabled) ...[
+                  const SizedBox(height: 12),
+                  _SettingCard(
+                    onTap: _pickRecapTime,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          '알림 시간',
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              _formatTime(_recapHour, _recapMinute),
                               style: const TextStyle(color: Color(0xFFFFD700), fontSize: 16, fontWeight: FontWeight.w700),
                             ),
                             const SizedBox(width: 6),

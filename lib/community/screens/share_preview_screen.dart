@@ -7,7 +7,11 @@ import '../../diary/models/diary_entry.dart';
 import '../../shared_ui/widgets/dialog/glass_dialog.dart';
 import '../../user/providers/user_fetch_providers.dart';
 import '../models/community_post.dart';
+import '../models/community_share_options.dart';
+import '../models/nlp_filter_snapshot.dart';
+import '../providers/anonymous_default_provider.dart';
 import '../providers/community_providers.dart';
+import '../widgets/community_share_options_panel.dart';
 import '../widgets/post_card.dart';
 
 /// 일기를 커뮤니티에 공개하기 전 미리보기 + 편집 화면.
@@ -26,7 +30,7 @@ class SharePreviewScreen extends ConsumerStatefulWidget {
 class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
   late final TextEditingController _titleCtrl;
   late final TextEditingController _contentCtrl;
-  bool _isAnonymous = false;
+  late CommunityShareOptions _options;
   bool _publishing = false;
 
   @override
@@ -36,6 +40,11 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
       ..addListener(_onChanged);
     _contentCtrl = TextEditingController(text: widget.diary.content)
       ..addListener(_onChanged);
+    _options = CommunityShareOptions.initial(
+      hasImages: widget.diary.imageUrls.isNotEmpty,
+      hasEmotion: widget.diary.emotion.trim().isNotEmpty,
+      hasNlpInsight: (widget.diary.nlpInsight?.filters.isNotEmpty ?? false),
+    );
   }
 
   void _onChanged() => setState(() {});
@@ -47,13 +56,29 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
     super.dispose();
   }
 
+  /// 일기의 NLP 인사이트를 게시물 저장용 스냅샷으로 변환. 토글이 켜져 있고
+  /// 필터가 있을 때만 호출. 카드/상세 모두 최대 2개까지 노출하므로 take(2).
+  List<NlpFilterSnapshot> _nlpSnapshots() {
+    final insight = widget.diary.nlpInsight;
+    if (!_options.includeNlpInsight || insight == null) return const [];
+    return insight.filters
+        .take(2)
+        .map((f) => NlpFilterSnapshot(tag: f.tag, headline: f.headline))
+        .toList();
+  }
+
   Future<void> _publish() async {
     if (_publishing) return;
 
-    final title = _titleCtrl.text.trim();
-    final content = _contentCtrl.text.trim();
-    if (title.isEmpty && content.isEmpty) {
-      _snack('제목이나 내용 중 하나는 채워주세요');
+    final rawTitle = _options.includeTitle ? _titleCtrl.text.trim() : '';
+    final content = _options.includeContent ? _contentCtrl.text.trim() : '';
+    final nlpFilters = _nlpSnapshots();
+
+    if (rawTitle.isEmpty &&
+        content.isEmpty &&
+        (!_options.includeImages || widget.diary.imageUrls.isEmpty) &&
+        nlpFilters.isEmpty) {
+      _snack('제목·내용·이미지·NLP 중 하나는 채워주세요');
       return;
     }
 
@@ -63,10 +88,11 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
       return;
     }
 
+    final isAnonymous = ref.read(anonymousDefaultProvider);
     final ok = await showGlassDialog<bool>(
       context: context,
       title: '커뮤니티에 공개할까요?',
-      message: _isAnonymous
+      message: isAnonymous
           ? '익명으로 게시돼요.\n다른 사람들이 댓글과 좋아요를 남길 수 있어요.'
           : '"${user.profile.nickname}" 으로 게시돼요.\n다른 사람들이 댓글과 좋아요를 남길 수 있어요.',
       actions: const [
@@ -81,10 +107,17 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
       await ref.read(communityRepositoryProvider).publishDiary(
             authorUid: user.id,
             authorNickname: user.profile.nickname,
-            isAnonymous: _isAnonymous,
+            isAnonymous: isAnonymous,
             diary: widget.diary,
-            overrideTitle: title,
+            overrideTitle: rawTitle,
             overrideContent: content,
+            overrideEmotion: _options.includeEmotion ? null : '',
+            overrideImageSources:
+                _options.includeImages ? null : const <String>[],
+            overrideDiaryDate:
+                _options.includeDate ? null : DateTime.now(),
+            nlpFilters: nlpFilters,
+            showRankIfAnonymous: user.preferences.showRankWhenAnonymous,
           );
 
       // 피드와 일기 상세의 공개 상태 캐시 무효화
@@ -111,20 +144,33 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(userProvider).valueOrNull;
     final nickname = user?.profile.nickname ?? '';
+    final isAnonymous = ref.watch(anonymousDefaultProvider);
 
-    // 실시간 미리보기용 임시 게시물 (저장되지 않음)
+    final hasImages = widget.diary.imageUrls.isNotEmpty;
+    final hasEmotion = widget.diary.emotion.trim().isNotEmpty;
+    final hasNlp =
+        widget.diary.nlpInsight?.filters.isNotEmpty ?? false;
+
+    // 토글 상태를 반영한 실시간 미리보기. 게시 시 publishDiary 에 넘기는 값과
+    // 같은 규칙으로 계산해 미리보기/실제 결과를 일치시킨다.
+    final previewTitle = _options.includeTitle ? _titleCtrl.text : '';
+    final previewContent =
+        _options.includeContent ? _contentCtrl.text : '';
     final previewPost = CommunityPost(
       id: '_preview',
       authorUid: user?.id ?? '',
       authorNicknameSnapshot: nickname,
-      isAnonymous: _isAnonymous,
+      isAnonymous: isAnonymous,
       originalDiaryId: widget.diary.id,
-      title: _titleCtrl.text,
-      content: _contentCtrl.text,
-      emotion: widget.diary.emotion,
-      imageUrls: widget.diary.imageUrls,
-      diaryDate: widget.diary.date,
+      title: previewTitle,
+      content: previewContent,
+      emotion: _options.includeEmotion ? widget.diary.emotion : '',
+      imageUrls:
+          _options.includeImages ? widget.diary.imageUrls : const [],
+      diaryDate:
+          _options.includeDate ? widget.diary.date : DateTime.now(),
       createdAt: DateTime.now(),
+      nlpFilters: _nlpSnapshots(),
     );
 
     return BaseScaffold(
@@ -153,31 +199,59 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
                     const SizedBox(height: 10),
                     PostCard(post: previewPost),
                     const SizedBox(height: 28),
+                    _sectionLabel('공유할 정보'),
+                    const SizedBox(height: 10),
+                    CommunityShareOptionsPanel(
+                      options: _options,
+                      onChanged: (next) => setState(() => _options = next),
+                      hasImages: hasImages,
+                      hasEmotion: hasEmotion,
+                      hasNlpInsight: hasNlp,
+                    ),
+                    const SizedBox(height: 28),
                     _sectionLabel('표시 이름'),
                     const SizedBox(height: 10),
                     _IdentityToggle(
                       nickname: nickname.isEmpty ? '닉네임' : nickname,
-                      isAnonymous: _isAnonymous,
-                      onChanged: (v) => setState(() => _isAnonymous = v),
+                      isAnonymous: isAnonymous,
+                      onChanged: (v) => ref
+                          .read(anonymousDefaultProvider.notifier)
+                          .setAnonymous(v),
                     ),
-                    const SizedBox(height: 28),
-                    _sectionLabel('제목'),
-                    const SizedBox(height: 10),
-                    _GlassTextField(
-                      controller: _titleCtrl,
-                      hint: '제목 (선택)',
-                      maxLines: 1,
-                      maxLength: 100,
-                    ),
-                    const SizedBox(height: 24),
-                    _sectionLabel('내용'),
-                    const SizedBox(height: 10),
-                    _GlassTextField(
-                      controller: _contentCtrl,
-                      hint: '내용을 입력해 주세요',
-                      maxLines: 10,
-                      maxLength: 5000,
-                    ),
+                    if (_options.includeTitle) ...[
+                      const SizedBox(height: 28),
+                      _sectionLabel('제목'),
+                      const SizedBox(height: 10),
+                      _GlassTextField(
+                        controller: _titleCtrl,
+                        hint: '제목 (선택)',
+                        maxLines: 1,
+                        maxLength: 100,
+                      ),
+                    ],
+                    if (_options.includeContent) ...[
+                      const SizedBox(height: 24),
+                      _sectionLabel('내용'),
+                      const SizedBox(height: 10),
+                      _GlassTextField(
+                        controller: _contentCtrl,
+                        hint: '내용을 입력해 주세요',
+                        maxLines: 10,
+                        maxLength: 5000,
+                      ),
+                    ],
+                    if (!_options.includeTitle && !_options.includeContent)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 24),
+                        child: _EmptyEditNotice(
+                          onUseDiary: () => setState(() {
+                            _options = _options.copyWith(
+                              includeTitle: true,
+                              includeContent: true,
+                            );
+                          }),
+                        ),
+                      ),
                     const SizedBox(height: 16),
                     const _NoticeBox(),
                   ],
@@ -354,6 +428,75 @@ class _GlassTextField extends StatelessWidget {
             fontFamily: 'GowunBatang',
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 제목·본문 토글이 모두 OFF 일 때 — 사용자가 직접 작성하려면 토글을 켜라는
+/// 안내. 한 번 탭으로 둘 다 다시 켜 주는 단축 액션도 함께 제공.
+class _EmptyEditNotice extends StatelessWidget {
+  final VoidCallback onUseDiary;
+  const _EmptyEditNotice({required this.onUseDiary});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '제목과 본문이 비어있어요',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.85),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'GowunBatang',
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '제목·본문 토글을 켜면 일기 내용을 가져와 다듬을 수 있어요.\n또는 그림·감정만으로도 게시할 수 있어요.',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.55),
+              fontSize: 12,
+              height: 1.5,
+              fontFamily: 'GowunBatang',
+            ),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: onUseDiary,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFD700).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: const Color(0xFFFFD700).withOpacity(0.5),
+                ),
+              ),
+              child: const Center(
+                child: Text(
+                  '일기 내용 가져오기',
+                  style: TextStyle(
+                    color: Color(0xFFFFD700),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'GowunBatang',
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

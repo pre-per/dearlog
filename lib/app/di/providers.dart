@@ -6,6 +6,7 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 
 import '../../ai/services/openai_service.dart';
 import '../../user/repository/user_repository.dart';
+import '../../user/repository/user_stats_repository.dart';
 import '../../diary/repository/diary_repository.dart';
 import '../../call/repository/call_repository.dart';
 import '../../community/repository/community_repository.dart';
@@ -24,6 +25,11 @@ final openAIServiceProvider  = Provider<OpenAIService>((ref) {
 final userRepositoryProvider  = Provider<UserRepository>((ref) {
   final db = ref.watch(firestoreProvider);
   return UserRepository(firestore: db);
+});
+
+final userStatsRepositoryProvider = Provider<UserStatsRepository>((ref) {
+  final db = ref.watch(firestoreProvider);
+  return UserStatsRepository(firestore: db);
 });
 
 final diaryRepositoryProvider = Provider<DiaryRepository>((ref) {
