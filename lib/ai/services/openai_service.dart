@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
+import 'dart:math' show Random;
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:dearlog/app.dart';
@@ -692,8 +692,26 @@ keywords: $keywordsLine
     );
   }
 
+  /// 그림 속 중심 캐릭터(=일기 작성자)의 성별을 영어 프롬프트 토큰으로 변환한다.
+  /// 사용자 프로필 [UserProfile.gender] ('남자' | '여자' | '공개 안 함') 를 받아
+  /// '남자'/'여자' 는 그대로 반영하고, '공개 안 함'(또는 미설정/빈 값)은
+  /// 남/여 중 무작위로 정해 매번 다른 성별로 그려질 수 있게 한다.
+  String _resolveCharacterGender(String? gender) {
+    switch (gender?.trim()) {
+      case '남자':
+        return 'male';
+      case '여자':
+        return 'female';
+      default:
+        return Random().nextBool() ? 'male' : 'female';
+    }
+  }
+
   /// 일기 상세 화면에서 사용자가 [IllustrationTheme] 을 선택해 호출.
   /// 그림 생성 → Firebase Storage 업로드 → downloadURL 반환.
+  ///
+  /// [gender] 는 사용자 프로필의 성별('남자'|'여자'|'공개 안 함')로,
+  /// 중심 캐릭터의 성별에 반영된다. ('공개 안 함'/미설정은 무작위 — [_resolveCharacterGender])
   ///
   /// 업로드 위치는 `users/{userId}/diaries/{diary.id}/illustration.png` —
   /// user-scoped 경로라 storage.rules 의 `users/{uid}/{allPaths=**}` 규칙으로
@@ -702,11 +720,14 @@ keywords: $keywordsLine
     required DiaryEntry diary,
     required String userId,
     required IllustrationTheme theme,
+    String? gender,
   }) async {
     final mainWordsStr = (diary.analysis?.keywords ?? const <KeywordEntry>[])
         .where((k) => k.category == KeywordCategory.noun)
         .map((k) => k.word)
         .join(', ');
+
+    final characterGender = _resolveCharacterGender(gender);
 
     final imagePrompt = '''
 You are illustrating a single-scene diary illustration for a Korean user's daily journal entry.
@@ -719,7 +740,7 @@ You are illustrating a single-scene diary illustration for a Korean user's daily
 
 [ILLUSTRATION RULES]
 1. Scene: Choose ONE specific location or moment from the content (e.g., a cozy room, a café, a park bench, a bed at night). The scene must directly reflect a concrete detail mentioned in the content — not a generic setting.
-2. Character: One small, simple character at the center. The character's pose, action, and facial expression must reflect the emotion ("${diary.emotion}") and what they are doing in the story.
+2. Character: One small, simple $characterGender character at the center, representing the diary's author. The character's pose, action, and facial expression must reflect the emotion ("${diary.emotion}") and what they are doing in the story.
 3. Key objects: Identify 3–5 concrete nouns or actions from the content (e.g., a book, a phone call, music notes, food, a friend, rain, a TV) and include them visually in the scene as props or background details. Prioritize objects related to the key themes: $mainWordsStr.
 4. Storytelling details: Scatter small visual storytelling elements throughout — things like: items on a desk, what's outside the window, objects on the floor, or subtle symbols that hint at what happened that day.
 5. ${theme.promptFragment}

@@ -258,10 +258,13 @@ class _DiaryImageState extends ConsumerState<_DiaryImage> {
       if (userId == null) {
         throw Exception('로그인 정보가 없어 그림을 만들 수 없어요');
       }
+      // 프로필 성별을 그림 속 캐릭터에 반영한다. ('공개 안 함'/미설정은 서비스에서 무작위 처리)
+      final gender = ref.read(userProfileProvider)?.gender;
       final imageUrl = await OpenAIService().generateIllustrationForDiary(
         diary: widget.diary,
         userId: userId,
         theme: theme,
+        gender: gender,
       );
       // 위젯이 dispose된 뒤(사용자가 나가기 선택 후)에는 결과 폐기.
       if (!mounted) return;

@@ -479,7 +479,7 @@ exports.notifyOnNewComment = functions
 // 랭킹 시스템 — user_stats/{uid} 자동 갱신
 // ─────────────────────────────────────────────────────────────────────────
 //
-// 일기 doc(`users/{uid}/diaries/{diaryId}`) 의 create/update/delete 마다 트리거되어
+// 일기 doc(`users/{uid}/diary/{diaryId}`) 의 create/update/delete 마다 트리거되어
 // 다음 통계를 다시 계산해서 `user_stats/{uid}` 에 set 한다:
 //   - diaryCount: 작성된 일기들의 KST 자정 기준 고유 날짜 수
 //   - currentStreak: 가장 최근 일기일을 기준으로 한 연속 일수 (유예 1일 허용)
@@ -584,7 +584,7 @@ function _currentStreakFromDesc(keysDesc, todayMs) {
 /// 사용자의 전체 일기 컬렉션을 스캔해서 user_stats 를 다시 계산하고 저장한다.
 /// onWrite 트리거와 백필 callable 모두에서 재사용.
 async function _recomputeUserStats(db, userId) {
-  const diariesSnap = await db.collection(`users/${userId}/diaries`).get();
+  const diariesSnap = await db.collection(`users/${userId}/diary`).get();
   const dayKeys = new Set();
   diariesSnap.forEach((d) => {
     const data = d.data() || {};
@@ -639,7 +639,7 @@ async function _recomputeUserStats(db, userId) {
 exports.recomputeUserStatsOnDiaryWrite = functions
   .region('us-central1')
   .firestore
-  .document('users/{userId}/diaries/{diaryId}')
+  .document('users/{userId}/diary/{diaryId}')
   .onWrite(async (change, context) => {
     const { userId } = context.params;
     try {
