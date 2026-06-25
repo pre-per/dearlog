@@ -1,0 +1,36 @@
+{
+  "UserPlanet": {
+    "userId": "user_001",
+    "planetName": "바래님의 행성",
+    "basePlanetType": "base_planet_purple",
+    "visibility": "anonymous",
+    "recentEmotionSummary": {
+      "calm": 42,
+      "excitement": 28,
+      "anxiety": 18
+    },
+    "visitorCount": 32,
+    "receivedStarPieces": 128,
+    "equippedPlanetItems": [
+      "bg_lavender_galaxy",
+      "ring_gold_light",
+      "star_gold_spark",
+      "widget_star_jar"
+    ],
+    "equippedNovaItems": [
+      "antenna_star_basic",
+      "bag_basic_star",
+      "hand_star",
+      "face_smile"
+    ],
+    "createdAt": "2026-06-15T00:00:00Z",
+    "updatedAt": "2026-06-15T00:00:00Z"
+  },
+  "StarPieceRules": {
+    "diary_created": 10,
+    "streak_bonus": 5,
+    "community_like_received": 1,
+    "planet_visit_received": 1,
+    "star_piece_gift_received": 3
+  }
+}

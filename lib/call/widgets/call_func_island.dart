@@ -5,7 +5,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 /// 통화 화면 하단 컨트롤 패널.
 /// - 통화 종료 / 일시정지 / 키보드 입력 토글
-/// - 그림일기 자동 생성 토글 (illustrationEnabledProvider 연동, 기본 ON)
 class CallFuncIsland extends ConsumerWidget {
   final VoidCallback onPauseToggle;
   final VoidCallback onTextToggle;
@@ -24,8 +23,6 @@ class CallFuncIsland extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final illustrationEnabled = ref.watch(illustrationEnabledProvider);
-
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -79,7 +76,7 @@ class CallFuncIsland extends ConsumerWidget {
                 onTap: onTextToggle,
                 child: Container(
                   height: 52,
-                  width: 92,
+                  width: 150,
                   decoration: BoxDecoration(
                     color: isTextMode ? call_green_color : Color(0x1affffff),
                     borderRadius: BorderRadius.circular(20),
@@ -93,9 +90,9 @@ class CallFuncIsland extends ConsumerWidget {
                         height: 20,
                         color: isTextMode ? Colors.green[200] : Colors.white,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 8),
                       Text(
-                        isTextMode ? '해제' : '입력',
+                        isTextMode ? '음성 모드' : '키보드 입력',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -105,11 +102,6 @@ class CallFuncIsland extends ConsumerWidget {
                     ],
                   ),
                 ),
-              ),
-              _IllustrationToggleButton(
-                enabled: illustrationEnabled,
-                onTap: () =>
-                    ref.read(illustrationEnabledProvider.notifier).toggle(),
               ),
             ],
           ),
@@ -126,71 +118,6 @@ class CallFuncIsland extends ConsumerWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-/// 그림일기 자동 생성 토글 버튼.
-/// ON: 금색 글로우 + 채워진 톤. OFF: 무채색 글래스 톤.
-class _IllustrationToggleButton extends StatelessWidget {
-  final bool enabled;
-  final VoidCallback onTap;
-  const _IllustrationToggleButton({
-    required this.enabled,
-    required this.onTap,
-  });
-
-  static const _gold = Color(0xFFFFD700);
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOut,
-        height: 52,
-        width: 92,
-        decoration: BoxDecoration(
-          color: enabled
-              ? _gold.withOpacity(0.22)
-              : const Color(0x1affffff),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: enabled
-                ? _gold.withOpacity(0.55)
-                : Colors.transparent,
-          ),
-          boxShadow: enabled
-              ? [
-                  BoxShadow(
-                    color: _gold.withOpacity(0.25),
-                    blurRadius: 12,
-                    spreadRadius: 0,
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              enabled ? Icons.auto_awesome : Icons.auto_awesome_outlined,
-              size: 18,
-              color: enabled ? _gold : Colors.white70,
-            ),
-            const SizedBox(width: 5),
-            Text(
-              '그림',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: enabled ? _gold : Colors.white70,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

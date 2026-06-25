@@ -112,6 +112,16 @@ service cloud.firestore {
       }
     }
 
+    // ===== 사용자 통계 (랭킹 시스템) =====
+    // `user_stats/{uid}` — 사용자의 일기 카운트 / 스트릭 / 최장 기록 등.
+    // 커뮤니티 게시물·댓글에서 작성자의 랭크·글로우를 표시하기 위해 로그인한 모든
+    // 사용자가 read 가능. write 는 Cloud Functions (Admin SDK) 만 — 클라이언트 위변조
+    // 차단. 일기 onWrite 트리거가 단일 진실 공급원.
+    match /user_stats/{userId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
     // ===== 신고 =====
     // 작성: 로그인한 사용자가 본인 uid 로.
     // 읽기: 본인이 작성한 신고만.

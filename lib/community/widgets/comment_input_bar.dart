@@ -3,11 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/di/providers.dart';
 import '../../user/providers/user_fetch_providers.dart';
+import '../providers/anonymous_default_provider.dart';
+import '../providers/reply_target_provider.dart';
+import '../utils/content_filter.dart';
 
 /// 게시물 상세 하단에 고정되는 댓글 입력 바.
 ///
 /// - 키보드가 올라오면 `Scaffold.bottomNavigationBar` 슬롯에 들어가 있어 자동으로 같이 올라간다.
-/// - 입력란 위에 작은 "익명으로 작성" 토글 — 댓글마다 따로 결정 가능.
+/// - 입력란 위에 작은 "익명으로 작성" 토글 — 익명 기본값 [anonymousDefaultProvider] 와 동기화.
+/// - 답글 모드일 때는 상단에 "@xxx 에게 답글" 헤더가 뜨고 본문 앞에 자동으로
+///   "@xxx " 멘션이 채워진다.
 /// - 비로그인 / 닉네임 미설정 상태에서는 안내 텍스트로 대체.
 class CommentInputBar extends ConsumerStatefulWidget {
   final String postId;
@@ -20,13 +25,20 @@ class CommentInputBar extends ConsumerStatefulWidget {
 class _CommentInputBarState extends ConsumerState<CommentInputBar> {
   final _ctrl = TextEditingController();
   final _focus = FocusNode();
-  bool _isAnonymous = false;
   bool _sending = false;
+  String? _lastReplyTargetId;
 
   @override
   void initState() {
     super.initState();
     _ctrl.addListener(() => setState(() {}));
+    // 다른 게시물 상세에서 남긴 답글 대상이 새 화면에 끌려오지 않도록 초기화.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final cur = ref.read(replyTargetProvider);
+      if (cur != null && cur.postId != widget.postId) {
+        ref.read(replyTargetProvider.notifier).clear();
+      }
+    });
   }
 
   @override
@@ -38,22 +50,62 @@ class _CommentInputBarState extends ConsumerState<CommentInputBar> {
 
   bool get _canSend => _ctrl.text.trim().isNotEmpty && !_sending;
 
+  /// 답글 대상이 바뀌면 멘션 prefix 를 채우고 포커스 — build 안에서 ref.listen
+  /// 으로 호출한다.
+  void _applyReplyTarget(ReplyTarget? target) {
+    if (target == null) {
+      // 답글 모드 해제 시 멘션 prefix 제거
+      if (_lastReplyTargetId != null && _ctrl.text.startsWith('@')) {
+        _ctrl.clear();
+      }
+      _lastReplyTargetId = null;
+      return;
+    }
+    if (_lastReplyTargetId == target.parentCommentId) return;
+    _lastReplyTargetId = target.parentCommentId;
+    final mention = '@${target.parentDisplayName} ';
+    _ctrl.text = mention;
+    _ctrl.selection = TextSelection.collapsed(offset: mention.length);
+    // 포커스를 부여해 키보드 자동 노출.
+    FocusScope.of(context).requestFocus(_focus);
+  }
+
   Future<void> _send() async {
     if (!_canSend) return;
     final user = ref.read(userProvider).valueOrNull;
     if (user == null) return;
 
     final text = _ctrl.text.trim();
+
+    // 댓글 금칙어 1차 필터 (App Store 1.2 — UGC 콘텐츠 필터링)
+    final banned = ContentFilter.findBannedWord(text);
+    if (banned != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('부적절한 표현("$banned")이 포함되어 있어 등록할 수 없어요')),
+      );
+      return;
+    }
+
+    final isAnonymous = ref.read(anonymousDefaultProvider);
+    final replyTarget = ref.read(replyTargetProvider);
+
     setState(() => _sending = true);
     try {
       await ref.read(communityRepositoryProvider).addComment(
             postId: widget.postId,
             authorUid: user.id,
             authorNickname: user.profile.nickname,
-            isAnonymous: _isAnonymous,
+            isAnonymous: isAnonymous,
             content: text,
+            parentCommentId: replyTarget?.parentCommentId,
+            parentNicknameSnapshot: replyTarget?.parentDisplayName,
+            showRankIfAnonymous: user.preferences.showRankWhenAnonymous,
           );
       _ctrl.clear();
+      // 답글 모드 종료 — 다음 입력은 일반 댓글로 시작
+      if (replyTarget != null) {
+        ref.read(replyTargetProvider.notifier).clear();
+      }
       // 키보드는 유지 — 연달아 댓글 달기 편하게
     } catch (e) {
       if (mounted) {
@@ -70,6 +122,13 @@ class _CommentInputBarState extends ConsumerState<CommentInputBar> {
   Widget build(BuildContext context) {
     final user = ref.watch(userProvider).valueOrNull;
     final loggedIn = user != null;
+    final isAnonymous = ref.watch(anonymousDefaultProvider);
+    final replyTarget = ref.watch(replyTargetProvider);
+
+    // 답글 대상이 바뀌면 멘션 채우기. build 안의 schedule 로 동기화 시점 안정화.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _applyReplyTarget(replyTarget);
+    });
 
     return Container(
       decoration: BoxDecoration(
@@ -88,13 +147,20 @@ class _CommentInputBarState extends ConsumerState<CommentInputBar> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (replyTarget != null)
+                      _ReplyHeader(
+                        targetName: replyTarget.parentDisplayName,
+                        onCancel: () =>
+                            ref.read(replyTargetProvider.notifier).clear(),
+                      ),
                     _AnonymousToggle(
-                      isAnonymous: _isAnonymous,
-                      onTap: () =>
-                          setState(() => _isAnonymous = !_isAnonymous),
+                      isAnonymous: isAnonymous,
+                      onTap: () => ref
+                          .read(anonymousDefaultProvider.notifier)
+                          .toggle(),
                     ),
                     const SizedBox(height: 6),
-                    _inputRow(),
+                    _inputRow(isReply: replyTarget != null),
                   ],
                 ),
         ),
@@ -102,7 +168,7 @@ class _CommentInputBarState extends ConsumerState<CommentInputBar> {
     );
   }
 
-  Widget _inputRow() {
+  Widget _inputRow({required bool isReply}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -133,7 +199,7 @@ class _CommentInputBarState extends ConsumerState<CommentInputBar> {
                 contentPadding: const EdgeInsets.symmetric(vertical: 8),
                 border: InputBorder.none,
                 counterText: '',
-                hintText: '댓글 남기기...',
+                hintText: isReply ? '답글 남기기...' : '댓글 남기기...',
                 hintStyle: TextStyle(
                   color: Colors.white.withOpacity(0.35),
                   fontFamily: 'GowunBatang',
@@ -160,6 +226,64 @@ class _CommentInputBarState extends ConsumerState<CommentInputBar> {
             fontFamily: 'GowunBatang',
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ReplyHeader extends StatelessWidget {
+  final String targetName;
+  final VoidCallback onCancel;
+  const _ReplyHeader({required this.targetName, required this.onCancel});
+
+  static const _gold = Color(0xFFFFD700);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: _gold.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: _gold.withOpacity(0.4)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.reply_rounded, size: 13, color: _gold),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    '$targetName 님에게 답글',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _gold,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'GowunBatang',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onCancel,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Icon(
+                Icons.close_rounded,
+                size: 16,
+                color: Colors.white.withOpacity(0.55),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

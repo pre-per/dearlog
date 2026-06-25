@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dearlog/app.dart';
-import 'package:dearlog/settings/screens/sub_screens/terms_of_service_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -14,6 +13,7 @@ class OnboardingAgreementScreen extends StatefulWidget {
 
 class _OnboardingAgreementScreenState extends State<OnboardingAgreementScreen> {
   bool agreeAll = false;
+  bool age14 = false;
   bool termsOfUse = false;
   bool privacyPolicy = false;
   bool marketingConsent = false;
@@ -22,6 +22,7 @@ class _OnboardingAgreementScreenState extends State<OnboardingAgreementScreen> {
   void toggleAll(bool? value) {
     setState(() {
       agreeAll = value ?? false;
+      age14 = agreeAll;
       termsOfUse = agreeAll;
       privacyPolicy = agreeAll;
       marketingConsent = agreeAll;
@@ -30,7 +31,7 @@ class _OnboardingAgreementScreenState extends State<OnboardingAgreementScreen> {
 
   void checkIfAllAgreed() {
     setState(() {
-      agreeAll = termsOfUse && privacyPolicy && marketingConsent;
+      agreeAll = age14 && termsOfUse && privacyPolicy && marketingConsent;
     });
   }
 
@@ -44,6 +45,8 @@ class _OnboardingAgreementScreenState extends State<OnboardingAgreementScreen> {
       await FirebaseFirestore.instance.doc('users/$uid').set({
         'agreedTermsAt': now,
         'agreedPrivacyAt': now,
+        // 개인정보처리방침의 "만 14세 미만 미제공" 정책의 확인 근거.
+        'age14ConfirmedAt': now,
         'marketingConsent': marketingConsent,
         if (marketingConsent) 'marketingConsentAt': now,
       }, SetOptions(merge: true));
@@ -104,7 +107,7 @@ class _OnboardingAgreementScreenState extends State<OnboardingAgreementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final enabled = termsOfUse && privacyPolicy;
+    final enabled = age14 && termsOfUse && privacyPolicy;
 
     return PopScope(
       // 시스템/제스처 백 → 우리 _handleBack 으로 라우팅 (LoginScreen 으로 정상 복귀)
@@ -140,6 +143,14 @@ class _OnboardingAgreementScreenState extends State<OnboardingAgreementScreen> {
             ),
             const Divider(),
             buildAgreementItem(
+              title: '(필수) 만 14세 이상입니다',
+              value: age14,
+              onChanged: (val) {
+                setState(() => age14 = val ?? false);
+                checkIfAllAgreed();
+              },
+            ),
+            buildAgreementItem(
               title: '(필수) 서비스 이용약관',
               value: termsOfUse,
               onChanged: (val) {
@@ -160,9 +171,8 @@ class _OnboardingAgreementScreenState extends State<OnboardingAgreementScreen> {
                 setState(() => privacyPolicy = val ?? false);
                 checkIfAllAgreed();
               },
-              onTapDetail: () {
-                Navigator.of(context).push(MaterialPageRoute(builder: (_) => PrivacyPolicyScreen()));
-              },
+              // 개인정보 처리방침은 노션 페이지 — 외부 브라우저로 연다.
+              onTapDetail: () => openPrivacyPolicy(context),
             ),
             buildAgreementItem(
               title: '(선택) 마케팅 정보 수신동의',

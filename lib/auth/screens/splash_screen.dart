@@ -81,12 +81,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     }
 
     ref.read(userIdProvider.notifier).state = currentUser.uid;
+    // ignore: unawaited_futures
+    AnalyticsService.setUserId(currentUser.uid);
 
     final user = await ref.read(userProvider.future);
     if (user == null) {
       await _finishProgressAndGo(const LoginScreen());
       return;
     }
+
+    // GA4 segmentation 용 인구통계 user property — 매 진입마다 갱신해
+    // 프로필 수정 후 즉시 새 라벨로 집계되게 한다.
+    // ignore: unawaited_futures
+    AnalyticsService.setUserProperties(
+      gender: user.profile.gender,
+      ageGroup: user.profile.ageGroup,
+    );
 
     saveUserPushToken(user.id);
 

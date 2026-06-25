@@ -38,7 +38,7 @@ class _OnboardingAgeGroupScreenState
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
-        title: const OnboardingStepLabel(current: 3, total: 4),
+        title: const OnboardingStepLabel(current: 3, total: 5),
         centerTitle: false,
       ),
       body: SafeArea(

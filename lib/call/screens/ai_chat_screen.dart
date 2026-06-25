@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:ui';
 import 'package:dearlog/call/services/conversation_backup_service.dart';
 import 'package:dearlog/call/services/tts_service.dart';
@@ -7,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:dearlog/app.dart';
 import 'package:dearlog/call/providers/voice_provider.dart';
+import 'package:dearlog/core/safety/crisis_support.dart';
 
 class AiChatScreen extends ConsumerStatefulWidget {
   const AiChatScreen({super.key});
@@ -55,15 +55,21 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   void initState() {
     super.initState();
     
-    // ✅ 선택한 목소리 가져와서 TTS 서비스 초기화
+    // ✅ 선택한 목소리 + 배속 가져와서 TTS 서비스 초기화
     final selectedVoice = ref.read(selectedVoiceProvider);
+    final selectedSpeed = ref.read(selectedSpeedProvider);
     _tts = TtsService(
       apiKey: RemoteConfigService().openAIApiKey,
       voice: selectedVoice,
+      speedMultiplier: selectedSpeed,
     );
     _tts.init();
-    
+
     _runningSince = DateTime.now();
+
+    // CBT 지표 — 통화 세션 시작 (= 녹음 시작).
+    // ignore: unawaited_futures
+    AnalyticsService.logCallStarted();
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
@@ -91,10 +97,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     _lastBackupSavedAt = now;
     _lastBackedUpMessageCount = realCount;
 
-    final withIllustration = ref.read(illustrationEnabledProvider);
     // fire-and-forget — 백업 실패는 무시 (UX 영향 X)
-    ConversationBackupService.save(messages, withIllustration: withIllustration)
-        .catchError((_) {});
+    ConversationBackupService.save(messages).catchError((_) {});
   }
 
   Future<void> _ensureSpeechAndStart() async {
@@ -206,147 +210,86 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       notifier.addUserMessage(cleaned);
       _scrollToBottom();
 
-      // 스트리밍 파이프라인 준비
-      // pipeline: 문장별 TTS fetch Future를 순서대로 넘기는 채널
-      final pipeline = StreamController<Future<Uint8List>>();
-      Future<void>? playerFuture;
+      // 자살·자해 등 위기 신호가 보이면 전문기관 안내 (대화는 막지 않는다)
+      // ignore: unawaited_futures
+      CrisisSupport.maybeShowSupport(context, cleaned);
 
-      final fullResponse = StringBuffer();
-      final sentenceBuffer = StringBuffer();
-      bool pipelineStarted = false;
-
-      try {
-        // GPT 스트리밍 — __loading__ 이전 메시지만 컨텍스트로 사용
-        final messages = ref.read(messageProvider)
-            .where((m) => m.content != '__loading__')
-            .toList();
-
-        // 사용자 프로필 + 최근 일기 3개 — 익명화된 컨텍스트로 친구 톤 유지.
-        final profile = ref.read(userProfileProvider);
-        final userId = ref.read(userIdProvider);
-        List<DiaryEntry> recentDiaries = const [];
-        if (userId != null) {
-          try {
-            recentDiaries = await ref
-                .read(diaryRepositoryProvider)
-                .fetchRecentDiaries(userId, limit: 3);
-          } catch (_) {
-            // 컨텍스트 fetch 실패해도 통화는 계속.
-          }
+      // 사용자 프로필 + 최근 일기 3개 — 익명화된 컨텍스트로 친구 톤 유지.
+      final profile = ref.read(userProfileProvider);
+      final userId = ref.read(userIdProvider);
+      List<DiaryEntry> recentDiaries = const [];
+      if (userId != null) {
+        try {
+          recentDiaries = await ref
+              .read(diaryRepositoryProvider)
+              .fetchRecentDiaries(userId, limit: 3);
+        } catch (_) {
+          // 컨텍스트 fetch 실패해도 통화는 계속.
         }
+      }
 
-        await for (final token in OpenAIService().streamChatTokens(
+      // GPT 응답을 한 번에 받는다 (이전: 토큰 스트리밍 + 문장 단위 TTS).
+      //   문장 단위로 TTS 를 호출하면 supertonic 추론 또는 OpenAI HTTP RTT
+      //   사이에 짧은 무음이 끼어 "어눌하게" 들리는 문제가 있어서, 응답을
+      //   다 받은 뒤 한 번에 합성/재생한다. 응답 표시도 한 번에 갱신.
+      final messages = ref
+          .read(messageProvider)
+          .where((m) => m.content != '__loading__')
+          .toList();
+
+      String reply;
+      try {
+        final response = await OpenAIService().getChatResponse(
           messages,
           profile: profile,
           recentDiaries: recentDiaries,
-        )) {
-          if (!_sessionActive) break;
-
-          fullResponse.write(token);
-          sentenceBuffer.write(token);
-
-          // UI 실시간 업데이트
-          notifier.updateStreaming(fullResponse.toString());
-          _scrollToBottom();
-
-          // 문장 경계 감지 → 즉시 TTS fetch 시작
-          final buffered = sentenceBuffer.toString();
-          final end = _sentenceEnd(buffered);
-          if (end > 0) {
-            final sentence = buffered.substring(0, end).trim();
-            sentenceBuffer.clear();
-            sentenceBuffer.write(buffered.substring(end));
-
-            if (sentence.isNotEmpty && _sessionActive && !_isPaused && !_isTextMode && !_isEditing) {
-              pipeline.add(_tts.fetchAudio(sentence));
-
-              // 첫 문장이 파이프라인에 들어가는 순간 플레이어 루프 시작
-              if (!pipelineStarted) {
-                pipelineStarted = true;
-                playerFuture = _runPlayerPipeline(pipeline.stream);
-              }
-            }
-          }
-        }
-
-        // 나머지 텍스트 flush
-        final remaining = sentenceBuffer.toString().trim();
-        if (remaining.isNotEmpty && _sessionActive && !_isPaused && !_isTextMode && !_isEditing) {
-          pipeline.add(_tts.fetchAudio(remaining));
-          if (!pipelineStarted) {
-            pipelineStarted = true;
-            playerFuture = _runPlayerPipeline(pipeline.stream);
-          }
-        }
-
-        // 응답이 없는 경우 처리
-        if (fullResponse.isEmpty) {
-          notifier.updateStreaming('죄송해요, 응답하지 못했어요.');
-        }
-
-      } finally {
-        // 항상 파이프라인을 닫아 플레이어 루프가 종료되도록 함
-        if (!pipeline.isClosed) pipeline.close();
+        );
+        reply = response.message.content.trim();
+        if (reply.isEmpty) reply = '죄송해요, 응답하지 못했어요.';
+      } catch (e) {
+        debugPrint('[SEND_TEXT] GPT 호출 오류: $e');
+        reply = '죄송해요. 잠시 후 다시 시도해 주세요.';
       }
 
-      // 모든 TTS 재생 완료 대기
-      if (playerFuture != null) await playerFuture;
+      if (!_sessionActive) return;
 
+      notifier.updateStreaming(reply);
+      _scrollToBottom();
+
+      // TTS — 응답 전체를 한 번에 합성/재생.
+      if (!_isPaused && !_isTextMode && !_isEditing && reply.isNotEmpty) {
+        if (mounted) setState(() => _isSpeaking = true);
+        try {
+          final bytes = await _tts.fetchAudio(reply);
+          if (_sessionActive &&
+              !_isPaused &&
+              !_isTextMode &&
+              !_isEditing &&
+              bytes.isNotEmpty) {
+            await _tts.playAudio(bytes);
+          }
+        } catch (e) {
+          debugPrint('[TTS] ❌ $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('AI 음성 재생에 실패했어요. 잠시 후 다시 시도해 주세요.'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+      }
     } catch (e) {
       debugPrint('[SEND_TEXT] 오류: $e');
       ref.read(messageProvider.notifier).updateStreaming('죄송해요. 잠시 후 다시 시도해 주세요.');
     } finally {
       _sending = false;
-      setState(() => _isSpeaking = false);
-      if (_sessionActive && !_isPaused && !_isTextMode) {
+      if (mounted) setState(() => _isSpeaking = false);
+      if (_sessionActive && !_isPaused && !_isTextMode && !_isEditing) {
         await _startListeningSafely();
       }
     }
-  }
-
-  /// TTS fetch Future 스트림을 순서대로 재생하는 플레이어 루프
-  Future<void> _runPlayerPipeline(Stream<Future<Uint8List>> stream) async {
-    if (mounted) setState(() => _isSpeaking = true);
-
-    bool shownErrorSnack = false;
-
-    await for (final fetchFuture in stream) {
-      if (!_sessionActive || _isPaused || _isTextMode || _isEditing) {
-        await _tts.stop();
-        break;
-      }
-      try {
-        final bytes = await fetchFuture;
-        if (!_sessionActive || _isPaused || _isTextMode || _isEditing) break;
-        await _tts.playAudio(bytes);
-      } catch (e) {
-        // ✅ 릴리즈 빌드에서도 보이도록 debugPrint() 사용.
-        //    debugPrint 는 릴리즈에서 no-op 이라 그동안 사용자에게 "오류 없는 무음"으로 보였음.
-        debugPrint('[PLAYER_PIPELINE] ❌ $e');
-        // ✅ 첫 에러 한 번만 사용자에게 가시 피드백.
-        if (!shownErrorSnack && mounted) {
-          shownErrorSnack = true;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('AI 음성 재생에 실패했어요. 잠시 후 다시 시도해 주세요.'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      }
-    }
-
-    if (mounted) setState(() => _isSpeaking = false);
-  }
-
-  /// 문장 종결 위치 반환 (없으면 -1)
-  int _sentenceEnd(String text) {
-    if (text.length < 2) return -1;
-    final match = RegExp(r'[.!?。？！]\s*').firstMatch(text);
-    if (match != null && match.start >= 1) return match.end;
-    final nlIdx = text.indexOf('\n');
-    if (nlIdx > 1) return nlIdx + 1;
-    return -1;
   }
 
   Future<void> _onPauseToggle() async {
@@ -439,6 +382,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   Future<void> _exitEditMode() async {
     if (!_isEditing) return;
 
+    // FocusScope.unfocus() 는 _editingFocusNode 뿐 아니라 부모 트리의 모든 focus
+    // (예: 텍스트 모드의 _inputFocus) 까지 풀어버린다. 텍스트 모드로 복귀할
+    // 때는 아래에서 다시 _inputFocus.requestFocus() 로 키보드를 띄워야 한다.
     if (mounted) FocusScope.of(context).unfocus();
 
     setState(() {
@@ -447,9 +393,22 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     });
 
     // 편집은 일시적 pause — _isPaused 자체는 안 건드렸으니 그 값을 신뢰.
-    if (!_isPaused) {
+    if (!_isPaused && _sessionActive) {
       _runningSince = DateTime.now();
-      if (!_isTextMode && _sessionActive) {
+      if (_isTextMode) {
+        // 텍스트 모드면 키보드 포커스를 다시 잡아 입력이 가능하게 한다.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _isTextMode && !_isEditing) {
+            _inputFocus.requestFocus();
+          }
+        });
+      } else {
+        // _enterEditMode 의 shutdown() 직후 즉시 listen() 을 호출하면
+        // speech_to_text 내부 상태가 미처 정리되지 않아 listen 이 silently
+        // 무시되는 경우가 있다. 짧게 텀을 두고 재진입.
+        await Future.delayed(const Duration(milliseconds: 250));
+        if (!mounted) return;
+        if (!_sessionActive || _isPaused || _isTextMode || _isEditing) return;
         await _startListeningSafely();
       }
     }
@@ -477,21 +436,74 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   }
 
   Future<void> _onCallEnd() async {
+    // 사용자가 한마디도 안 했으면 (=user role 메시지 0) 일기를 만들 거리가 없다.
+    // OpenAI 토큰만 낭비되므로 일기 생성 없이 메인으로 안내한다.
+    final userSaidSomething = ref
+        .read(messageProvider)
+        .any((m) => m.role == 'user' && m.content.trim().isNotEmpty);
+
+    if (!userSaidSomething) {
+      final confirmEnd = await showGlassDialog<bool>(
+        context: context,
+        title: '아직 대화를 시작하지 않았어요',
+        message: '대화가 없으면 일기를 만들 수 없어요.\n그대로 통화를 종료할까요?',
+        actions: const [
+          GlassDialogAction(label: '계속 대화하기', value: false),
+          GlassDialogAction(label: '통화 종료', value: true, isDestructive: true),
+        ],
+      );
+      if (confirmEnd != true) return;
+
+      _sessionActive = false;
+      _timer?.cancel();
+      _timer = null;
+      await ref.read(speechNotifierProvider.notifier).shutdown();
+      await _tts.stop();
+
+      // 통화 길이는 기록하되 messageCount=0 으로 — 분석상 "빈 통화" 로 구분.
+      // ignore: unawaited_futures
+      AnalyticsService.logCallEnded(
+        durationSeconds: _currentElapsed.inSeconds,
+        messageCount: 0,
+      );
+
+      // 백업이 남아있을 수 있으면 정리 — 다음 통화에서 빈 백업으로 복구 배너가
+      // 뜨지 않도록.
+      await ConversationBackupService.clear();
+      ref.read(messageProvider.notifier).clear();
+
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => MainScreen()),
+        (route) => false,
+      );
+      return;
+    }
+
     _sessionActive = false;
     _timer?.cancel();
     _timer = null;
     await ref.read(speechNotifierProvider.notifier).shutdown();
     await _tts.stop();
 
-    // 통화 종료 시점의 그림일기 토글 값을 캡처해 다음 화면에 전달.
-    final withIllustration = ref.read(illustrationEnabledProvider);
+    // CBT 지표 — 통화 세션 종료 (= 녹음 길이).
+    // __loading__ placeholder 는 메시지 카운트에서 제외.
+    final elapsed = _currentElapsed;
+    final messageCount = ref
+        .read(messageProvider)
+        .where((m) => m.content != '__loading__')
+        .length;
+    // ignore: unawaited_futures
+    AnalyticsService.logCallEnded(
+      durationSeconds: elapsed.inSeconds,
+      messageCount: messageCount,
+    );
 
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => CallLoadingScreen(
-          elapsed: _currentElapsed,
-          withIllustration: withIllustration,
+          elapsed: elapsed,
         ),
       ),
     );

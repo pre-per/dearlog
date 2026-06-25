@@ -1,12 +1,13 @@
 {
   "name": "functions",
-  "description": "Cloud Functions for dearlog community features",
+  "description": "Cloud Functions for dearlog community + encryption features",
   "engines": {
     "node": "20"
   },
   "main": "index.js",
   "private": true,
   "dependencies": {
+    "@google-cloud/kms": "^4.5.0",
     "firebase-admin": "^12.6.0",
     "firebase-functions": "^5.1.0"
   }

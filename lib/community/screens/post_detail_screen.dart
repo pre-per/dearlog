@@ -8,14 +8,20 @@ import '../../core/base_scaffold.dart';
 import '../../shared_ui/utils/planet_asset_mapper.dart';
 import '../../shared_ui/widgets/dialog/glass_dialog.dart';
 import '../../user/providers/user_fetch_providers.dart';
+import '../../user/providers/user_stats_providers.dart';
+import '../models/community_comment.dart';
 import '../models/community_post.dart';
 import '../providers/community_providers.dart';
+import '../providers/community_safety_providers.dart';
 import '../utils/relative_time.dart';
 import '../widgets/comment_card.dart';
 import '../widgets/comment_input_bar.dart';
 import '../widgets/community_avatar.dart';
+import '../widgets/community_nlp_block.dart';
 import '../widgets/like_button.dart';
+import '../widgets/rank_badge.dart';
 import '../widgets/report_dialog.dart';
+import '../widgets/streak_avatar_glow.dart';
 import 'create_edit_post_screen.dart';
 
 /// 공개 게시물 상세 화면.
@@ -60,7 +66,14 @@ class PostDetailScreen extends ConsumerWidget {
                   ],
                 );
               }
-              return _ReportPostAction(post: post);
+              // 남의 글 — 신고 + 차단 (App Store 1.2: UGC 앱은 둘 다 필요)
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _ReportPostAction(post: post),
+                  _BlockUserAction(post: post),
+                ],
+              );
             },
             orElse: () => const SizedBox.shrink(),
           ),
@@ -81,6 +94,22 @@ class PostDetailScreen extends ConsumerWidget {
             return const _MessageView(
               title: '삭제된 게시물이에요',
               subtitle: '작성자가 게시물을 내렸거나 삭제됐어요',
+            );
+          }
+          // 차단한 사용자의 글 (알림 딥링크 등 피드 밖 경로로 진입한 경우)
+          final blocked = ref.watch(blockedUidsProvider);
+          if (blocked.contains(post.authorUid)) {
+            return const _MessageView(
+              title: '차단한 사용자의 게시물이에요',
+              subtitle: '[마이 → 커뮤니티 설정]에서 차단을 해제할 수 있어요',
+            );
+          }
+          // 신고 누적 게시물 — 운영 검토 전까지 숨김 (본인 글은 보이게)
+          if (post.authorUid != myUid &&
+              post.reportCount >= kReportHideThreshold) {
+            return const _MessageView(
+              title: '신고가 접수되어 검토 중인 게시물이에요',
+              subtitle: '운영팀 확인 후 다시 공개되거나 삭제돼요',
             );
           }
           return Column(
@@ -143,6 +172,10 @@ class _PostBody extends StatelessWidget {
               if (i > 0) const SizedBox(height: 12),
               _PostImage(url: post.imageUrls[i]),
             ],
+          ],
+          if (post.nlpFilters.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            CommunityNlpBlock(filters: post.nlpFilters),
           ],
           const SizedBox(height: 20),
           // 일기 원본 작성일 (작성 시점 vs 게시 시점 구분)
@@ -225,35 +258,58 @@ class _PaperFullBody extends StatelessWidget {
   }
 }
 
-class _Header extends StatelessWidget {
+class _Header extends ConsumerWidget {
   final CommunityPost post;
   const _Header({required this.post});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final showRank = !post.isAnonymous || post.showRankIfAnonymous;
+    final stats = showRank
+        ? ref
+            .watch(userStatsByUidProvider(post.authorUid))
+            .maybeWhen(data: (s) => s, orElse: () => null)
+        : null;
+    final streak = showRank ? liveCurrentStreak(stats) : 0;
+    final diaryCount = showRank ? (stats?.diaryCount ?? 0) : 0;
+    final badge =
+        showRank && diaryCount > 0 ? RankBadge.fromCount(diaryCount, size: RankBadgeSize.full) : null;
+
+    final avatar = CommunityAvatar(
+      authorUid: post.authorUid,
+      displayName: post.displayName,
+      isAnonymous: post.isAnonymous,
+      size: 44,
+    );
+
     return Row(
       children: [
-        CommunityAvatar(
-          authorUid: post.authorUid,
-          displayName: post.displayName,
-          isAnonymous: post.isAnonymous,
-          size: 44,
-        ),
+        StreakAvatarGlow(streak: streak, child: avatar, avatarSize: 44),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                post.displayName.isEmpty ? '익명' : post.displayName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'GowunBatang',
-                ),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      post.displayName.isEmpty ? '익명' : post.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'GowunBatang',
+                      ),
+                    ),
+                  ),
+                  if (badge != null) ...[
+                    const SizedBox(width: 8),
+                    badge,
+                  ],
+                ],
               ),
               const SizedBox(height: 2),
               Text(
@@ -403,21 +459,60 @@ class _CommentsSection extends ConsumerWidget {
               ),
             ),
           ),
-          data: (comments) {
+          data: (rawComments) {
+            // 차단한 사용자의 댓글은 표시하지 않는다.
+            final blocked = ref.watch(blockedUidsProvider);
+            final comments = rawComments
+                .where((c) => !blocked.contains(c.authorUid))
+                .toList();
             if (comments.isEmpty) {
               return _emptyState();
             }
-            return Column(
-              children: [
-                for (int i = 0; i < comments.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 10),
-                  CommentCard(
-                    comment: comments[i],
+            // 답글은 부모 아래에 들여쓰기. 부모 댓글 묶음은 최신순(descending),
+            // 한 부모 아래 답글은 오래된 순(ascending) — 대화 흐름이 자연스럽게.
+            final byParent = <String, List<CommunityComment>>{};
+            final topLevel = <CommunityComment>[];
+            for (final c in comments) {
+              if (c.parentCommentId == null) {
+                topLevel.add(c);
+              } else {
+                byParent.putIfAbsent(c.parentCommentId!, () => []).add(c);
+              }
+            }
+            // watchComments 가 이미 descending — top-level 은 그대로 두고
+            // 부모 없는 답글(부모 삭제됨) 은 top-level 로 승격해 누락 방지.
+            final topIds = topLevel.map((c) => c.id).toSet();
+            for (final entry in byParent.entries) {
+              if (!topIds.contains(entry.key)) {
+                topLevel.addAll(entry.value);
+              }
+            }
+            topLevel.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+            final blocks = <Widget>[];
+            for (int i = 0; i < topLevel.length; i++) {
+              if (i > 0) blocks.add(const SizedBox(height: 10));
+              final top = topLevel[i];
+              blocks.add(CommentCard(
+                comment: top,
+                postAuthorUid: post.authorUid,
+              ));
+              final replies = (byParent[top.id] ?? const <CommunityComment>[])
+                  .toList()
+                ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+              for (final r in replies) {
+                blocks.add(const SizedBox(height: 6));
+                blocks.add(Padding(
+                  padding: const EdgeInsets.only(left: 28),
+                  child: CommentCard(
+                    comment: r,
                     postAuthorUid: post.authorUid,
+                    isReply: true,
                   ),
-                ],
-              ],
-            );
+                ));
+              }
+            }
+            return Column(children: blocks);
           },
         ),
       ],
@@ -576,6 +671,71 @@ class _ReportPostAction extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('신고 실패: $e')),
+        );
+      }
+    }
+  }
+}
+
+/// 작성자 차단 액션. 차단하면 이 사용자의 게시물/댓글이 즉시 보이지 않는다.
+class _BlockUserAction extends ConsumerWidget {
+  final CommunityPost post;
+  const _BlockUserAction({required this.post});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return GestureDetector(
+      onTap: () => _handle(context, ref),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 4, right: 16),
+        child: Center(
+          child: Text(
+            '차단',
+            style: TextStyle(
+              color: const Color(0xFFE57373).withOpacity(0.95),
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'GowunBatang',
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handle(BuildContext context, WidgetRef ref) async {
+    final myUid = ref.read(userIdProvider);
+    if (myUid == null) return;
+
+    final name = post.displayName.isEmpty ? '익명' : post.displayName;
+    final ok = await showGlassDialog<bool>(
+      context: context,
+      title: '$name 님을 차단할까요?',
+      message: '차단하면 이 사용자의 게시물과 댓글이\n더 이상 보이지 않아요.\n[마이 → 커뮤니티 설정]에서 언제든 해제할 수 있어요.',
+      actions: const [
+        GlassDialogAction(label: '취소', value: false),
+        GlassDialogAction(label: '차단하기', value: true, isDestructive: true),
+      ],
+    );
+    if (ok != true) return;
+
+    try {
+      await CommunitySafetyActions.blockUser(
+        myUid: myUid,
+        targetUid: post.authorUid,
+        displayName: name,
+      );
+      ref.invalidate(communityFeedProvider);
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('사용자를 차단했어요')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('차단 실패: $e')),
         );
       }
     }

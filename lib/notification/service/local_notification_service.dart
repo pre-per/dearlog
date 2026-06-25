@@ -36,6 +36,14 @@ class LocalNotificationService {
   static const String communityChannelName = '커뮤니티 활동';
   static const String communityChannelDesc = '내 공개 게시물에 댓글이 달리면 알려드려요';
 
+  // 오늘의 운세 일일 알림용 채널.
+  // (구버전 채널 ID 'dearlog_zodiac' 은 별자리 운세 시절 사용. Android 가
+  //  채널 ID 변경 시 새 채널을 인식하지 못해 알림이 잠시 사라지지 않도록
+  //  여기서는 신규 ID 'dearlog_daily_fortune' 로 분리.)
+  static const String dailyFortuneChannelId = 'dearlog_daily_fortune';
+  static const String dailyFortuneChannelName = '오늘의 운세';
+  static const String dailyFortuneChannelDesc = '매일 아침 오늘의 운세가 담긴 유리병이 도착해요';
+
   Future<void> init() async {
     // ✅ 모든 알림 진단 로그는 [NOTI] 일관된 prefix 로 통일.
     //    release 빌드에서도 logcat 'flutter' 태그로 확인 가능하도록
@@ -122,8 +130,16 @@ class LocalNotificationService {
           importance: Importance.high,
         ),
       );
-      debugPrint('[NOTI] Android 채널 4개 생성 완료 '
-          '($dailyChannelId, $letterChannelId, $testChannelId, $communityChannelId)');
+      await android?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          dailyFortuneChannelId,
+          dailyFortuneChannelName,
+          description: dailyFortuneChannelDesc,
+          importance: Importance.high,
+        ),
+      );
+      debugPrint('[NOTI] Android 채널 5개 생성 완료 '
+          '($dailyChannelId, $letterChannelId, $testChannelId, $communityChannelId, $dailyFortuneChannelId)');
     }
 
     // 5) 콜드 스타트 — 알림 탭으로 앱이 켜졌는지 확인 후 페이로드 큐잉
@@ -160,6 +176,9 @@ class LocalNotificationService {
     required String title,
     required String body,
     required String payload,
+    String channelId = dailyChannelId,
+    String channelName = dailyChannelName,
+    String channelDesc = dailyChannelDesc,
   }) async {
     final hasExactAlarm = await _handleExactAlarmPermission();
 
@@ -176,15 +195,15 @@ class LocalNotificationService {
       next = next.add(const Duration(days: 1));
     }
 
-    const details = NotificationDetails(
+    final details = NotificationDetails(
       android: AndroidNotificationDetails(
-        dailyChannelId,
-        dailyChannelName,
-        channelDescription: dailyChannelDesc,
+        channelId,
+        channelName,
+        channelDescription: channelDesc,
         importance: Importance.max,
         priority: Priority.high,
       ),
-      iOS: DarwinNotificationDetails(
+      iOS: const DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,

@@ -9,6 +9,7 @@ import 'package:dearlog/diary/models/diary_entry.dart';
 import '../models/community_post.dart';
 import '../models/community_comment.dart';
 import '../models/community_report.dart';
+import '../models/nlp_filter_snapshot.dart';
 
 /// 커뮤니티 피드를 페이지 단위로 가져온 결과.
 class CommunityFeedPage {
@@ -71,7 +72,8 @@ class CommunityRepository {
   ///
   /// - 이미지를 `community_posts/{postId}/image_*.png` 로 복사해서 원본과 분리
   /// - 닉네임은 게시 시점 값으로 동결 저장
-  /// - `overrideTitle/Content` 가 주어지면 그 값으로 게시 (사용자가 미리보기에서 다듬은 경우)
+  /// - `override*` 가 주어지면 그 값으로 덮어쓴다 (사용자가 미리보기에서 다듬거나
+  ///   특정 정보를 제외하기로 선택한 경우)
   ///
   /// 호출자는 이 메서드를 부르기 전에 [findPostByDiaryId] 로 같은 일기가 이미
   /// 공개돼 있지 않은지 확인해야 한다 (1 일기 = 1 게시물 정책).
@@ -82,13 +84,19 @@ class CommunityRepository {
     required DiaryEntry diary,
     String? overrideTitle,
     String? overrideContent,
+    String? overrideEmotion,
+    List<String>? overrideImageSources,
+    DateTime? overrideDiaryDate,
+    List<NlpFilterSnapshot> nlpFilters = const [],
+    bool showRankIfAnonymous = false,
   }) async {
     final postRef = _postsCol().doc();
     final postId = postRef.id;
 
+    final sources = overrideImageSources ?? diary.imageUrls;
     final List<String> copiedUrls = [];
-    for (int i = 0; i < diary.imageUrls.length; i++) {
-      final src = diary.imageUrls[i];
+    for (int i = 0; i < sources.length; i++) {
+      final src = sources[i];
       try {
         final newUrl = await _copyImageToCommunity(
           sourceUrl: src,
@@ -111,10 +119,12 @@ class CommunityRepository {
       originalDiaryId: diary.id,
       title: overrideTitle ?? diary.title,
       content: overrideContent ?? diary.content,
-      emotion: diary.emotion,
+      emotion: overrideEmotion ?? diary.emotion,
       imageUrls: copiedUrls,
-      diaryDate: diary.date,
+      diaryDate: overrideDiaryDate ?? diary.date,
       createdAt: DateTime.now(),
+      nlpFilters: nlpFilters,
+      showRankIfAnonymous: showRankIfAnonymous,
     );
 
     await postRef.set(post.toJson());
@@ -153,6 +163,7 @@ class CommunityRepository {
     required String title,
     required String content,
     required String emotion,
+    bool showRankIfAnonymous = false,
   }) async {
     final postRef = _postsCol().doc();
     final now = DateTime.now();
@@ -168,6 +179,7 @@ class CommunityRepository {
       imageUrls: const [],
       diaryDate: now, // 일기 없음 — 게시 시각으로 대체
       createdAt: now,
+      showRankIfAnonymous: showRankIfAnonymous,
     );
     await postRef.set(post.toJson());
     return post;
@@ -302,12 +314,22 @@ class CommunityRepository {
 
   // ===== Comments =====
 
+  /// 새 댓글/답글 생성.
+  ///
+  /// [parentCommentId] 가 주어지면 그 댓글에 달리는 1단계 답글이다.
+  /// [parentNicknameSnapshot] 은 답글 카드에서 "@xxx" 멘션을 보여주기 위해
+  /// 게시 시점의 부모 닉네임을 함께 동결 저장한다 (부모가 익명이면 '익명').
+  ///
+  /// 답글도 게시물의 commentCount 에 포함된다 (총 소통량 관점).
   Future<CommunityComment> addComment({
     required String postId,
     required String authorUid,
     required String authorNickname,
     required bool isAnonymous,
     required String content,
+    String? parentCommentId,
+    String? parentNicknameSnapshot,
+    bool showRankIfAnonymous = false,
   }) async {
     final ref = _commentsCol(postId).doc();
     final comment = CommunityComment(
@@ -318,6 +340,9 @@ class CommunityRepository {
       isAnonymous: isAnonymous,
       content: content,
       createdAt: DateTime.now(),
+      parentCommentId: parentCommentId,
+      parentNicknameSnapshot: parentNicknameSnapshot,
+      showRankIfAnonymous: showRankIfAnonymous,
     );
 
     final batch = firestore.batch();

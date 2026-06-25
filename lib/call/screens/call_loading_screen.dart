@@ -9,14 +9,9 @@ enum _Phase { loading, done }
 class CallLoadingScreen extends ConsumerStatefulWidget {
   final Duration elapsed;
 
-  /// 그림일기 생성 여부. AiChatScreen에서 illustrationEnabledProvider 값을 넘김.
-  /// 기본 true로 두어 기존 호출처/콜드 진입과 호환.
-  final bool withIllustration;
-
   const CallLoadingScreen({
     super.key,
     required this.elapsed,
-    this.withIllustration = true,
   });
 
   @override
@@ -40,23 +35,13 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen>
   static const Duration _kAbortHintAfter = Duration(seconds: 90);
   static const Duration _kGlobalTimeout = Duration(minutes: 4);
 
-  // 그림일기 유무에 따라 단계 구성이 바뀜.
-  // - 켜짐: 4단계 (저장 → 작성 → 분석 → 그림)
-  // - 꺼짐: 3단계 (저장 → 작성 → 분석)
-  late final List<String> _stepLabels = widget.withIllustration
-      ? const [
-          '대화를 저장하는 중',
-          '일기를 작성하는 중',
-          '감정을 분석하는 중',
-          '그림일기를 그리는 중',
-        ]
-      : const [
-          '대화를 저장하는 중',
-          '일기를 작성하는 중',
-          '감정을 분석하는 중',
-        ];
+  static const List<String> _stepLabels = [
+    '대화를 저장하는 중',
+    '일기를 작성하는 중',
+    '감정을 분석하는 중',
+  ];
 
-  late final int _totalSteps = _stepLabels.length;
+  static const int _totalSteps = 3;
 
   // ─── Animation Controllers ────────────────────────────────────────────────
   late final AnimationController _glowCtrl;
@@ -66,9 +51,6 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen>
 
   late final AnimationController _arcCtrl;
   late Animation<double> _arcAnim;
-
-  // Slow creep timer for image generation step
-  Timer? _creepTimer;
 
   // ─── Lifecycle ────────────────────────────────────────────────────────────
   @override
@@ -106,7 +88,6 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen>
   @override
   void dispose() {
     _abortHintTimer?.cancel();
-    _creepTimer?.cancel();
     _glowCtrl.dispose();
     _sparkleCtrl.dispose();
     _arcCtrl.dispose();
@@ -126,38 +107,12 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen>
     _arcCtrl.forward(from: 0);
   }
 
-  void _startCreep() {
-    // 0.75 → 0.92 over ~30s via small increments
-    _creepTimer?.cancel();
-    _creepTimer = Timer.periodic(const Duration(milliseconds: 350), (timer) {
-      if (!mounted) { timer.cancel(); return; }
-      if (_arcValue >= 0.99) { timer.cancel(); return; }
-      _animateArcTo(
-        (_arcValue + 0.002).clamp(0.0, 0.99),
-        duration: const Duration(milliseconds: 400),
-      );
-    });
-  }
-
   // ─── Step advancement ─────────────────────────────────────────────────────
   void _advanceStep(int step) {
     if (!mounted) return;
     final clamped = step.clamp(0, _totalSteps - 1);
     setState(() => _currentStep = clamped);
-
-    _creepTimer?.cancel();
-    _creepTimer = null;
-
-    // 그림일기 단계(step==3)는 가장 오래 걸리므로 0.75까지 빠르게 이동 후 slow creep.
-    // 그림일기 OFF면 step 3 자체가 안 오므로 자연스럽게 보통 분배만 사용됨.
-    if (widget.withIllustration && step == 3) {
-      _animateArcTo(0.75);
-      Future.delayed(const Duration(milliseconds: 950), () {
-        if (mounted && _currentStep == 3 && _phase == _Phase.loading) _startCreep();
-      });
-    } else {
-      _animateArcTo(step / _totalSteps);
-    }
+    _animateArcTo(step / _totalSteps);
   }
 
   // ─── Main logic ───────────────────────────────────────────────────────────
@@ -212,11 +167,7 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen>
       log('call saved');
     }
 
-    // 복구 시에도 같은 illustration 토글로 일기 생성하도록 같이 저장.
-    await ConversationBackupService.save(
-      messages,
-      withIllustration: widget.withIllustration,
-    );
+    await ConversationBackupService.save(messages);
 
     log('generating diary...');
     final existingKeywords = ref.read(currentMonthExistingKeywordsProvider);
@@ -227,7 +178,6 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen>
       callId: callId,
       onStep: _advanceStep,
       existingKeywords: existingKeywords,
-      generateIllustration: widget.withIllustration,
     );
     log('diary generated id=${diary.id} emotions=${diary.analysis?.emotions.map((e) => e.name).join(",")}');
 
@@ -244,7 +194,6 @@ class _CallLoadingScreenState extends ConsumerState<CallLoadingScreen>
     if (!mounted) return;
 
     // ── Complete arc → wait → reveal done content ──
-    _creepTimer?.cancel();
     _animateArcTo(1.0, duration: const Duration(milliseconds: 700));
     await Future.delayed(const Duration(milliseconds: 900));
 

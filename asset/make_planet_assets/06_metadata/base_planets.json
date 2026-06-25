@@ -1,0 +1,34 @@
+[
+  {
+    "planetId": "base_planet_gray",
+    "name": "무중력 회색 행성",
+    "assetUrl": "02_planet/base_planet_gray.png",
+    "thumbnailUrl": "05_thumbnails/thumb_base_planet_gray.png",
+    "isDefault": true,
+    "recommendedEmotion": "neutral"
+  },
+  {
+    "planetId": "base_planet_purple",
+    "name": "라벤더 안개 행성",
+    "assetUrl": "02_planet/base_planet_purple.png",
+    "thumbnailUrl": "05_thumbnails/thumb_base_planet_purple.png",
+    "isDefault": false,
+    "recommendedEmotion": "anxiety"
+  },
+  {
+    "planetId": "base_planet_green",
+    "name": "초록 오로라 행성",
+    "assetUrl": "02_planet/base_planet_green.png",
+    "thumbnailUrl": "05_thumbnails/thumb_base_planet_green.png",
+    "isDefault": false,
+    "recommendedEmotion": "calm"
+  },
+  {
+    "planetId": "base_planet_orange",
+    "name": "노을빛 행성",
+    "assetUrl": "02_planet/base_planet_orange.png",
+    "thumbnailUrl": "05_thumbnails/thumb_base_planet_orange.png",
+    "isDefault": false,
+    "recommendedEmotion": "happiness"
+  }
+]

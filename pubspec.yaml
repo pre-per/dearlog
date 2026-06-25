@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.1.0+3
+version: 1.1.0+16
 
 environment:
   sdk: ^3.7.2
@@ -52,6 +52,7 @@ dependencies:
   uuid: ^4.5.1
   firebase_storage: ^12.4.9
   firebase_messaging: ^15.2.9
+  firebase_analytics: ^11.3.0
   flutter_local_notifications: ^17.0.0
   flutter_svg: ^2.2.2
   flutter_tts: ^4.2.3
@@ -64,7 +65,11 @@ dependencies:
   flutter_timezone: ^5.0.2
   path_provider: ^2.1.5
   crypto: ^3.0.7
+  cryptography: ^2.7.0
+  cloud_functions: ^5.2.0
   flutter_onnxruntime: ^1.6.0
+  gal: ^2.3.1
+  sign_in_with_apple: ^8.1.0
 
 dev_dependencies:
   flutter_test:
@@ -116,6 +121,7 @@ flutter:
     - asset/app/
     - asset/image/
     - asset/image/moon_images/
+    - asset/image/level/
     - asset/illustrations/
     - asset/lottie/
     - asset/icons/navigation/
@@ -123,6 +129,13 @@ flutter:
     - asset/icons/call/
     - asset/supertonic/onnx/
     - asset/supertonic/voice_styles/
+    # 나의 행성 & Nova 꾸미기 에셋 v2 (행성/아이템 풀해상도 투명 + Nova/그리드용 썸네일)
+    - asset/make_planet_assets_2/assets/planets/base/
+    - asset/make_planet_assets_2/assets/planet_items/clouds/
+    - asset/make_planet_assets_2/assets/planet_items/objects/
+    - asset/make_planet_assets_2/assets/planet_items/rings/
+    - asset/make_planet_assets_2/assets/planet_items/stars/
+    - asset/make_planet_assets_2/thumbnails/
 
   #   - images/a_dot_ham.jpeg
 

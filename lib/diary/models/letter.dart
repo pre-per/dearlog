@@ -1,9 +1,14 @@
+import '../../core/crypto/encrypted_field.dart';
+
 /// 일기에 첨부되는 "내게 보내는 편지" 모델.
 ///
 /// 라이프사이클:
 /// - draft   : 작성 중. sentAt == null
 /// - locked  : 보냈고 아직 잠금 해제 시각이 안 됨. sentAt != null && unlockAt > now
 /// - unlocked: 잠금 해제됨. sentAt != null && unlockAt <= now (또는 unlockAt == null)
+///
+/// 본문([content])은 메모리 상에선 평문이지만, Firestore 에는 부모 다이어리의
+/// DEK 로 암호화되어 저장된다. 직렬화는 repository 가 담당.
 class Letter {
   final String id;
   final String content;
@@ -77,10 +82,15 @@ class Letter {
     );
   }
 
+  /// Firestore raw map 에서 메타 + (혹시 있으면) legacy 평문 본문을 읽어 객체화.
+  /// 암호화 포맷일 때 본문은 별도로 [LetterStorage.contentField] 를 봐서 복호화 후
+  /// [Letter.fromMetaWithContent] 로 합친다.
   factory Letter.fromJson(Map<String, dynamic> json) {
+    final rawContent = json['content'];
     return Letter(
       id: json['id'] as String,
-      content: json['content'] as String? ?? '',
+      // legacy 평문 string 이면 그대로, 암호화 객체면 빈 문자열로 시작 (repository 가 채워줌).
+      content: rawContent is String ? rawContent : '',
       createdAt: DateTime.parse(json['createdAt'] as String),
       sentAt: json['sentAt'] != null
           ? DateTime.parse(json['sentAt'] as String)
@@ -91,6 +101,7 @@ class Letter {
     );
   }
 
+  /// [content] 평문은 도메인 객체에만 존재. 저장 시엔 repository 가 암호문으로 대체한다.
   Map<String, dynamic> toJson() => {
         'id': id,
         'content': content,
@@ -98,4 +109,12 @@ class Letter {
         if (sentAt != null) 'sentAt': sentAt!.toIso8601String(),
         if (unlockAt != null) 'unlockAt': unlockAt!.toIso8601String(),
       };
+
+  /// 메타 + 복호화된 본문으로 새 객체.
+  Letter withContent(String plain) => copyWith(content: plain);
+}
+
+/// 편지 raw map 의 `content` 필드가 EncryptedField 포맷인지 평문인지 판별.
+bool letterRawHasEncryptedContent(Map<String, dynamic> raw) {
+  return EncryptedField.isEncryptedJson(raw['content']);
 }

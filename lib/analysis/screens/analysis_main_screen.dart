@@ -29,11 +29,11 @@ class AnalysisScreen extends ConsumerWidget {
             StreakBadge(),
             SizedBox(height: 22),
 
-            // ── AI 인사이트 ──
+            // ── 디어로그 인사이트 ──
             // 이달의 회고(AIInsightCard) 아래에 NLP 인지 필터 카드.
             // NLP 카드는 선택된 달의 가장 최근 일기 1개를 기준으로 동작.
             SectionHeader(
-              title: 'AI 인사이트',
+              title: '디어로그 인사이트',
               icon: Icons.auto_awesome,
             ),
             SizedBox(height: 10),

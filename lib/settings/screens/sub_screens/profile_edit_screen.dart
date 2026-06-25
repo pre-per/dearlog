@@ -125,6 +125,15 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         interests: _interests,
       );
       await repo.saveProfile(userId, updated);
+
+      // GA4 인구통계 user property 도 동시 갱신 — 사용자가 성별/나잇대를
+      // 바꾸면 그 시점부터 새 라벨로 이벤트가 분류되게.
+      // ignore: unawaited_futures
+      AnalyticsService.setUserProperties(
+        gender: updated.gender,
+        ageGroup: updated.ageGroup,
+      );
+
       ref.invalidate(userProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -158,6 +167,18 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           style: TextStyle(color: Colors.white, fontSize: 18),
         ),
         backgroundColor: Colors.transparent,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Center(
+              child: _SaveActionButton(
+                enabled: _canSave,
+                saving: _saving,
+                onTap: _save,
+              ),
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: ListView(
@@ -178,14 +199,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
             _InterestsSectionLabel(count: _interests.length, max: _maxInterests),
             const SizedBox(height: 10),
             _buildInterestsGrid(),
-            const SizedBox(height: 32),
-            OnboardingNextButton(
-              label: _saving ? '저장 중' : '저장',
-              enabled: _canSave,
-              loading: _saving,
-              onTap: _save,
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             _DataUseHint(),
             const SizedBox(height: 24),
           ],
@@ -293,6 +307,77 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           onTap: () => _toggleInterest(opt.label),
         );
       },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────
+// AppBar actions 영역의 저장 버튼 — 글래스 톤의 골드 캡슐.
+// _canSave 가 false 면 옅게 비활성, _saving 중에는 스피너로 전환.
+// ─────────────────────────────────────────────────
+
+class _SaveActionButton extends StatelessWidget {
+  final bool enabled;
+  final bool saving;
+  final VoidCallback onTap;
+
+  const _SaveActionButton({
+    required this.enabled,
+    required this.saving,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const gold = Color(0xFFFFD700);
+    final isInteractive = enabled && !saving;
+    return GestureDetector(
+      onTap: isInteractive ? onTap : null,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: isInteractive
+              ? gold.withOpacity(0.22)
+              : Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: isInteractive
+                ? gold.withOpacity(0.6)
+                : Colors.white.withOpacity(0.12),
+            width: 1.2,
+          ),
+          boxShadow: isInteractive
+              ? [
+                  BoxShadow(
+                    color: gold.withOpacity(0.25),
+                    blurRadius: 10,
+                  ),
+                ]
+              : null,
+        ),
+        alignment: Alignment.center,
+        child: saving
+            ? const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation(gold),
+                ),
+              )
+            : Text(
+                '저장',
+                style: TextStyle(
+                  color: isInteractive ? gold : Colors.white.withOpacity(0.45),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.3,
+                ),
+              ),
+      ),
     );
   }
 }

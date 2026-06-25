@@ -1,0 +1,18 @@
+{
+  "packageName": "dearlog_planet_assets_mvp",
+  "version": "0.1",
+  "description": "디어로그 나의 행성 & Nova 꾸미기 MVP 개발자 전달용 기본 에셋",
+  "assetCounts": {
+    "basePlanets": 4,
+    "planetItems": 18,
+    "novaItems": 22,
+    "thumbnails": 45
+  },
+  "recommendedTab": "마이 탭",
+  "implementationType": "slot-based customization",
+  "canvas": {
+    "planetScene": "1080x1080",
+    "nova": "1024x1024",
+    "thumbnail": "256x256"
+  }
+}

@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
+import 'dart:math' show Random;
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:dearlog/app.dart';
+import 'package:dearlog/fortune/models/daily_fortune.dart';
 
 String _stripCodeFence(String content) {
   final s = content.trim();
@@ -22,6 +23,7 @@ const Duration _kNLPTimeout = Duration(seconds: 45);
 const Duration _kMusicTimeout = Duration(seconds: 30);
 const Duration _kImageTimeout = Duration(seconds: 90);
 const Duration _kStreamConnectTimeout = Duration(seconds: 30);
+const Duration _kFortuneTimeout = Duration(seconds: 45);
 
 /// 사용자에게 보여지는 에러 메시지로 변환되는 예외.
 /// (응답 body 같은 raw 정보는 절대 message 에 포함하지 않는다.)
@@ -133,6 +135,14 @@ const String _callBasePrompt = '''
 - 사용자가 행복하거나 신난 일을 얘기하면, 너도 같이 신나고 같이 들떠줘.
 - 가끔 너의 의견을 솔직하게 말해줘도 돼. 사용자가 잘못 생각하는 것 같으면 친구로서 살짝 짚어줘도 돼.
 - "AI", "도우미", "어시스턴트" 같은 단어 쓰지 마. 너는 친구야.
+
+- [중요] 맥락 붕괴 및 오인식 예외 처리:
+  사용자의 입력(STT 결과)에 오타가 너무 많거나, 문맥이 완전히 깨져서 무슨 뜻인지 도저히 이해할 수 없을 때는 '무지성 공감'을 절대 금지한다. 
+  이때는 억지로 공감하지 말고, "방금 앞부분이 잘 안 들렸어! 다시 한번만 말해줄래?" 또는 "응? 방금 무슨 단어라고 한 거야? 내가 잘못 들었나 봐, 다시 얘기해 줘!" 같이 자연스러운 친구 말투로 되물어서 재발화를 유도해라.
+- [중요] 긴 대화 처리:
+  사용자가 너무 길게 이야기하여 문장 뒷부분이 흐려지거나중간에 맥락이 끊겨서 들어온 경우, 다 이해한 척하지 말고 "이야기가 조금 길어서 내가 놓쳤다! 제일 속상했던 포인트가 어떤 거야?" 처럼 핵심 핵심 맥락을 좁혀서 되물어라.
+- [중요] 안전:
+  사용자가 자살이나 자해를 생각하는 듯한 신호를 보이면 절대 가볍게 받아치지 말고, 먼저 그 마음을 진심으로 알아준 다음 자살예방 상담전화 109(24시간)나 전문가와 이야기해 보길 친구로서 부드럽게 권해. 성적인 대화 요청, 폭력이나 불법 행위 조장, 특정 집단 혐오 표현은 친구답게 자연스럽지만 분명하게 거절하고 다른 화제로 돌려.
 ''';
 
 /// 사용자 정보(익명화)와 최근 일기 요약을 베이스 프롬프트에 덧붙여 완성된
@@ -341,7 +351,6 @@ class OpenAIService {
     String? callId,
     void Function(int step)? onStep,
     List<String> existingKeywords = const [],
-    bool generateIllustration = true,
   }) async {
     // 1단계: 일기 요약 및 AI 위로 한마디 생성 요청
     onStep?.call(1);
@@ -418,29 +427,8 @@ JSON 외의 말은 하지 마.
       music = null;
     }
 
-    // 3단계: 그림 이미지 생성 — 사용자가 토글로 끄면 스킵.
-    // (스킵된 경우 일기 detail에서 나중에 생성 가능. generateIllustrationForDiary 사용.)
-    String? imageUrl;
-    if (generateIllustration) {
-      onStep?.call(3);
-      final diaryWithAnalysis = DiaryEntry(
-        id: diaryForAnalysis.id,
-        date: diaryForAnalysis.date,
-        title: title,
-        content: content,
-        emotion: emotion,
-        aiComment: diaryForAnalysis.aiComment,
-        imageUrls: const [],
-        callId: callId,
-        analysis: analysis,
-      );
-      imageUrl = await generateIllustrationForDiary(
-        diary: diaryWithAnalysis,
-        userId: userId,
-      );
-    }
-
-    // 최종 DiaryEntry 반환
+    // 그림은 통화 종료 시점에서는 생성하지 않는다 — 사용자가 일기 상세 화면에서
+    // 직접 테마를 선택해 생성하도록 분리됨. [generateIllustrationForDiary] 참조.
     return DiaryEntry(
       id: diaryForAnalysis.id,
       date: diaryForAnalysis.date,
@@ -448,7 +436,7 @@ JSON 외의 말은 하지 마.
       content: content,
       emotion: emotion,
       aiComment: diaryForAnalysis.aiComment,
-      imageUrls: imageUrl != null ? [imageUrl] : const [],
+      imageUrls: const [],
       callId: callId,
       analysis: analysis,
       music: music,
@@ -712,9 +700,26 @@ keywords: $keywordsLine
     );
   }
 
-  /// 기존 일기에 대해 그림만 생성 + Storage 업로드 후 다운로드 URL 반환.
-  /// 통화 중 그림 생성을 OFF했던 일기를 나중에 그림 추가할 때 사용.
-  /// 일기에 대한 그림 생성 + Firebase Storage 업로드 + downloadURL 반환.
+  /// 그림 속 중심 캐릭터(=일기 작성자)의 성별을 영어 프롬프트 토큰으로 변환한다.
+  /// 사용자 프로필 [UserProfile.gender] ('남자' | '여자' | '공개 안 함') 를 받아
+  /// '남자'/'여자' 는 그대로 반영하고, '공개 안 함'(또는 미설정/빈 값)은
+  /// 남/여 중 무작위로 정해 매번 다른 성별로 그려질 수 있게 한다.
+  String _resolveCharacterGender(String? gender) {
+    switch (gender?.trim()) {
+      case '남자':
+        return 'male';
+      case '여자':
+        return 'female';
+      default:
+        return Random().nextBool() ? 'male' : 'female';
+    }
+  }
+
+  /// 일기 상세 화면에서 사용자가 [IllustrationTheme] 을 선택해 호출.
+  /// 그림 생성 → Firebase Storage 업로드 → downloadURL 반환.
+  ///
+  /// [gender] 는 사용자 프로필의 성별('남자'|'여자'|'공개 안 함')로,
+  /// 중심 캐릭터의 성별에 반영된다. ('공개 안 함'/미설정은 무작위 — [_resolveCharacterGender])
   ///
   /// 업로드 위치는 `users/{userId}/diaries/{diary.id}/illustration.png` —
   /// user-scoped 경로라 storage.rules 의 `users/{uid}/{allPaths=**}` 규칙으로
@@ -722,14 +727,18 @@ keywords: $keywordsLine
   Future<String> generateIllustrationForDiary({
     required DiaryEntry diary,
     required String userId,
+    required IllustrationTheme theme,
+    String? gender,
   }) async {
     final mainWordsStr = (diary.analysis?.keywords ?? const <KeywordEntry>[])
         .where((k) => k.category == KeywordCategory.noun)
         .map((k) => k.word)
         .join(', ');
 
+    final characterGender = _resolveCharacterGender(gender);
+
     final imagePrompt = '''
-You are illustrating a single-scene pastel-style diary illustration for a Korean user's daily journal entry.
+You are creating one polished diary illustration for Dearlog, a Korean personal journaling app.
 
 [DIARY INFO]
 - Title: ${diary.title}
@@ -737,13 +746,96 @@ You are illustrating a single-scene pastel-style diary illustration for a Korean
 - Key themes: $mainWordsStr
 - Content: ${diary.content}
 
-[ILLUSTRATION RULES]
-1. Scene: Choose ONE specific location or moment from the content (e.g., a cozy room, a café, a park bench, a bed at night). The scene must directly reflect a concrete detail mentioned in the content — not a generic setting.
-2. Character: One small, round, simple cartoon character at the center. The character's pose, action, and facial expression must reflect the emotion ("${diary.emotion}") and what they are doing in the story.
-3. Key objects: Identify 3–5 concrete nouns or actions from the content (e.g., a book, a phone call, music notes, food, a friend, rain, a TV) and include them visually in the scene as props or background details. Prioritize objects related to the key themes: $mainWordsStr.
-4. Storytelling details: Scatter small visual storytelling elements throughout — things like: items on a desk, what's outside the window, objects on the floor, or subtle symbols that hint at what happened that day.
-5. Style: Soft pastel color palette, hand-drawn feel, smooth rounded lines, light texture. Warm and gentle mood. No text or letters in the image.
-6. Composition: Single unified scene, no split panels. The illustration should feel like one complete, lived-in moment — not a generic or symbolic image.
+[CORE GOAL]
+Turn this diary entry into ONE specific, emotionally memorable visual moment.
+
+The image should feel like a real personal memory captured in an illustration:
+beautiful, intimate, calm, and visually coherent.
+
+Do not create a generic AI cartoon, a children’s picture book,
+a literal checklist of every event, or a cluttered collage.
+
+[SCENE RULES]
+1. Choose ONE concrete scene, place, or moment directly grounded in the diary content.
+   Select the most visually distinctive and emotionally meaningful moment,
+   rather than trying to illustrate every sentence.
+
+2. A person is optional.
+   Show a person only when it helps tell the memory.
+
+   When people appear:
+   - portray them as age-appropriate adults, teens, or children based on the diary context
+   - never default to a child character
+   - use natural body proportions and believable relaxed poses
+   - show only the number of people necessary for the scene
+   - do not add random friends, family members, pets, or background characters
+
+3. Select only 1 to 3 meaningful visual anchors from the diary.
+   These can be a place, an object, food, clothing, weather, activity, or view.
+
+   Examples:
+   - a picnic blanket, wine glasses, bicycles, and the Han River sunset
+   - a quiet salt sauna room, warm eggs, sikhye, and a bridge view
+   - hydrangeas, a green cap, stepping stones, and a roadside garden
+
+   Do not try to include every noun or event from the diary.
+
+4. Express the emotion "${diary.emotion}" through:
+   - composition
+   - lighting
+   - weather
+   - distance between people
+   - body language
+   - color temperature
+   - atmosphere
+
+   Do not use exaggerated facial expressions, floating icons, stickers,
+   hearts, stars, symbols, or decorative emotional effects.
+
+5. Prioritize a strong sense of place.
+   Make the setting feel specific, lived-in, and connected to the diary.
+
+   Examples:
+   - a river view through a window
+   - a warm restaurant beside the sea
+   - a quiet park at sunset
+   - a table with drinks after a long day
+   - a room at night with soft lamp light
+   - a street after rain
+   - a small café corner
+   - a sauna room with a distant bridge view
+
+[COMPOSITION RULES]
+- Create ONE unified scene only.
+- No split panels, no collage layouts, no sticker sheets, and no multiple separate moments.
+- Use a clear focal point and calm visual hierarchy.
+- Leave natural breathing room in the composition.
+- Prefer cinematic observational framing:
+  a quiet wide shot, gentle side view, candid moment, or slightly distant viewpoint.
+- Do not force the main character into the center of the frame.
+- Prioritize atmosphere and location over facial expressions.
+- Avoid crowded scenes and excessive background objects.
+- No text, letters, logos, captions, speech bubbles, UI elements, or watermarks.
+
+[STRICTLY AVOID]
+- chibi characters
+- childlike proportions unless the diary is explicitly about a child
+- oversized heads
+- huge anime eyes
+- exaggerated rosy-cheek mascot faces
+- generic cute AI cartoon style
+- random stars, planets, hearts, animals, flowers, or decorative symbols
+- fantasy or magical elements unless directly mentioned in the diary
+- distorted hands
+- duplicate people
+- floating objects
+- impossible architecture
+- literal illustration of every sentence
+- overly crowded compositions
+- medical imagery unless directly mentioned in the diary
+
+[SELECTED VISUAL STYLE]
+${theme.promptFragment}
 ''';
 
     final imageResponse = await _postWithRetry(
@@ -975,4 +1067,96 @@ evidence 규칙:
     }
     return result;
   }
+}
+
+/// 오늘의 운세 생성 — 한 건의 랜덤 일일운세를 생성.
+/// 결과는 클라이언트에서 하루 단위로 캐시 ([DailyFortuneCache]).
+extension OpenAIDailyFortune on OpenAIService {
+  Future<DailyFortune> generateDailyFortune(DateTime date) async {
+    final dateStr =
+        '${date.year}년 ${date.month}월 ${date.day}일 (${_weekdayKr(date)})';
+    final dateKey = todayKey(date);
+
+    final messages = [
+      {
+        "role": "system",
+        "content": '''
+너는 한국 사용자에게 따뜻하고 부드러운 일일운세를 들려주는 운세 작성자야.
+$dateStr 의 "오늘의 운세" 한 건을 JSON 으로만 출력해.
+
+[스키마]
+{
+  "body": "오늘의 운세 본문 (2~3 문장).",
+  "money": 1~5 정수,
+  "love": 1~5 정수,
+  "work": 1~5 정수,
+  "health": 1~5 정수,
+  "luckyColor": "한국어 색 이름 (예: 그레이, 빨강, 골드, 초록, 네이비)",
+  "luckyItem": "행운 아이템 짧은 표현 (예: 액세서리, 스포츠 음료, 이차원 코드, 붓꽃)"
+}
+
+[톤 & 매너]
+- 부드러운 존댓말. "~해요", "~예요", "~네요". 격식체("~입니다") 금지.
+- 진단·단정 금지. 과한 부정 표현(저주·불행 강조) 금지.
+- 따옴표(", ', ", "), 마크다운(**굵게**, _기울임_), 번호 매기기(1.) 금지.
+- 이모지는 쓰지 말 것.
+- 별자리/띠 같은 특정 분류를 언급하지 말 것.
+
+[본문 규칙]
+- 2~3문장. 80~140자 내외.
+- 그날의 작은 행동/마음가짐 팁이 자연스럽게 한 가지 들어가면 좋아.
+- 매일 다른 결로 — 어제 본 표현을 그대로 쓰지 않게.
+
+[별점 규칙]
+- 각 항목 1~5 정수. 모든 항목이 같지 않게 자연스럽게 분산.
+
+[행운 색상 / 아이템]
+- 일상적이고 구체적인 명사구로 짧게.
+
+JSON 외 어떤 텍스트도 출력 금지.
+'''
+      },
+      {
+        "role": "user",
+        "content": "$dateStr 의 오늘의 운세를 만들어줘."
+      }
+    ];
+
+    final res = await _postWithRetry(
+      Uri.parse('https://api.openai.com/v1/chat/completions'),
+      headers: {
+        'Authorization': 'Bearer ${RemoteConfigService().openAIApiKey}',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        "model": "gpt-5.4-mini",
+        "messages": messages,
+        "max_completion_tokens": 600,
+        "temperature": 0.9,
+        "response_format": {"type": "json_object"},
+      }),
+      timeout: _kFortuneTimeout,
+      label: '오늘의 운세 생성',
+    );
+
+    if (res.statusCode != 200) {
+      _throwOpenAiError('오늘의 운세 생성', res);
+    }
+
+    final content = jsonDecode(res.body)['choices'][0]['message']['content'];
+    final jsonMap = jsonDecode(_stripCodeFence(content)) as Map<String, dynamic>;
+    // dateKey 는 응답에 없을 수도 있으니 클라이언트 기준으로 채워준다.
+    jsonMap['dateKey'] = dateKey;
+
+    final fortune = DailyFortune.fromJson(jsonMap);
+    if (fortune.body.isEmpty) {
+      throw OpenAIServiceException('오늘의 운세 결과가 비어있어요. 다시 시도해 주세요.');
+    }
+    return fortune;
+  }
+}
+
+String _weekdayKr(DateTime d) {
+  const names = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
+  return names[d.weekday - 1];
 }

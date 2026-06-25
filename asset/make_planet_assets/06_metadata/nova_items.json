@@ -1,0 +1,376 @@
+[
+  {
+    "itemId": "antenna_star_basic",
+    "name": "기본 별 안테나",
+    "category": "antenna",
+    "assetUrl": "04_nova/antenna_star_basic.png",
+    "thumbnailUrl": "05_thumbnails/thumb_antenna_star_basic.png",
+    "slot": "antenna",
+    "zIndex": 6,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 0,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "antenna_moon",
+    "name": "초승달 안테나",
+    "category": "antenna",
+    "assetUrl": "04_nova/antenna_moon.png",
+    "thumbnailUrl": "05_thumbnails/thumb_antenna_moon.png",
+    "slot": "antenna",
+    "zIndex": 6,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 50,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "antenna_heart",
+    "name": "하트 안테나",
+    "category": "antenna",
+    "assetUrl": "04_nova/antenna_heart.png",
+    "thumbnailUrl": "05_thumbnails/thumb_antenna_heart.png",
+    "slot": "antenna",
+    "zIndex": 6,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 50,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "antenna_comet",
+    "name": "유성 안테나",
+    "category": "antenna",
+    "assetUrl": "04_nova/antenna_comet.png",
+    "thumbnailUrl": "05_thumbnails/thumb_antenna_comet.png",
+    "slot": "antenna",
+    "zIndex": 6,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 65,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "bag_basic_star",
+    "name": "기본 별가방",
+    "category": "bag",
+    "assetUrl": "04_nova/bag_basic_star.png",
+    "thumbnailUrl": "05_thumbnails/thumb_bag_basic_star.png",
+    "slot": "bag",
+    "zIndex": 7,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 0,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "bag_diary",
+    "name": "작은 일기장 가방",
+    "category": "bag",
+    "assetUrl": "04_nova/bag_diary.png",
+    "thumbnailUrl": "05_thumbnails/thumb_bag_diary.png",
+    "slot": "bag",
+    "zIndex": 7,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 65,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "bag_bottle",
+    "name": "별조각 병 가방",
+    "category": "bag",
+    "assetUrl": "04_nova/bag_bottle.png",
+    "thumbnailUrl": "05_thumbnails/thumb_bag_bottle.png",
+    "slot": "bag",
+    "zIndex": 7,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 70,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "bag_cloud",
+    "name": "구름 가방",
+    "category": "bag",
+    "assetUrl": "04_nova/bag_cloud.png",
+    "thumbnailUrl": "05_thumbnails/thumb_bag_cloud.png",
+    "slot": "bag",
+    "zIndex": 7,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 65,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "hand_star",
+    "name": "작은 별",
+    "category": "handItem",
+    "assetUrl": "04_nova/hand_star.png",
+    "thumbnailUrl": "05_thumbnails/thumb_hand_star.png",
+    "slot": "hand",
+    "zIndex": 8,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 0,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "hand_mug",
+    "name": "따뜻한 머그컵",
+    "category": "handItem",
+    "assetUrl": "04_nova/hand_mug.png",
+    "thumbnailUrl": "05_thumbnails/thumb_hand_mug.png",
+    "slot": "hand",
+    "zIndex": 8,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 50,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "hand_telescope",
+    "name": "망원경",
+    "category": "handItem",
+    "assetUrl": "04_nova/hand_telescope.png",
+    "thumbnailUrl": "05_thumbnails/thumb_hand_telescope.png",
+    "slot": "hand",
+    "zIndex": 8,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 55,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "hand_letter",
+    "name": "작은 편지",
+    "category": "handItem",
+    "assetUrl": "04_nova/hand_letter.png",
+    "thumbnailUrl": "05_thumbnails/thumb_hand_letter.png",
+    "slot": "hand",
+    "zIndex": 8,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 50,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "hand_blanket",
+    "name": "담요",
+    "category": "handItem",
+    "assetUrl": "04_nova/hand_blanket.png",
+    "thumbnailUrl": "05_thumbnails/thumb_hand_blanket.png",
+    "slot": "hand",
+    "zIndex": 8,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 60,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "face_basic",
+    "name": "기본 표정",
+    "category": "expression",
+    "assetUrl": "04_nova/face_basic.png",
+    "thumbnailUrl": "05_thumbnails/thumb_face_basic.png",
+    "slot": "face",
+    "zIndex": 9,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 0,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "face_smile",
+    "name": "웃는 표정",
+    "category": "expression",
+    "assetUrl": "04_nova/face_smile.png",
+    "thumbnailUrl": "05_thumbnails/thumb_face_smile.png",
+    "slot": "face",
+    "zIndex": 9,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 35,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "face_sleepy",
+    "name": "졸린 표정",
+    "category": "expression",
+    "assetUrl": "04_nova/face_sleepy.png",
+    "thumbnailUrl": "05_thumbnails/thumb_face_sleepy.png",
+    "slot": "face",
+    "zIndex": 9,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 35,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "face_worried",
+    "name": "걱정 표정",
+    "category": "expression",
+    "assetUrl": "04_nova/face_worried.png",
+    "thumbnailUrl": "05_thumbnails/thumb_face_worried.png",
+    "slot": "face",
+    "zIndex": 9,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 35,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "face_comforting",
+    "name": "위로 표정",
+    "category": "expression",
+    "assetUrl": "04_nova/face_comforting.png",
+    "thumbnailUrl": "05_thumbnails/thumb_face_comforting.png",
+    "slot": "face",
+    "zIndex": 9,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 35,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "outfit_lavender_cloak",
+    "name": "라벤더 망토",
+    "category": "outfit",
+    "assetUrl": "04_nova/outfit_lavender_cloak.png",
+    "thumbnailUrl": "05_thumbnails/thumb_outfit_lavender_cloak.png",
+    "slot": "outfit",
+    "zIndex": 4,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 80,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "outfit_star_pajama",
+    "name": "별 잠옷",
+    "category": "outfit",
+    "assetUrl": "04_nova/outfit_star_pajama.png",
+    "thumbnailUrl": "05_thumbnails/thumb_outfit_star_pajama.png",
+    "slot": "outfit",
+    "zIndex": 4,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 80,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "outfit_raincoat",
+    "name": "작은 우비",
+    "category": "outfit",
+    "assetUrl": "04_nova/outfit_raincoat.png",
+    "thumbnailUrl": "05_thumbnails/thumb_outfit_raincoat.png",
+    "slot": "outfit",
+    "zIndex": 4,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 80,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "outfit_warm_scarf",
+    "name": "따뜻한 목도리",
+    "category": "outfit",
+    "assetUrl": "04_nova/outfit_warm_scarf.png",
+    "thumbnailUrl": "05_thumbnails/thumb_outfit_warm_scarf.png",
+    "slot": "outfit",
+    "zIndex": 4,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 75,
+    "unlockCondition": "default"
+  }
+]

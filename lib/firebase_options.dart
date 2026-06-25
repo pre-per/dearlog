@@ -52,7 +52,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCU7Xz95N4uz8v91dcW6anhcsWmgEhTF2I',
-    appId: '1:66007203323:android:03e2a908944cdbfa97df5e',
+    appId: '1:66007203323:android:7e36082893951b3097df5e',
     messagingSenderId: '66007203323',
     projectId: 'dearlog-fdca5',
     storageBucket: 'dearlog-fdca5.firebasestorage.app',
@@ -60,20 +60,24 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAQL8PYF0lxEvuxteOUxReo3YwbUgeDIko',
-    appId: '1:66007203323:ios:6078bcff56fed9b897df5e',
+    appId: '1:66007203323:ios:587b70dcf91713a397df5e',
     messagingSenderId: '66007203323',
     projectId: 'dearlog-fdca5',
     storageBucket: 'dearlog-fdca5.firebasestorage.app',
-    iosBundleId: 'com.example.dearlog',
+    androidClientId: '66007203323-g32nb9qdlvntq213d30p19r4651jnr4g.apps.googleusercontent.com',
+    iosClientId: '66007203323-jk0vn3bs309lrf95806gd0nf0s2bd152.apps.googleusercontent.com',
+    iosBundleId: 'com.preper.dearlog',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyAQL8PYF0lxEvuxteOUxReo3YwbUgeDIko',
-    appId: '1:66007203323:ios:6078bcff56fed9b897df5e',
+    appId: '1:66007203323:ios:587b70dcf91713a397df5e',
     messagingSenderId: '66007203323',
     projectId: 'dearlog-fdca5',
     storageBucket: 'dearlog-fdca5.firebasestorage.app',
-    iosBundleId: 'com.example.dearlog',
+    androidClientId: '66007203323-g32nb9qdlvntq213d30p19r4651jnr4g.apps.googleusercontent.com',
+    iosClientId: '66007203323-jk0vn3bs309lrf95806gd0nf0s2bd152.apps.googleusercontent.com',
+    iosBundleId: 'com.preper.dearlog',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
@@ -85,4 +89,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'dearlog-fdca5.firebasestorage.app',
     measurementId: 'G-JVNP85NCLT',
   );
+
 }
