@@ -5,6 +5,7 @@ import '../../app/di/providers.dart';
 import '../../user/providers/user_fetch_providers.dart';
 import '../providers/anonymous_default_provider.dart';
 import '../providers/reply_target_provider.dart';
+import '../utils/content_filter.dart';
 
 /// 게시물 상세 하단에 고정되는 댓글 입력 바.
 ///
@@ -75,6 +76,16 @@ class _CommentInputBarState extends ConsumerState<CommentInputBar> {
     if (user == null) return;
 
     final text = _ctrl.text.trim();
+
+    // 댓글 금칙어 1차 필터 (App Store 1.2 — UGC 콘텐츠 필터링)
+    final banned = ContentFilter.findBannedWord(text);
+    if (banned != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('부적절한 표현("$banned")이 포함되어 있어 등록할 수 없어요')),
+      );
+      return;
+    }
+
     final isAnonymous = ref.read(anonymousDefaultProvider);
     final replyTarget = ref.read(replyTargetProvider);
 

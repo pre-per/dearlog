@@ -1,0 +1,628 @@
+{
+  "package": "dearlog_nova_planet_transparent_assets_v3",
+  "version": "3.0.0",
+  "description": "Dearlog 나의 행성 & Nova 개발자 전달용 투명 PNG 개별 에셋",
+  "important_note": "Nova 에셋은 앱 적용/개발 전달용 투명 PNG입니다. 원본 3D 모델 파일(.blend/.fbx)은 포함되어 있지 않습니다.",
+  "counts": {
+    "nova_assets": 21,
+    "planet_assets": 25,
+    "total_transparent_png_assets": 46
+  },
+  "assets": {
+    "nova": [
+      {
+        "id": "nova_default_holding_star",
+        "category": "nova_base",
+        "slot": "base",
+        "file": "assets/nova/base/nova_default_holding_star.png",
+        "thumbnail": "thumbnails/nova_default_holding_star_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "id": "nova_pose_basic",
+        "category": "nova_pose",
+        "slot": "pose",
+        "file": "assets/nova/poses/nova_pose_basic.png",
+        "thumbnail": "thumbnails/nova_pose_basic_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "id": "nova_pose_wave",
+        "category": "nova_pose",
+        "slot": "pose",
+        "file": "assets/nova/poses/nova_pose_wave.png",
+        "thumbnail": "thumbnails/nova_pose_wave_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "id": "nova_pose_float",
+        "category": "nova_pose",
+        "slot": "pose",
+        "file": "assets/nova/poses/nova_pose_float.png",
+        "thumbnail": "thumbnails/nova_pose_float_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "id": "expression_happy",
+        "category": "nova_expression",
+        "slot": "face",
+        "file": "assets/nova/expressions/expression_happy.png",
+        "thumbnail": "thumbnails/expression_happy_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "expression_sleepy",
+        "category": "nova_expression",
+        "slot": "face",
+        "file": "assets/nova/expressions/expression_sleepy.png",
+        "thumbnail": "thumbnails/expression_sleepy_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "expression_excited",
+        "category": "nova_expression",
+        "slot": "face",
+        "file": "assets/nova/expressions/expression_excited.png",
+        "thumbnail": "thumbnails/expression_excited_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "expression_sad",
+        "category": "nova_expression",
+        "slot": "face",
+        "file": "assets/nova/expressions/expression_sad.png",
+        "thumbnail": "thumbnails/expression_sad_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "expression_heart",
+        "category": "nova_expression",
+        "slot": "face",
+        "file": "assets/nova/expressions/expression_heart.png",
+        "thumbnail": "thumbnails/expression_heart_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "antenna_star",
+        "category": "nova_accessory",
+        "slot": "antenna",
+        "file": "assets/nova/accessories/antenna/antenna_star.png",
+        "thumbnail": "thumbnails/antenna_star_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "antenna_sparkle_star",
+        "category": "nova_accessory",
+        "slot": "antenna",
+        "file": "assets/nova/accessories/antenna/antenna_sparkle_star.png",
+        "thumbnail": "thumbnails/antenna_sparkle_star_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "antenna_moon",
+        "category": "nova_accessory",
+        "slot": "antenna",
+        "file": "assets/nova/accessories/antenna/antenna_moon.png",
+        "thumbnail": "thumbnails/antenna_moon_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "antenna_heart",
+        "category": "nova_accessory",
+        "slot": "antenna",
+        "file": "assets/nova/accessories/antenna/antenna_heart.png",
+        "thumbnail": "thumbnails/antenna_heart_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "bag_basic",
+        "category": "nova_accessory",
+        "slot": "bag",
+        "file": "assets/nova/accessories/bags/bag_basic.png",
+        "thumbnail": "thumbnails/bag_basic_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          768,
+          768
+        ]
+      },
+      {
+        "id": "bag_star_patch",
+        "category": "nova_accessory",
+        "slot": "bag",
+        "file": "assets/nova/accessories/bags/bag_star_patch.png",
+        "thumbnail": "thumbnails/bag_star_patch_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          768,
+          768
+        ]
+      },
+      {
+        "id": "bag_moon_charm",
+        "category": "nova_accessory",
+        "slot": "bag",
+        "file": "assets/nova/accessories/bags/bag_moon_charm.png",
+        "thumbnail": "thumbnails/bag_moon_charm_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          768,
+          768
+        ]
+      },
+      {
+        "id": "bag_dream_cloud",
+        "category": "nova_accessory",
+        "slot": "bag",
+        "file": "assets/nova/accessories/bags/bag_dream_cloud.png",
+        "thumbnail": "thumbnails/bag_dream_cloud_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          768,
+          768
+        ]
+      },
+      {
+        "id": "prop_star_orb",
+        "category": "nova_accessory",
+        "slot": "prop",
+        "file": "assets/nova/accessories/props/prop_star_orb.png",
+        "thumbnail": "thumbnails/prop_star_orb_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          768,
+          768
+        ]
+      },
+      {
+        "id": "prop_star_wand",
+        "category": "nova_accessory",
+        "slot": "prop",
+        "file": "assets/nova/accessories/props/prop_star_wand.png",
+        "thumbnail": "thumbnails/prop_star_wand_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          768,
+          768
+        ]
+      },
+      {
+        "id": "prop_nova_doll",
+        "category": "nova_accessory",
+        "slot": "prop",
+        "file": "assets/nova/accessories/props/prop_nova_doll.png",
+        "thumbnail": "thumbnails/prop_nova_doll_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          768,
+          768
+        ]
+      },
+      {
+        "id": "prop_diary",
+        "category": "nova_accessory",
+        "slot": "prop",
+        "file": "assets/nova/accessories/props/prop_diary.png",
+        "thumbnail": "thumbnails/prop_diary_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          768,
+          768
+        ]
+      }
+    ],
+    "planet": [
+      {
+        "id": "cloud_pink",
+        "category": "planet_item",
+        "slot": "clouds",
+        "file": "assets/planet_items/clouds/cloud_pink.png",
+        "thumbnail": "thumbnails/cloud_pink_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "cloud_purple",
+        "category": "planet_item",
+        "slot": "clouds",
+        "file": "assets/planet_items/clouds/cloud_purple.png",
+        "thumbnail": "thumbnails/cloud_purple_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "cloud_small",
+        "category": "planet_item",
+        "slot": "clouds",
+        "file": "assets/planet_items/clouds/cloud_small.png",
+        "thumbnail": "thumbnails/cloud_small_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "cloud_white_lavender",
+        "category": "planet_item",
+        "slot": "clouds",
+        "file": "assets/planet_items/clouds/cloud_white_lavender.png",
+        "thumbnail": "thumbnails/cloud_white_lavender_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "object_crescent_moon",
+        "category": "planet_item",
+        "slot": "objects",
+        "file": "assets/planet_items/objects/object_crescent_moon.png",
+        "thumbnail": "thumbnails/object_crescent_moon_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "object_crystal",
+        "category": "planet_item",
+        "slot": "objects",
+        "file": "assets/planet_items/objects/object_crystal.png",
+        "thumbnail": "thumbnails/object_crystal_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "object_diary_book",
+        "category": "planet_item",
+        "slot": "objects",
+        "file": "assets/planet_items/objects/object_diary_book.png",
+        "thumbnail": "thumbnails/object_diary_book_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "object_flower_patch",
+        "category": "planet_item",
+        "slot": "objects",
+        "file": "assets/planet_items/objects/object_flower_patch.png",
+        "thumbnail": "thumbnails/object_flower_patch_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "object_heart_balloon",
+        "category": "planet_item",
+        "slot": "objects",
+        "file": "assets/planet_items/objects/object_heart_balloon.png",
+        "thumbnail": "thumbnails/object_heart_balloon_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "object_jar_stars",
+        "category": "planet_item",
+        "slot": "objects",
+        "file": "assets/planet_items/objects/object_jar_stars.png",
+        "thumbnail": "thumbnails/object_jar_stars_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "ring_blue",
+        "category": "planet_item",
+        "slot": "rings",
+        "file": "assets/planet_items/rings/ring_blue.png",
+        "thumbnail": "thumbnails/ring_blue_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          768,
+          768
+        ]
+      },
+      {
+        "id": "ring_gold",
+        "category": "planet_item",
+        "slot": "rings",
+        "file": "assets/planet_items/rings/ring_gold.png",
+        "thumbnail": "thumbnails/ring_gold_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          768,
+          768
+        ]
+      },
+      {
+        "id": "ring_pink",
+        "category": "planet_item",
+        "slot": "rings",
+        "file": "assets/planet_items/rings/ring_pink.png",
+        "thumbnail": "thumbnails/ring_pink_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          768,
+          768
+        ]
+      },
+      {
+        "id": "ring_stardust",
+        "category": "planet_item",
+        "slot": "rings",
+        "file": "assets/planet_items/rings/ring_stardust.png",
+        "thumbnail": "thumbnails/ring_stardust_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          768,
+          768
+        ]
+      },
+      {
+        "id": "ring_thin_white",
+        "category": "planet_item",
+        "slot": "rings",
+        "file": "assets/planet_items/rings/ring_thin_white.png",
+        "thumbnail": "thumbnails/ring_thin_white_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          768,
+          768
+        ]
+      },
+      {
+        "id": "ring_violet",
+        "category": "planet_item",
+        "slot": "rings",
+        "file": "assets/planet_items/rings/ring_violet.png",
+        "thumbnail": "thumbnails/ring_violet_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          768,
+          768
+        ]
+      },
+      {
+        "id": "purple_star",
+        "category": "planet_item",
+        "slot": "stars",
+        "file": "assets/planet_items/stars/purple_star.png",
+        "thumbnail": "thumbnails/purple_star_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "shooting_star",
+        "category": "planet_item",
+        "slot": "stars",
+        "file": "assets/planet_items/stars/shooting_star.png",
+        "thumbnail": "thumbnails/shooting_star_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "single_star",
+        "category": "planet_item",
+        "slot": "stars",
+        "file": "assets/planet_items/stars/single_star.png",
+        "thumbnail": "thumbnails/single_star_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "sparkle_cluster",
+        "category": "planet_item",
+        "slot": "stars",
+        "file": "assets/planet_items/stars/sparkle_cluster.png",
+        "thumbnail": "thumbnails/sparkle_cluster_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "tiny_crosses",
+        "category": "planet_item",
+        "slot": "stars",
+        "file": "assets/planet_items/stars/tiny_crosses.png",
+        "thumbnail": "thumbnails/tiny_crosses_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          512,
+          512
+        ]
+      },
+      {
+        "id": "planet_blue_dream",
+        "category": "planet_base",
+        "slot": "planet_base",
+        "file": "assets/planets/base/planet_blue_dream.png",
+        "thumbnail": "thumbnails/planet_blue_dream_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "id": "planet_lavender_glow",
+        "category": "planet_base",
+        "slot": "planet_base",
+        "file": "assets/planets/base/planet_lavender_glow.png",
+        "thumbnail": "thumbnails/planet_lavender_glow_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "id": "planet_mint_aurora",
+        "category": "planet_base",
+        "slot": "planet_base",
+        "file": "assets/planets/base/planet_mint_aurora.png",
+        "thumbnail": "thumbnails/planet_mint_aurora_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "id": "planet_rose_nebula",
+        "category": "planet_base",
+        "slot": "planet_base",
+        "file": "assets/planets/base/planet_rose_nebula.png",
+        "thumbnail": "thumbnails/planet_rose_nebula_thumb.png",
+        "format": "png",
+        "transparent_background": true,
+        "canvas_px": [
+          1024,
+          1024
+        ]
+      }
+    ]
+  },
+  "render_order_recommendation": [
+    "space_background",
+    "planet_base",
+    "planet_rings",
+    "planet_stars",
+    "planet_clouds",
+    "planet_objects",
+    "nova_base_or_pose",
+    "nova_antenna",
+    "nova_bag",
+    "nova_prop",
+    "ui_overlay"
+  ]
+}

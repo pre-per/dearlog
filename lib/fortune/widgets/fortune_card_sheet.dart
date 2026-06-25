@@ -218,7 +218,17 @@ class _FortuneBody extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 12),
+        // 점성술적 사실이 아니라 오락용 AI 콘텐츠임을 명시 (심사·신뢰 양쪽 목적)
+        Text(
+          'AI가 생성한 재미로 보는 콘텐츠예요',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.4),
+            fontSize: 11.5,
+          ),
+        ),
+        const SizedBox(height: 12),
         GestureDetector(
           onTap: () => Navigator.of(context).maybePop(),
           child: Container(

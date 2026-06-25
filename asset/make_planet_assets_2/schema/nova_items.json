@@ -1,0 +1,277 @@
+{
+  "nova_items": [
+    {
+      "id": "nova_default_holding_star",
+      "category": "nova_base",
+      "slot": "base",
+      "file": "assets/nova/base/nova_default_holding_star.png",
+      "thumbnail": "thumbnails/nova_default_holding_star_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "id": "nova_pose_basic",
+      "category": "nova_pose",
+      "slot": "pose",
+      "file": "assets/nova/poses/nova_pose_basic.png",
+      "thumbnail": "thumbnails/nova_pose_basic_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "id": "nova_pose_wave",
+      "category": "nova_pose",
+      "slot": "pose",
+      "file": "assets/nova/poses/nova_pose_wave.png",
+      "thumbnail": "thumbnails/nova_pose_wave_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "id": "nova_pose_float",
+      "category": "nova_pose",
+      "slot": "pose",
+      "file": "assets/nova/poses/nova_pose_float.png",
+      "thumbnail": "thumbnails/nova_pose_float_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "id": "expression_happy",
+      "category": "nova_expression",
+      "slot": "face",
+      "file": "assets/nova/expressions/expression_happy.png",
+      "thumbnail": "thumbnails/expression_happy_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        512,
+        512
+      ]
+    },
+    {
+      "id": "expression_sleepy",
+      "category": "nova_expression",
+      "slot": "face",
+      "file": "assets/nova/expressions/expression_sleepy.png",
+      "thumbnail": "thumbnails/expression_sleepy_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        512,
+        512
+      ]
+    },
+    {
+      "id": "expression_excited",
+      "category": "nova_expression",
+      "slot": "face",
+      "file": "assets/nova/expressions/expression_excited.png",
+      "thumbnail": "thumbnails/expression_excited_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        512,
+        512
+      ]
+    },
+    {
+      "id": "expression_sad",
+      "category": "nova_expression",
+      "slot": "face",
+      "file": "assets/nova/expressions/expression_sad.png",
+      "thumbnail": "thumbnails/expression_sad_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        512,
+        512
+      ]
+    },
+    {
+      "id": "expression_heart",
+      "category": "nova_expression",
+      "slot": "face",
+      "file": "assets/nova/expressions/expression_heart.png",
+      "thumbnail": "thumbnails/expression_heart_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        512,
+        512
+      ]
+    },
+    {
+      "id": "antenna_star",
+      "category": "nova_accessory",
+      "slot": "antenna",
+      "file": "assets/nova/accessories/antenna/antenna_star.png",
+      "thumbnail": "thumbnails/antenna_star_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        512,
+        512
+      ]
+    },
+    {
+      "id": "antenna_sparkle_star",
+      "category": "nova_accessory",
+      "slot": "antenna",
+      "file": "assets/nova/accessories/antenna/antenna_sparkle_star.png",
+      "thumbnail": "thumbnails/antenna_sparkle_star_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        512,
+        512
+      ]
+    },
+    {
+      "id": "antenna_moon",
+      "category": "nova_accessory",
+      "slot": "antenna",
+      "file": "assets/nova/accessories/antenna/antenna_moon.png",
+      "thumbnail": "thumbnails/antenna_moon_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        512,
+        512
+      ]
+    },
+    {
+      "id": "antenna_heart",
+      "category": "nova_accessory",
+      "slot": "antenna",
+      "file": "assets/nova/accessories/antenna/antenna_heart.png",
+      "thumbnail": "thumbnails/antenna_heart_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        512,
+        512
+      ]
+    },
+    {
+      "id": "bag_basic",
+      "category": "nova_accessory",
+      "slot": "bag",
+      "file": "assets/nova/accessories/bags/bag_basic.png",
+      "thumbnail": "thumbnails/bag_basic_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        768,
+        768
+      ]
+    },
+    {
+      "id": "bag_star_patch",
+      "category": "nova_accessory",
+      "slot": "bag",
+      "file": "assets/nova/accessories/bags/bag_star_patch.png",
+      "thumbnail": "thumbnails/bag_star_patch_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        768,
+        768
+      ]
+    },
+    {
+      "id": "bag_moon_charm",
+      "category": "nova_accessory",
+      "slot": "bag",
+      "file": "assets/nova/accessories/bags/bag_moon_charm.png",
+      "thumbnail": "thumbnails/bag_moon_charm_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        768,
+        768
+      ]
+    },
+    {
+      "id": "bag_dream_cloud",
+      "category": "nova_accessory",
+      "slot": "bag",
+      "file": "assets/nova/accessories/bags/bag_dream_cloud.png",
+      "thumbnail": "thumbnails/bag_dream_cloud_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        768,
+        768
+      ]
+    },
+    {
+      "id": "prop_star_orb",
+      "category": "nova_accessory",
+      "slot": "prop",
+      "file": "assets/nova/accessories/props/prop_star_orb.png",
+      "thumbnail": "thumbnails/prop_star_orb_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        768,
+        768
+      ]
+    },
+    {
+      "id": "prop_star_wand",
+      "category": "nova_accessory",
+      "slot": "prop",
+      "file": "assets/nova/accessories/props/prop_star_wand.png",
+      "thumbnail": "thumbnails/prop_star_wand_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        768,
+        768
+      ]
+    },
+    {
+      "id": "prop_nova_doll",
+      "category": "nova_accessory",
+      "slot": "prop",
+      "file": "assets/nova/accessories/props/prop_nova_doll.png",
+      "thumbnail": "thumbnails/prop_nova_doll_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        768,
+        768
+      ]
+    },
+    {
+      "id": "prop_diary",
+      "category": "nova_accessory",
+      "slot": "prop",
+      "file": "assets/nova/accessories/props/prop_diary.png",
+      "thumbnail": "thumbnails/prop_diary_thumb.png",
+      "format": "png",
+      "transparent_background": true,
+      "canvas_px": [
+        768,
+        768
+      ]
+    }
+  ]
+}

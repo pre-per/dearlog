@@ -7,6 +7,7 @@ import 'package:dearlog/call/providers/voice_provider.dart';
 import 'package:dearlog/community/repository/community_repository.dart';
 import 'package:dearlog/community/screens/community_settings_screen.dart';
 import 'package:dearlog/community/widgets/my_rank_card.dart';
+import 'package:dearlog/planet/widgets/my_planet_card.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
@@ -36,6 +37,20 @@ class SettingMainScreen extends ConsumerWidget {
     );
 
     await user.reauthenticateWithCredential(credential);
+  }
+
+  /// 현재 계정이 애플 로그인으로 가입한 계정인지
+  bool _isAppleUser(User user) =>
+      user.providerData.any((p) => p.providerId == 'apple.com');
+
+  /// 탈퇴용 재인증 — 가입 제공자(애플/구글)에 맞는 인증 픽커를 띄운다.
+  /// 애플 계정은 재인증과 함께 토큰 철회(App Store 5.1.1(v))까지 수행된다.
+  Future<void> _reauthenticateForWithdraw(User user) async {
+    if (_isAppleUser(user)) {
+      await AppleAuthService().reauthenticateForWithdrawal();
+    } else {
+      await _reauthenticateWithGoogle();
+    }
   }
 
   /// Firestore 서브컬렉션(문서들) 전부 삭제
@@ -326,6 +341,21 @@ class SettingMainScreen extends ConsumerWidget {
     final confirm = await showWithdrawConfirmDialog(context);
     if (confirm != true) return;
 
+    // 애플 계정은 탈퇴 시 애플 토큰 철회가 필수(App Store 5.1.1(v)) — 철회에
+    // 방금 발급된 authorizationCode 가 필요해서 데이터 삭제 전에 재인증을 먼저
+    // 한다. 여기서 취소하면 아무것도 지워지지 않은 상태로 탈퇴가 중단된다.
+    if (_isAppleUser(user)) {
+      try {
+        await AppleAuthService().reauthenticateForWithdrawal();
+      } catch (_) {
+        if (context.mounted) {
+          _showError(context, '재인증이 취소되어 탈퇴를 중단했어요');
+        }
+        return;
+      }
+      if (!context.mounted) return;
+    }
+
     // 진행 중 다이얼로그 — 회원탈퇴는 Firestore 다중 컬렉션 정리 + Storage + auth
     // 까지 시간이 걸려서 사용자에게 "처리 중" 피드백을 명시적으로 줘야 한다.
     final dismiss = showGlassProgressDialog(
@@ -367,7 +397,7 @@ class SettingMainScreen extends ConsumerWidget {
         if (!context.mounted) return;
         await _showReauthRequiredAwait(context);
         try {
-          await _reauthenticateWithGoogle();
+          await _reauthenticateForWithdraw(user);
         } catch (_) {
           if (context.mounted) {
             _showError(context, '재인증이 취소되어 탈퇴를 중단했어요');
@@ -519,6 +549,8 @@ class SettingMainScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 25),
             child: ListView(
               children: [
+                const SizedBox(height: 20),
+                const MyPlanetCard(),
                 const SizedBox(height: 20),
                 const MyRankCard(),
                 const SizedBox(height: 20),
@@ -688,12 +720,19 @@ class SettingMainScreen extends ConsumerWidget {
                     ),
 
                     SimpleTitleTile(
-                      title: '이용약관 & 개인정보 처리방침',
+                      title: '이용약관',
                       onTap: () {
                         Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => PrivacyPolicyScreen()),
+                          MaterialPageRoute(
+                              builder: (_) => const TermsOfServiceScreen()),
                         );
                       },
+                    ),
+                    SimpleTitleTile(
+                      title: '개인정보 처리방침',
+                      // 노션 페이지를 외부 브라우저로 연다 — 인앱 화면 대신
+                      // 링크로 관리해 내용 수정 시 앱 업데이트가 필요 없다.
+                      onTap: () => openPrivacyPolicy(context),
                     ),
 
                   ],

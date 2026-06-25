@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
+import '../../user/providers/user_fetch_providers.dart';
 import '../providers/community_providers.dart';
+import '../providers/community_safety_providers.dart';
 import '../widgets/emotion_filter_bar.dart';
 import '../widgets/post_card.dart';
 import 'create_edit_post_screen.dart';
@@ -48,6 +50,23 @@ class _CommunityMainScreenState extends ConsumerState<CommunityMainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // App Store 가이드라인 1.2 — UGC 기능은 이용 규칙(무관용 원칙) 동의 후에만
+    // 사용할 수 있어야 한다. 네트워크 오류 시에는 보수적으로 통과시켜 기존
+    // 사용자를 막지 않는다 (agreedTermsAt 와 같은 패턴).
+    final rulesAgreed = ref.watch(communityRulesAgreedProvider).maybeWhen(
+          data: (v) => v,
+          error: (_, __) => true,
+          orElse: () => null,
+        );
+    if (rulesAgreed == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (!rulesAgreed) {
+      return const Scaffold(body: _CommunityRulesGate());
+    }
+
     final feedAsync = ref.watch(communityFeedProvider);
 
     return Scaffold(
@@ -69,7 +88,14 @@ class _CommunityMainScreenState extends ConsumerState<CommunityMainScreen> {
                 error: (e, _) =>
                     _ErrorView(message: '$e', onRetry: _refresh),
                 data: (state) {
-                  if (state.posts.isEmpty) {
+                  // 차단한 사용자의 글 + 신고가 누적된 글은 피드에서 숨긴다.
+                  final blocked = ref.watch(blockedUidsProvider);
+                  final posts = state.posts
+                      .where((p) =>
+                          !blocked.contains(p.authorUid) &&
+                          p.reportCount < kReportHideThreshold)
+                      .toList();
+                  if (posts.isEmpty) {
                     return _EmptyView(onRefresh: _refresh);
                   }
                   return RefreshIndicator(
@@ -80,17 +106,17 @@ class _CommunityMainScreenState extends ConsumerState<CommunityMainScreen> {
                         parent: BouncingScrollPhysics(),
                       ),
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                      itemCount: state.posts.length + 1, // +1 for footer
+                      itemCount: posts.length + 1, // +1 for footer
                       separatorBuilder: (_, __) =>
                           const SizedBox(height: 12),
                       itemBuilder: (context, i) {
-                        if (i == state.posts.length) {
+                        if (i == posts.length) {
                           return _FeedFooter(
                             loadingMore: state.loadingMore,
                             hasMore: state.hasMore,
                           );
                         }
-                        final post = state.posts[i];
+                        final post = posts[i];
                         return PostCard(
                           post: post,
                           onTap: () => _openPostDetail(post.id),
@@ -297,5 +323,174 @@ class _FeedFooter extends StatelessWidget {
       );
     }
     return const SizedBox(height: 24);
+  }
+}
+
+/// 커뮤니티 첫 진입 시 이용 규칙 동의 화면.
+///
+/// App Store 가이드라인 1.2 — UGC 기능은 부적절 콘텐츠에 대한 무관용 원칙을
+/// 담은 이용 규칙에 동의해야 사용할 수 있다. 동의 시각은 user 문서의
+/// communityRulesAgreedAt 에 저장돼 기기를 바꿔도 다시 묻지 않는다.
+class _CommunityRulesGate extends ConsumerStatefulWidget {
+  const _CommunityRulesGate();
+
+  @override
+  ConsumerState<_CommunityRulesGate> createState() =>
+      _CommunityRulesGateState();
+}
+
+class _CommunityRulesGateState extends ConsumerState<_CommunityRulesGate> {
+  bool _saving = false;
+
+  Future<void> _agree() async {
+    final uid = ref.read(userIdProvider);
+    if (uid == null || _saving) return;
+    setState(() => _saving = true);
+    try {
+      await CommunitySafetyActions.agreeCommunityRules(uid);
+      // communityRulesAgreedProvider 스트림이 갱신을 감지해 화면이 전환된다.
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('잠시 후 다시 시도해 주세요: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 32),
+            const Text(
+              '함께 쓰는 공간이에요',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                fontFamily: 'GowunBatang',
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '커뮤니티를 시작하기 전에 약속해 주세요',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.6),
+                fontSize: 14,
+                fontFamily: 'GowunBatang',
+              ),
+            ),
+            const SizedBox(height: 28),
+            const _RuleItem(
+              emoji: '🚫',
+              title: '부적절한 콘텐츠는 무관용이에요',
+              body: '욕설, 혐오, 음란물, 타인 비방 등 부적절한 콘텐츠는 무관용 원칙으로 삭제되고 이용이 제한될 수 있어요.',
+            ),
+            const _RuleItem(
+              emoji: '🚨',
+              title: '신고하면 빠르게 조치해요',
+              body: '신고된 콘텐츠는 운영팀이 24시간 이내에 검토해요. 신고가 누적된 글은 검토 전까지 자동으로 숨겨져요.',
+            ),
+            const _RuleItem(
+              emoji: '🙅',
+              title: '불쾌한 사용자는 차단할 수 있어요',
+              body: '차단하면 그 사용자의 글과 댓글이 더 이상 보이지 않아요. 차단 목록은 커뮤니티 설정에서 관리해요.',
+            ),
+            const _RuleItem(
+              emoji: '🔒',
+              title: '개인정보를 지켜주세요',
+              body: '나와 타인의 연락처, 주소 등 개인정보를 올리지 마세요.',
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: _saving ? null : _agree,
+              child: Container(
+                height: 56,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  color: Colors.white.withOpacity(_saving ? 0.5 : 1),
+                ),
+                child: _saving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.black,
+                        ),
+                      )
+                    : const Text(
+                        '동의하고 시작하기',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 110),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RuleItem extends StatelessWidget {
+  final String emoji;
+  final String title;
+  final String body;
+  const _RuleItem({
+    required this.emoji,
+    required this.title,
+    required this.body,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 20)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'GowunBatang',
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  body,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.65),
+                    fontSize: 13,
+                    height: 1.5,
+                    fontFamily: 'GowunBatang',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

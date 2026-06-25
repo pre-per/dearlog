@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:dearlog/app.dart';
 import 'package:dearlog/call/providers/voice_provider.dart';
+import 'package:dearlog/core/safety/crisis_support.dart';
 
 class AiChatScreen extends ConsumerStatefulWidget {
   const AiChatScreen({super.key});
@@ -208,6 +209,10 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       final notifier = ref.read(messageProvider.notifier);
       notifier.addUserMessage(cleaned);
       _scrollToBottom();
+
+      // 자살·자해 등 위기 신호가 보이면 전문기관 안내 (대화는 막지 않는다)
+      // ignore: unawaited_futures
+      CrisisSupport.maybeShowSupport(context, cleaned);
 
       // 사용자 프로필 + 최근 일기 3개 — 익명화된 컨텍스트로 친구 톤 유지.
       final profile = ref.read(userProfileProvider);

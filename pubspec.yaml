@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.1.0+10
+version: 1.1.0+16
 
 environment:
   sdk: ^3.7.2
@@ -69,6 +69,7 @@ dependencies:
   cloud_functions: ^5.2.0
   flutter_onnxruntime: ^1.6.0
   gal: ^2.3.1
+  sign_in_with_apple: ^8.1.0
 
 dev_dependencies:
   flutter_test:
@@ -128,6 +129,13 @@ flutter:
     - asset/icons/call/
     - asset/supertonic/onnx/
     - asset/supertonic/voice_styles/
+    # 나의 행성 & Nova 꾸미기 에셋 v2 (행성/아이템 풀해상도 투명 + Nova/그리드용 썸네일)
+    - asset/make_planet_assets_2/assets/planets/base/
+    - asset/make_planet_assets_2/assets/planet_items/clouds/
+    - asset/make_planet_assets_2/assets/planet_items/objects/
+    - asset/make_planet_assets_2/assets/planet_items/rings/
+    - asset/make_planet_assets_2/assets/planet_items/stars/
+    - asset/make_planet_assets_2/thumbnails/
 
   #   - images/a_dot_ham.jpeg
 

@@ -1,8 +1,8 @@
 import 'package:dearlog/app.dart';
 
 /// 서비스 이용약관 화면.
-/// (현재 본문은 [PrivacyPolicyScreen] 의 통합본 텍스트와 동일하게 노출.
-///  운영자가 약관/개인정보를 분리해서 따로 작성하면 그때 본문만 교체)
+/// (개인정보 처리방침은 인앱 화면 없이 노션 페이지를 외부 브라우저로 연다
+///  — core/config/legal_links.dart 의 openPrivacyPolicy 참조)
 class TermsOfServiceScreen extends StatelessWidget {
   const TermsOfServiceScreen({super.key});
 
@@ -36,7 +36,6 @@ class TermsOfServiceScreen extends StatelessWidget {
 }
 
 /// 서비스 이용약관 본문.
-/// 운영자가 PrivacyPolicyScreen 의 _privacyPolicyText 와 분리해서 작성/관리하면 됨.
 const String _termsText = """
 제1조 (목적)
 

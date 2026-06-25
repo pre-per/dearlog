@@ -1,0 +1,295 @@
+[
+  {
+    "itemId": "bg_night_basic",
+    "name": "기본 별밤",
+    "category": "background",
+    "assetUrl": "03_planet_items/bg_night_basic.png",
+    "thumbnailUrl": "05_thumbnails/thumb_bg_night_basic.png",
+    "zIndex": 0,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 0,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "bg_lavender_galaxy",
+    "name": "라벤더 은하",
+    "category": "background",
+    "assetUrl": "03_planet_items/bg_lavender_galaxy.png",
+    "thumbnailUrl": "05_thumbnails/thumb_bg_lavender_galaxy.png",
+    "zIndex": 0,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 60,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "bg_green_aurora",
+    "name": "초록 오로라",
+    "category": "background",
+    "assetUrl": "03_planet_items/bg_green_aurora.png",
+    "thumbnailUrl": "05_thumbnails/thumb_bg_green_aurora.png",
+    "zIndex": 0,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 60,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "bg_sunset_orbit",
+    "name": "노을 궤도",
+    "category": "background",
+    "assetUrl": "03_planet_items/bg_sunset_orbit.png",
+    "thumbnailUrl": "05_thumbnails/thumb_bg_sunset_orbit.png",
+    "zIndex": 0,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 60,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "ring_basic_soft",
+    "name": "기본 고리",
+    "category": "ring",
+    "assetUrl": "03_planet_items/ring_basic_soft.png",
+    "thumbnailUrl": "05_thumbnails/thumb_ring_basic_soft.png",
+    "zIndex": 3,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 0,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "ring_gold_light",
+    "name": "금빛 고리",
+    "category": "ring",
+    "assetUrl": "03_planet_items/ring_gold_light.png",
+    "thumbnailUrl": "05_thumbnails/thumb_ring_gold_light.png",
+    "zIndex": 3,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 70,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "ring_purple_mist",
+    "name": "보라 안개 고리",
+    "category": "ring",
+    "assetUrl": "03_planet_items/ring_purple_mist.png",
+    "thumbnailUrl": "05_thumbnails/thumb_ring_purple_mist.png",
+    "zIndex": 3,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 70,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "ring_blue_wave",
+    "name": "푸른 물결 고리",
+    "category": "ring",
+    "assetUrl": "03_planet_items/ring_blue_wave.png",
+    "thumbnailUrl": "05_thumbnails/thumb_ring_blue_wave.png",
+    "zIndex": 3,
+    "defaultTransform": {
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0
+    },
+    "price": 70,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "star_small_white",
+    "name": "작은 흰 별",
+    "category": "star",
+    "assetUrl": "03_planet_items/star_small_white.png",
+    "thumbnailUrl": "05_thumbnails/thumb_star_small_white.png",
+    "zIndex": 4,
+    "defaultTransform": {
+      "x": 0.72,
+      "y": 0.28,
+      "scale": 0.55,
+      "rotation": 0
+    },
+    "price": 0,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "star_gold_spark",
+    "name": "금빛 별조각",
+    "category": "star",
+    "assetUrl": "03_planet_items/star_gold_spark.png",
+    "thumbnailUrl": "05_thumbnails/thumb_star_gold_spark.png",
+    "zIndex": 4,
+    "defaultTransform": {
+      "x": 0.72,
+      "y": 0.28,
+      "scale": 0.55,
+      "rotation": 0
+    },
+    "price": 45,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "star_pink_heart",
+    "name": "하트 별",
+    "category": "star",
+    "assetUrl": "03_planet_items/star_pink_heart.png",
+    "thumbnailUrl": "05_thumbnails/thumb_star_pink_heart.png",
+    "zIndex": 4,
+    "defaultTransform": {
+      "x": 0.72,
+      "y": 0.28,
+      "scale": 0.55,
+      "rotation": 0
+    },
+    "price": 45,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "star_blue_drop",
+    "name": "눈물 별",
+    "category": "star",
+    "assetUrl": "03_planet_items/star_blue_drop.png",
+    "thumbnailUrl": "05_thumbnails/thumb_star_blue_drop.png",
+    "zIndex": 4,
+    "defaultTransform": {
+      "x": 0.72,
+      "y": 0.28,
+      "scale": 0.55,
+      "rotation": 0
+    },
+    "price": 45,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "star_purple_comet",
+    "name": "보라 유성",
+    "category": "star",
+    "assetUrl": "03_planet_items/star_purple_comet.png",
+    "thumbnailUrl": "05_thumbnails/thumb_star_purple_comet.png",
+    "zIndex": 4,
+    "defaultTransform": {
+      "x": 0.72,
+      "y": 0.28,
+      "scale": 0.55,
+      "rotation": 0
+    },
+    "price": 60,
+    "unlockCondition": "default"
+  },
+  {
+    "itemId": "widget_star_jar",
+    "name": "별조각 병",
+    "category": "widget",
+    "assetUrl": "03_planet_items/widget_star_jar.png",
+    "thumbnailUrl": "05_thumbnails/thumb_widget_star_jar.png",
+    "zIndex": 6,
+    "defaultTransform": {
+      "x": 0.78,
+      "y": 0.7,
+      "scale": 0.42,
+      "rotation": 0
+    },
+    "price": 0,
+    "unlockCondition": "default",
+    "widgetType": "starJar"
+  },
+  {
+    "itemId": "widget_mood_weather",
+    "name": "감정 날씨",
+    "category": "widget",
+    "assetUrl": "03_planet_items/widget_mood_weather.png",
+    "thumbnailUrl": "05_thumbnails/thumb_widget_mood_weather.png",
+    "zIndex": 6,
+    "defaultTransform": {
+      "x": 0.78,
+      "y": 0.7,
+      "scale": 0.42,
+      "rotation": 0
+    },
+    "price": 90,
+    "unlockCondition": "default",
+    "widgetType": "moodWeather"
+  },
+  {
+    "itemId": "widget_streak_fire",
+    "name": "기록 불꽃",
+    "category": "widget",
+    "assetUrl": "03_planet_items/widget_streak_fire.png",
+    "thumbnailUrl": "05_thumbnails/thumb_widget_streak_fire.png",
+    "zIndex": 6,
+    "defaultTransform": {
+      "x": 0.78,
+      "y": 0.7,
+      "scale": 0.42,
+      "rotation": 0
+    },
+    "price": 90,
+    "unlockCondition": "default",
+    "widgetType": "streakFire"
+  },
+  {
+    "itemId": "widget_guestbook",
+    "name": "방문자 방명록",
+    "category": "widget",
+    "assetUrl": "03_planet_items/widget_guestbook.png",
+    "thumbnailUrl": "05_thumbnails/thumb_widget_guestbook.png",
+    "zIndex": 6,
+    "defaultTransform": {
+      "x": 0.78,
+      "y": 0.7,
+      "scale": 0.42,
+      "rotation": 0
+    },
+    "price": 90,
+    "unlockCondition": "default",
+    "widgetType": "guestbook"
+  },
+  {
+    "itemId": "widget_diary_piece",
+    "name": "감정 조각 액자",
+    "category": "widget",
+    "assetUrl": "03_planet_items/widget_diary_piece.png",
+    "thumbnailUrl": "05_thumbnails/thumb_widget_diary_piece.png",
+    "zIndex": 6,
+    "defaultTransform": {
+      "x": 0.78,
+      "y": 0.7,
+      "scale": 0.42,
+      "rotation": 0
+    },
+    "price": 90,
+    "unlockCondition": "default",
+    "widgetType": "diaryPiece"
+  }
+]

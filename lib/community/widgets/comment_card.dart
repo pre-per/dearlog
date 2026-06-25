@@ -6,7 +6,9 @@ import '../../shared_ui/widgets/dialog/glass_dialog.dart';
 import '../../user/providers/user_fetch_providers.dart';
 import '../../user/providers/user_stats_providers.dart';
 import '../models/community_comment.dart';
+import '../providers/community_safety_providers.dart';
 import '../providers/reply_target_provider.dart';
+import '../utils/content_filter.dart';
 import '../utils/relative_time.dart';
 import 'community_avatar.dart';
 import 'rank_badge.dart';
@@ -83,6 +85,13 @@ class _CommentCardState extends ConsumerState<CommentCard> {
       setState(() => _editing = false);
       return;
     }
+    final banned = ContentFilter.findBannedWord(newContent);
+    if (banned != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('부적절한 표현("$banned")이 포함되어 있어 저장할 수 없어요')),
+      );
+      return;
+    }
 
     setState(() => _saving = true);
     try {
@@ -125,6 +134,44 @@ class _CommentCardState extends ConsumerState<CommentCard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('신고 실패: $e')),
+        );
+      }
+    }
+  }
+
+  /// 댓글 작성자 차단 — 차단하면 이 사용자의 글/댓글이 즉시 보이지 않는다.
+  Future<void> _block() async {
+    final myUid = ref.read(userIdProvider);
+    if (myUid == null) return;
+    final c = widget.comment;
+    final name = c.displayName.isEmpty ? '익명' : c.displayName;
+
+    final ok = await showGlassDialog<bool>(
+      context: context,
+      title: '$name 님을 차단할까요?',
+      message: '차단하면 이 사용자의 게시물과 댓글이\n더 이상 보이지 않아요.\n[마이 → 커뮤니티 설정]에서 언제든 해제할 수 있어요.',
+      actions: const [
+        GlassDialogAction(label: '취소', value: false),
+        GlassDialogAction(label: '차단하기', value: true, isDestructive: true),
+      ],
+    );
+    if (ok != true) return;
+
+    try {
+      await CommunitySafetyActions.blockUser(
+        myUid: myUid,
+        targetUid: c.authorUid,
+        displayName: name,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('사용자를 차단했어요')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('차단 실패: $e')),
         );
       }
     }
@@ -364,6 +411,12 @@ class _CommentCardState extends ConsumerState<CommentCard> {
         ],
         if (canReport) ...[
           _miniAction(label: '신고', onTap: _report),
+          const SizedBox(width: 12),
+          _miniAction(
+            label: '차단',
+            onTap: _block,
+            accent: const Color(0xFFE57373),
+          ),
           if (canDelete) const SizedBox(width: 12),
         ],
         if (canDelete)

@@ -11,6 +11,7 @@ import '../../user/models/user_stats.dart';
 import '../../user/providers/user_fetch_providers.dart';
 import '../../user/providers/user_stats_providers.dart';
 import '../providers/anonymous_default_provider.dart';
+import '../providers/community_safety_providers.dart';
 
 /// 백필 권한이 있는 admin uid 화이트리스트 — Cloud Function 의 admin.uids 와 동일.
 /// 이 화면 하단의 백필 버튼은 이 목록의 사용자에게만 노출된다.
@@ -59,6 +60,8 @@ class CommunitySettingsScreen extends ConsumerWidget {
               ref.invalidate(userProvider);
             },
           ),
+          const SizedBox(height: 12),
+          const _BlockedUsersCard(),
           if (user != null && _adminUids.contains(user.id)) ...[
             const SizedBox(height: 28),
             const _AdminBackfillCard(),
@@ -66,6 +69,151 @@ class CommunitySettingsScreen extends ConsumerWidget {
             const _DebugStatsCard(),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// 차단한 사용자 목록 + 해제. 게시물/댓글의 [차단] 으로 추가된 사용자들이
+/// 여기 모이고, 해제하면 그 사용자의 콘텐츠가 즉시 다시 보인다.
+class _BlockedUsersCard extends ConsumerWidget {
+  const _BlockedUsersCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final blockedAsync = ref.watch(blockedUsersProvider);
+    final myUid = ref.watch(userIdProvider);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.10)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '차단한 사용자',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '차단한 사용자의 게시물과 댓글은 나에게 보이지 않아요.',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.55),
+                  fontSize: 12.5,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 12),
+              blockedAsync.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Center(
+                    child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                ),
+                error: (_, __) => Text(
+                  '차단 목록을 불러오지 못했어요',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.5),
+                    fontSize: 13,
+                  ),
+                ),
+                data: (blocked) {
+                  if (blocked.isEmpty) {
+                    return Text(
+                      '차단한 사용자가 없어요',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.45),
+                        fontSize: 13,
+                      ),
+                    );
+                  }
+                  return Column(
+                    children: [
+                      for (final entry in blocked.entries)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 5),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  entry.value,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: myUid == null
+                                    ? null
+                                    : () async {
+                                        try {
+                                          await CommunitySafetyActions
+                                              .unblockUser(
+                                            myUid: myUid,
+                                            targetUid: entry.key,
+                                          );
+                                        } catch (e) {
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                  content:
+                                                      Text('해제 실패: $e')),
+                                            );
+                                          }
+                                        }
+                                      },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.10),
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                        color:
+                                            Colors.white.withOpacity(0.18)),
+                                  ),
+                                  child: const Text(
+                                    '차단 해제',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

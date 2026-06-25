@@ -39,6 +39,7 @@ export 'app/router/app_router.dart';
 export 'app/theme/app_theme.dart';
 
 // auth
+export 'auth/providers/apple_auth_provider.dart';
 export 'auth/providers/current_userid_provider.dart';
 export 'auth/providers/google_auth_provider.dart';
 export 'auth/providers/onboarding_provider.dart';
@@ -51,6 +52,7 @@ export 'auth/screens/onboarding_age_group_screen.dart';
 export 'auth/screens/onboarding_interests_screen.dart';
 export 'auth/screens/onboarding_reminder_screen.dart';
 export 'auth/screens/splash_screen.dart';
+export 'auth/services/apple_auth_service.dart';
 export 'auth/services/google_auth_service.dart';
 
 // call
@@ -78,6 +80,7 @@ export 'call/widgets/recording_indicator.dart';
 
 // core
 export 'core/analytics/analytics_service.dart';
+export 'core/config/legal_links.dart';
 export 'core/config/remote_config_service.dart';
 export 'package:dearlog/core/base_scaffold.dart';
 
@@ -126,8 +129,8 @@ export 'settings/screens/sub_screens/contact_support_screen.dart';
 export 'settings/screens/sub_screens/faq_screen.dart';
 export 'settings/screens/sub_screens/notice_screen.dart';
 export 'settings/screens/sub_screens/notification_setting_screen.dart';
-export 'settings/screens/sub_screens/privacy_policy_screen.dart';
 export 'settings/screens/sub_screens/profile_edit_screen.dart';
+export 'settings/screens/sub_screens/terms_of_service_screen.dart';
 export 'settings/screens/setting_main_screen.dart';
 export 'settings/widgets/bottom_modal_sheet/feedback_modal_sheet.dart';
 export 'settings/widgets/tile/faq_tile.dart';
@@ -140,7 +143,6 @@ export 'shared_ui/widgets/chart/emotion_chart_widget.dart';
 export 'shared_ui/widgets/chart/simple_bar_chart.dart';
 export 'shared_ui/widgets/dialog/glass_dialog.dart';
 export 'shared_ui/widgets/dialog/lottie_popup_dialog.dart';
-export 'shared_ui/widgets/dialog/subscription_dialog.dart';
 export 'shared_ui/widgets/tile/promotile.dart';
 export 'shared_ui/widgets/tile/simple_title_tile.dart';
 export 'shared_ui/widgets/dotted_divider.dart';

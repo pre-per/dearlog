@@ -6,8 +6,10 @@ import '../../core/base_scaffold.dart';
 import '../../shared_ui/widgets/dialog/glass_dialog.dart';
 import '../../user/providers/user_fetch_providers.dart';
 import '../models/community_post.dart';
+import '../../core/safety/crisis_support.dart';
 import '../providers/anonymous_default_provider.dart';
 import '../providers/community_providers.dart';
+import '../utils/content_filter.dart';
 import '../utils/emotion_groups.dart';
 import '../widgets/post_card.dart';
 import '../widgets/standalone_share_options_panel.dart';
@@ -76,6 +78,17 @@ class _CreateEditPostScreenState extends ConsumerState<CreateEditPostScreen> {
       _snack('제목이나 내용 중 하나는 채워주세요');
       return;
     }
+
+    // 공개 게시물 금칙어 1차 필터 (App Store 1.2 — UGC 콘텐츠 필터링)
+    final banned = ContentFilter.findBannedWord('$title\n$content');
+    if (banned != null) {
+      _snack('부적절한 표현("$banned")이 포함되어 있어 게시할 수 없어요');
+      return;
+    }
+
+    // 위기 신호가 보이면 게시는 막지 않되 전문기관을 안내한다.
+    // ignore: unawaited_futures
+    CrisisSupport.maybeShowSupport(context, '$title\n$content');
 
     final user = ref.read(userProvider).valueOrNull;
     if (user == null) {

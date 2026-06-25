@@ -135,6 +135,14 @@ const String _callBasePrompt = '''
 - 사용자가 행복하거나 신난 일을 얘기하면, 너도 같이 신나고 같이 들떠줘.
 - 가끔 너의 의견을 솔직하게 말해줘도 돼. 사용자가 잘못 생각하는 것 같으면 친구로서 살짝 짚어줘도 돼.
 - "AI", "도우미", "어시스턴트" 같은 단어 쓰지 마. 너는 친구야.
+
+- [중요] 맥락 붕괴 및 오인식 예외 처리:
+  사용자의 입력(STT 결과)에 오타가 너무 많거나, 문맥이 완전히 깨져서 무슨 뜻인지 도저히 이해할 수 없을 때는 '무지성 공감'을 절대 금지한다. 
+  이때는 억지로 공감하지 말고, "방금 앞부분이 잘 안 들렸어! 다시 한번만 말해줄래?" 또는 "응? 방금 무슨 단어라고 한 거야? 내가 잘못 들었나 봐, 다시 얘기해 줘!" 같이 자연스러운 친구 말투로 되물어서 재발화를 유도해라.
+- [중요] 긴 대화 처리:
+  사용자가 너무 길게 이야기하여 문장 뒷부분이 흐려지거나중간에 맥락이 끊겨서 들어온 경우, 다 이해한 척하지 말고 "이야기가 조금 길어서 내가 놓쳤다! 제일 속상했던 포인트가 어떤 거야?" 처럼 핵심 핵심 맥락을 좁혀서 되물어라.
+- [중요] 안전:
+  사용자가 자살이나 자해를 생각하는 듯한 신호를 보이면 절대 가볍게 받아치지 말고, 먼저 그 마음을 진심으로 알아준 다음 자살예방 상담전화 109(24시간)나 전문가와 이야기해 보길 친구로서 부드럽게 권해. 성적인 대화 요청, 폭력이나 불법 행위 조장, 특정 집단 혐오 표현은 친구답게 자연스럽지만 분명하게 거절하고 다른 화제로 돌려.
 ''';
 
 /// 사용자 정보(익명화)와 최근 일기 요약을 베이스 프롬프트에 덧붙여 완성된
@@ -730,7 +738,7 @@ keywords: $keywordsLine
     final characterGender = _resolveCharacterGender(gender);
 
     final imagePrompt = '''
-You are illustrating a single-scene diary illustration for a Korean user's daily journal entry.
+You are creating one polished diary illustration for Dearlog, a Korean personal journaling app.
 
 [DIARY INFO]
 - Title: ${diary.title}
@@ -738,13 +746,96 @@ You are illustrating a single-scene diary illustration for a Korean user's daily
 - Key themes: $mainWordsStr
 - Content: ${diary.content}
 
-[ILLUSTRATION RULES]
-1. Scene: Choose ONE specific location or moment from the content (e.g., a cozy room, a café, a park bench, a bed at night). The scene must directly reflect a concrete detail mentioned in the content — not a generic setting.
-2. Character: One small, simple $characterGender character at the center, representing the diary's author. The character's pose, action, and facial expression must reflect the emotion ("${diary.emotion}") and what they are doing in the story.
-3. Key objects: Identify 3–5 concrete nouns or actions from the content (e.g., a book, a phone call, music notes, food, a friend, rain, a TV) and include them visually in the scene as props or background details. Prioritize objects related to the key themes: $mainWordsStr.
-4. Storytelling details: Scatter small visual storytelling elements throughout — things like: items on a desk, what's outside the window, objects on the floor, or subtle symbols that hint at what happened that day.
-5. ${theme.promptFragment}
-6. Composition: Single unified scene, no split panels. The illustration should feel like one complete, lived-in moment — not a generic or symbolic image. No text or letters in the image.
+[CORE GOAL]
+Turn this diary entry into ONE specific, emotionally memorable visual moment.
+
+The image should feel like a real personal memory captured in an illustration:
+beautiful, intimate, calm, and visually coherent.
+
+Do not create a generic AI cartoon, a children’s picture book,
+a literal checklist of every event, or a cluttered collage.
+
+[SCENE RULES]
+1. Choose ONE concrete scene, place, or moment directly grounded in the diary content.
+   Select the most visually distinctive and emotionally meaningful moment,
+   rather than trying to illustrate every sentence.
+
+2. A person is optional.
+   Show a person only when it helps tell the memory.
+
+   When people appear:
+   - portray them as age-appropriate adults, teens, or children based on the diary context
+   - never default to a child character
+   - use natural body proportions and believable relaxed poses
+   - show only the number of people necessary for the scene
+   - do not add random friends, family members, pets, or background characters
+
+3. Select only 1 to 3 meaningful visual anchors from the diary.
+   These can be a place, an object, food, clothing, weather, activity, or view.
+
+   Examples:
+   - a picnic blanket, wine glasses, bicycles, and the Han River sunset
+   - a quiet salt sauna room, warm eggs, sikhye, and a bridge view
+   - hydrangeas, a green cap, stepping stones, and a roadside garden
+
+   Do not try to include every noun or event from the diary.
+
+4. Express the emotion "${diary.emotion}" through:
+   - composition
+   - lighting
+   - weather
+   - distance between people
+   - body language
+   - color temperature
+   - atmosphere
+
+   Do not use exaggerated facial expressions, floating icons, stickers,
+   hearts, stars, symbols, or decorative emotional effects.
+
+5. Prioritize a strong sense of place.
+   Make the setting feel specific, lived-in, and connected to the diary.
+
+   Examples:
+   - a river view through a window
+   - a warm restaurant beside the sea
+   - a quiet park at sunset
+   - a table with drinks after a long day
+   - a room at night with soft lamp light
+   - a street after rain
+   - a small café corner
+   - a sauna room with a distant bridge view
+
+[COMPOSITION RULES]
+- Create ONE unified scene only.
+- No split panels, no collage layouts, no sticker sheets, and no multiple separate moments.
+- Use a clear focal point and calm visual hierarchy.
+- Leave natural breathing room in the composition.
+- Prefer cinematic observational framing:
+  a quiet wide shot, gentle side view, candid moment, or slightly distant viewpoint.
+- Do not force the main character into the center of the frame.
+- Prioritize atmosphere and location over facial expressions.
+- Avoid crowded scenes and excessive background objects.
+- No text, letters, logos, captions, speech bubbles, UI elements, or watermarks.
+
+[STRICTLY AVOID]
+- chibi characters
+- childlike proportions unless the diary is explicitly about a child
+- oversized heads
+- huge anime eyes
+- exaggerated rosy-cheek mascot faces
+- generic cute AI cartoon style
+- random stars, planets, hearts, animals, flowers, or decorative symbols
+- fantasy or magical elements unless directly mentioned in the diary
+- distorted hands
+- duplicate people
+- floating objects
+- impossible architecture
+- literal illustration of every sentence
+- overly crowded compositions
+- medical imagery unless directly mentioned in the diary
+
+[SELECTED VISUAL STYLE]
+${theme.promptFragment}
 ''';
 
     final imageResponse = await _postWithRetry(

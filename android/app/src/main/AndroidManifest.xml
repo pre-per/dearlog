@@ -1,5 +1,12 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- firebase_analytics / firebase_messaging 가 끌어오는 play-services-measurement 가
+         com.google.android.gms.permission.AD_ID 권한을 자동 병합한다. 광고 ID 를 사용하지
+         않으므로 Play Console 데이터 보안 정책 위반(출시 거부)을 피하기 위해 머지 단계에서 제거. -->
+    <uses-permission
+        android:name="com.google.android.gms.permission.AD_ID"
+        tools:node="remove" />
     <!-- AudioManager.setMode() / setSpeakerphoneOn() 호출에 필요.
          speech_to_text가 시스템 audio mode를 MODE_IN_COMMUNICATION으로 바꿔놓는 것을
          TTS 재생 직전에 MODE_NORMAL로 되돌리려면 반드시 필요한 normal-level 권한. -->

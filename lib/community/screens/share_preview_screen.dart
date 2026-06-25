@@ -11,6 +11,7 @@ import '../models/community_share_options.dart';
 import '../models/nlp_filter_snapshot.dart';
 import '../providers/anonymous_default_provider.dart';
 import '../providers/community_providers.dart';
+import '../utils/content_filter.dart';
 import '../widgets/community_share_options_panel.dart';
 import '../widgets/post_card.dart';
 
@@ -85,6 +86,13 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
     final user = ref.read(userProvider).valueOrNull;
     if (user == null) {
       _snack('사용자 정보를 불러오지 못했어요');
+      return;
+    }
+
+    // 공개 게시물 금칙어 1차 필터 (App Store 1.2 — UGC 콘텐츠 필터링)
+    final banned = ContentFilter.findBannedWord('$rawTitle\n$content');
+    if (banned != null) {
+      _snack('부적절한 표현("$banned")이 포함되어 있어 공개할 수 없어요');
       return;
     }
 
